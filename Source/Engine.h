@@ -1,172 +1,149 @@
 #pragma once
-#include <algorithm>
-#include <array>
-#include <atomic>
-#include <cmath>
-#include <vector>
+#include "EffectRack.h"
 namespace rastro
 {
-struct Sample
-{
-    std::array<std::vector<float>, 2> data;
-    double rate = 44100;
-    int size() const { return (int)data[0].size(); }
-};
-struct Settings
-{
-    float root = 60, start = 0, end = 1, loop = 0, level = .7f, velocity = .5f, tempo = 120,
-          presence = .5f, trail = .5f, mutation = .3f, drywet = 1;
-    std::array<float, 4> ghost{{.5f, .35f, .6f, .3f}}, bloom{{.6f, .6f, .5f, .25f}};
-    std::array<float, 3> crumble{{.5f, .3f, .2f}};
-    std::array<bool, 3> enabled{{true, true, true}};
-    std::array<int, 3> order{{0, 1, 2}};
-};
+// MIDI sampler only. EffectRack is separately reusable by a future audio-input product.
 class Engine
 {
     struct Voice
     {
-        double pos = 0, step = 1, begin = 0, end = 1;
+        double pos = 0, step = 1, begin = 0, end = 1, travel = 0;
         float gain = 0, env = 0, filter[2]{};
-        int note = -1;
-        bool release = false;
+        int note = -1, mode = 0;
+        bool release = false, legacyMode = false;
     };
     std::array<Voice, 16> voices{};
-    std::array<std::vector<float>, 2> delay, grain;
-    std::array<std::array<std::vector<float>, 4>, 2> reverb;
-    std::array<std::array<int, 4>, 2> rp{};
-    float ghostTone[2]{}, bloomTone[2]{};
-    float delayTime = 1;
-    int write = 0, grainWrite = 0, phase = 0, fragment = 0, fragmentLength = 1;
-    unsigned random = 12345;
     double sr = 44100;
-    float smoothing = .001f;
-    Settings sm;
-    bool initialized = false;
-    std::array<int, 3> activeOrder{{0, 1, 2}};
-    float topologyGain = 1;
-    float smooth(float &a, float b)
-    {
-        a += (b - a) * smoothing;
-        return a;
-    }
+    float velocity = .5f, smoothing = .001f;
 
   public:
-    std::atomic<float> meter{0}, position{0};
+    EffectRack rack;
+    std::atomic<float> &meter = rack.meter;
+    std::atomic<float> &visualWobble = rack.visualWobble;
+    std::atomic<float> &visualDust = rack.visualDust;
+    std::atomic<float> &visualCrush = rack.visualCrush;
+    std::atomic<float> &visualBloom = rack.visualBloom;
+    std::atomic<float> &visualEnvelope = rack.visualEnvelope;
+    std::atomic<float> &visualX = rack.visualX;
+    std::atomic<float> &visualY = rack.visualY;
+    std::atomic<float> position{0};
+    std::atomic<float> noteVelocity{0};
+    std::atomic<unsigned> noteSerial{0};
+    std::atomic<bool> previewActive{false};
     void prepare(double sampleRate)
     {
         sr = sampleRate;
-        smoothing = float(1 - std::exp(-1 / (sr * .015)));
-        for (auto &d : delay)
-            d.assign((size_t)(sr * 4) + 2, 0);
-        for (auto &g : grain)
-            g.assign((size_t)sr + 2, 0);
-        for (auto &c : reverb)
-            for (auto &d : c)
-                d.assign((size_t)(sr * .16) + 2, 0);
-        reset();
+        smoothing = 1 - std::exp(-1.f / float(sr * .015));
+        rack.prepare(sr);
+        voices = {};
+        position = 0;
+        previewActive = false;
     }
     void reset()
     {
         voices = {};
-        for (auto &d : delay)
-            std::fill(d.begin(), d.end(), 0);
-        for (auto &d : grain)
-            std::fill(d.begin(), d.end(), 0);
-        for (auto &c : reverb)
-            for (auto &d : c)
-                std::fill(d.begin(), d.end(), 0);
-        rp = {};
-        write = grainWrite = phase = 0;
-        std::fill_n(ghostTone, 2, 0);
-        std::fill_n(bloomTone, 2, 0);
-        initialized = false;
-        topologyGain = 1;
-        delayTime = 1;
-        std::fill_n(activation, 3, 1.f);
-        meter = 0;
         position = 0;
+        previewActive = false;
+        rack.reset();
     }
-    void noteOn(int note, float velocity, const Sample *s, const Settings &p)
+    void clearVoices()
     {
-        if (!s || s->size() < 2)
+        voices = {};
+        previewActive = false;
+    }
+    void noteOn(int note, float vel, const Sample *sample, const Settings &p)
+    {
+        noteVelocity.store(std::clamp(vel, 0.f, 1.f), std::memory_order_relaxed);
+        noteSerial.fetch_add(1, std::memory_order_relaxed);
+        if (!sample || sample->size() < 2)
             return;
-        auto *v = &voices[0];
+        int mode = p.mode;
+        if (mode == 0 && p.loop > .5f)
+            mode = 1;
+        int slice = note - (int)p.root;
+        if (mode == 4 && (slice < 0 || slice >= p.sliceCount))
+            return;
+        Voice *v = &voices[0];
         for (auto &x : voices)
             if (x.note < 0)
             {
                 v = &x;
                 break;
             }
+        if (note == 255)
+            for (auto &x : voices)
+                if (x.note == 255)
+                {
+                    v = &x;
+                    break;
+                }
         *v = {};
+        v->mode = mode;
+        v->legacyMode = p.mode == 0 && note != 255;
         v->note = note;
-        v->pos = std::clamp(p.start, 0.f, .999f) * (s->size() - 1);
-        v->step = s->rate / sr * std::pow(2., (note - p.root) / 12.);
-        v->gain = velocity * .23f;
-        v->begin = v->pos;
-        v->end = std::max(v->begin + 1., double(std::clamp(p.end, .001f, 1.f) * (s->size() - 1)));
+        v->gain = vel * .23f;
+        double n = sample->size();
+        double begin = std::clamp(p.start, 0.f, .999f) * (n - 1);
+        double end = std::clamp(p.end, .001f, 1.f) * (n - 1);
+        begin = std::min(begin, n - 2);
+        end = std::clamp(end, begin + 1, n - 1);
+        if (mode == 4)
+        {
+            double range = end - begin;
+            double a = begin + range * p.cuts[slice], b = begin + range * p.cuts[slice + 1];
+            begin = std::min(a, n - 2);
+            end = std::clamp(b, begin + 1, n - 1);
+        }
+        v->begin = begin;
+        v->end = end;
+        v->pos = mode == 2 ? std::max(begin, end - 1) : begin;
+        v->step = sample->rate / sr * (mode == 4 ? 1. : std::pow(2., (note - p.root) / 12.));
     }
-    void noteOff(int note)
+    void noteOff(int note, const Settings &p)
     {
         for (auto &v : voices)
             if (v.note == note)
-                v.release = true;
+            {
+                // One Shot is triggered, not gated. Legacy loop automation still determines
+                // the effective mode; preview stop and allOff always release explicitly.
+                const int mode = v.legacyMode ? (p.loop > .5f ? 1 : 0) : v.mode;
+                if (mode != 0 || note == 255)
+                    v.release = true;
+            }
     }
-    void clearVoices() { voices = {}; }
     void allOff()
     {
         for (auto &v : voices)
             v.release = true;
     }
-    // All storage is prepared off the audio thread. No allocation, ownership, locks, or file I/O
-    // here.
-    void frame(float &l, float &r, const Sample *source, const Settings &p)
+    void endBlock() { rack.endBlock(); }
+    void frame(float &l, float &r, const Sample *sample, const Settings &p)
     {
-        if (!initialized)
-        {
-            sm = p;
-            activeOrder = p.order;
-            initialized = true;
-        }
-        if (activeOrder != p.order)
-        {
-            topologyGain = std::max(0.f, topologyGain - float(1 / (sr * .005)));
-            if (topologyGain == 0)
-                activeOrder = p.order;
-        }
-        else
-            topologyGain = std::min(1.f, topologyGain + float(1 / (sr * .005)));
-        smooth(sm.level, p.level);
-        smooth(sm.presence, p.presence);
-        smooth(sm.trail, p.trail);
-        smooth(sm.mutation, p.mutation);
-        smooth(sm.drywet, p.drywet);
-        smooth(sm.velocity, p.velocity);
-        for (int j = 0; j < 4; ++j)
-        {
-            smooth(sm.ghost[j], p.ghost[j]);
-            smooth(sm.bloom[j], p.bloom[j]);
-            if (j < 3)
-                smooth(sm.crumble[j], p.crumble[j]);
-        }
-        float x[2]{};
-        if (source && source->size() > 1)
+        velocity += (p.velocity - velocity) * smoothing;
+        float signal[2]{};
+        bool preview = false;
+        if (sample && sample->size() > 1)
             for (auto &v : voices)
                 if (v.note >= 0)
                 {
-                    const int n = source->size();
-                    double begin = v.begin, end = v.end;
-                    if (v.pos >= end)
+                    int mode = v.legacyMode ? (p.loop > .5f ? 1 : 0) : v.mode;
+                    double span = v.end - v.begin;
+                    if (mode == 3)
                     {
-                        if (p.loop > .5f && !v.release)
-                            v.pos = begin + std::fmod(v.pos - begin, end - begin);
+                        double t = std::fmod(v.travel, span * 2);
+                        v.pos = v.begin + (t <= span ? t : 2 * span - t);
+                        v.pos = std::min(v.pos, v.end - .0001);
+                    }
+                    else if (v.pos >= v.end || v.pos < v.begin)
+                    {
+                        if (mode == 1 && !v.release)
+                            v.pos = v.begin + std::fmod(v.pos - v.begin, span);
                         else
                         {
                             v.note = -1;
                             continue;
                         }
                     }
-                    if (v.pos < begin)
-                        v.pos = begin;
                     v.env += v.release ? -float(1 / (sr * .03)) : float(1 / (sr * .004));
                     v.env = std::min(1.f, v.env);
                     if (v.env <= 0)
@@ -174,113 +151,29 @@ class Engine
                         v.note = -1;
                         continue;
                     }
-                    int a = std::clamp((int)v.pos, 0, n - 2);
+                    int a = std::clamp((int)v.pos, 0, sample->size() - 2);
                     float f = float(v.pos - a);
-                    float edge = float(std::min({1., (v.pos - begin) / std::max(1., sr * .002),
-                                                 (end - v.pos) / std::max(1., sr * .003)}));
-                    float cutoff = .035f + .85f * (1 - sm.velocity +
-                                                   sm.velocity * std::min(1.f, v.gain / .23f));
+                    float edge = float(std::min({1., (v.pos - v.begin) / std::max(1., sr * .002),
+                                                 (v.end - v.pos) / std::max(1., sr * .003)}));
+                    float cutoff =
+                        .035f + .85f * (1 - velocity + velocity * std::min(1.f, v.gain / .23f));
                     for (int c = 0; c < 2; ++c)
                     {
                         float z =
-                            source->data[c][a] + f * (source->data[c][a + 1] - source->data[c][a]);
+                            sample->data[c][a] + f * (sample->data[c][a + 1] - sample->data[c][a]);
                         v.filter[c] += cutoff * (z - v.filter[c]);
-                        x[c] += v.filter[c] * v.env * v.gain * edge;
+                        signal[c] += v.filter[c] * v.env * v.gain * edge;
                     }
-                    v.pos += v.step;
-                    position.store(float(v.pos / n), std::memory_order_relaxed);
+                    position.store(float(v.pos / sample->size()), std::memory_order_relaxed);
+                    if (v.note == 255)
+                        preview = true;
+                    v.travel += v.step;
+                    v.pos += mode == 2 ? -v.step : v.step;
                 }
-        float original[2]{x[0], x[1]};
-        const int delaySize = (int)delay[0].size(), grainSize = (int)grain[0].size();
-        int beatSamples = std::max(16, int(sr * 60 / std::clamp(p.tempo, 30.f, 300.f)));
-        const float divisions[]{.125f, .25f, .5f, 1.f, 2.f};
-        int dt = std::clamp(int(beatSamples * divisions[std::min(4, int(sm.ghost[0] * 4.99f))]), 1,
-                            delaySize - 1);
-        smooth(delayTime, (float)dt);
-        int period = std::clamp(int(beatSamples * std::pow(2., -1 - int(sm.crumble[0] * 4.99f))),
-                                16, grainSize / 2);
-        if (phase >= period)
-        {
-            phase = 0;
-            random = random * 1664525u + 1013904223u;
-            fragmentLength = std::max(16, int(period * (.25f + .7f * (1 - sm.crumble[1]))));
-            fragment = (grainWrite - fragmentLength -
-                        int((random % 1024) / 1024.f * sm.mutation * period) + grainSize * 2) %
-                       grainSize;
-        }
-        for (int m = 0; m < 3; ++m)
-            smooth(activation[m], p.enabled[m] ? 1.f : 0.f);
-        for (int module : activeOrder)
-            for (int c = 0; c < 2; ++c)
-            {
-                float wet = x[c];
-                if (module == 0)
-                {
-                    float read = write - delayTime;
-                    if (read < 0)
-                        read += delaySize;
-                    if (read >= delaySize)
-                        read = 0;
-                    int a = (int)read;
-                    float z =
-                        delay[c][a] + (read - a) * (delay[c][(a + 1) % delaySize] - delay[c][a]);
-                    ghostTone[c] += (.02f + .7f * sm.ghost[2]) * (z - ghostTone[c]);
-                    delay[c][write] = std::tanh(
-                        x[c] + ghostTone[c] * std::min(.88f, sm.ghost[1] * (.5f + sm.trail)));
-                    wet = ghostTone[c];
-                }
-                if (module == 1)
-                {
-                    grain[c][grainWrite] = x[c];
-                    float w = .5f - .5f * std::cos(6.2831853f * (phase % fragmentLength) /
-                                                   fragmentLength);
-                    wet = grain[c][(fragment + phase % fragmentLength) % grainSize] * w;
-                }
-                if (module == 2)
-                {
-                    float sum = 0;
-                    for (int k = 0; k < 4; ++k)
-                    {
-                        int len = (int)reverb[c][k].size();
-                        float time = std::clamp(
-                            float(sr * (.027 + .019 * k) * (.5f + sm.bloom[0]) + (c * 17)), 2.f,
-                            float(len - 1));
-                        int &idx = rp[c][k];
-                        float read = idx - time;
-                        if (read < 0)
-                            read += len;
-                        if (read >= len)
-                            read = 0;
-                        int a = (int)read;
-                        float z = reverb[c][k][a] +
-                                  (read - a) * (reverb[c][k][(a + 1) % len] - reverb[c][k][a]);
-                        reverb[c][k][idx] =
-                            std::tanh(x[c] * .3f + z * std::min(.94f, .3f + .6f * sm.bloom[2] +
-                                                                          .04f * sm.trail));
-                        idx = (idx + 1) % len;
-                        sum += z * .25f;
-                    }
-                    bloomTone[c] += (.015f + .65f * sm.bloom[1]) * (sum - bloomTone[c]);
-                    wet = bloomTone[c];
-                }
-                float mix = module == 0 ? sm.ghost[3] : (module == 1 ? sm.crumble[2] : sm.bloom[3]);
-                // Bypass crossfades instead of abruptly switching the signal.
-                float &active = activation[module];
-                mix *= active;
-                x[c] += (wet - x[c]) * mix;
-            }
-        write = (write + 1) % delaySize;
-        grainWrite = (grainWrite + 1) % grainSize;
-        ++phase;
-        for (int c = 0; c < 2; ++c)
-            x[c] = std::tanh((original[c] + (x[c] - original[c]) * sm.drywet) * sm.level *
-                             (.6f + sm.presence));
-        l = x[0] * topologyGain;
-        r = x[1] * topologyGain;
-        meter.store(std::max(std::abs(l), std::abs(r)), std::memory_order_relaxed);
+        previewActive.store(preview, std::memory_order_relaxed);
+        l = signal[0];
+        r = signal[1];
+        rack.process(l, r, p);
     }
-
-  private:
-    float activation[3]{1, 1, 1};
 };
 } // namespace rastro

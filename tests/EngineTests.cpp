@@ -49,7 +49,7 @@ int main()
         }
         audio = false;
         check(energy > 1, "note must sound");
-        engine.noteOff(60);
+        engine.noteOff(60, s);
         audio = true;
         for (int i = 0; i < (int)sr; ++i)
         {

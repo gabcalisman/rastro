@@ -5,8 +5,15 @@ class RastroProcessor : public juce::AudioProcessor, private juce::MidiKeyboardS
 {
   public:
     RastroProcessor();
-    ~RastroProcessor() override { keyboard.removeListener(this); }
+    ~RastroProcessor() override
+    {
+        loader.removeAllJobs(true, -1);
+        keyboard.removeListener(this);
+    }
     void applyCC();
+    void setPlaybackMode(int);
+    void equalSlices(int);
+    std::atomic<int> previewRequest{0};
     const juce::String getName() const override { return "RASTRO"; }
     void prepareToPlay(double, int) override;
     void releaseResources() override {}
@@ -30,10 +37,11 @@ class RastroProcessor : public juce::AudioProcessor, private juce::MidiKeyboardS
     rastro::Engine engine;
     std::atomic<const rastro::Sample *> source{nullptr};
     std::atomic<int> language{0}, learn{-1};
-    std::array<std::atomic<int>, 3> cc{{-1, -1, -1}};
+    std::array<std::atomic<int>, 5> cc{{-1, -1, -1, -1, -1}};
     std::atomic<int> midiFlash{0};
     std::atomic<float> hostBpm{0};
     bool loadFile(const juce::File &);
+    void loadFileAsync(juce::File, std::function<void(bool)>);
     bool loadData(const void *, size_t, juce::String);
     juce::String sampleName();
     rastro::Settings settings() const;
@@ -41,11 +49,14 @@ class RastroProcessor : public juce::AudioProcessor, private juce::MidiKeyboardS
     void set(const juce::String &, float);
     void mutate();
     void resetEffects();
+    void undoMutation();
+    bool canUndoMutation() const { return mutationUndoAvailable.load(); }
     void moveModule(int, int);
 
   private:
     static juce::AudioProcessorValueTreeState::ParameterLayout layout();
     juce::AudioFormatManager formats;
+    juce::ThreadPool loader{1};
     struct KeyEvent
     {
         int note;
@@ -74,7 +85,10 @@ class RastroProcessor : public juce::AudioProcessor, private juce::MidiKeyboardS
         keyEvents[w % 256] = {n, v, on};
         keyWrite.store(w + 1, std::memory_order_release);
     }
-    std::array<std::atomic<float>, 3> ccPending{{-1, -1, -1}};
+    std::array<std::atomic<float>, 5> ccPending{{-1, -1, -1, -1, -1}};
+    std::array<std::array<float, 4>, rastro::moduleCount> mutationBefore{};
+    std::array<bool, rastro::moduleCount> mutationAffected{};
+    std::atomic<bool> mutationUndoAvailable{false};
     const rastro::Sample *previousSource = nullptr;
     juce::CriticalSection stateLock;
     std::vector<std::unique_ptr<rastro::Sample>> owned;

@@ -42,7 +42,7 @@ jobs:
       - name: Build all Mac formats and DSP tests
         run: >-
           cmake --build "$BUILD_DIR" --config Release
-          --target Rastro_AU Rastro_VST3 Rastro_Standalone rastro_tests
+          --target Rastro_AU Rastro_VST3 Rastro_Standalone rastro_tests rastro_character_tests rastro_playback_tests rastro_mp3_tests
           --parallel 3
 
       - name: Run portable DSP tests

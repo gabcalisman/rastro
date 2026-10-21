@@ -2,14 +2,118 @@
 
 A native MIDI sample instrument and reorderable texture rack. First working prototype, C++17 / JUCE 8 / CMake. Portuguese (Brazil) is the default; English is selectable and saved with the session.
 
+## RASTRO PLAY: sample, cortes e execução MIDI
+
+Esta revisão continua sendo **somente o instrumento sampler MIDI RASTRO PLAY**. O nome/binário e os identificadores permanecem RASTRO para preservar compatibilidade. Não foi criado um RASTRO FX nem uma entrada para áudio de outras faixas. Esta revisão é publicada na branch `prepare-mac-testing` (PR #1). Os artefatos anteriores do GitHub não incluem estas mudanças: baixe somente um build do commit atual da branch e confira `BUILD-INFO.txt`.
+
+### Carregar, recortar e ouvir
+
+1. Use **CARREGAR SOM** para abrir WAV, AIFF/AIF ou MP3, ou arraste **um arquivo** desses formatos para qualquer área da interface. Os dois caminhos importam em segundo plano. MP3 funciona offline: o decoder faz parte do executável; não requer FFmpeg, internet ou codec instalado no Mac.
+2. Arraste os **triângulos/linhas laranja** na waveform para mudar início e fim. Os sliders continuam disponíveis para ajuste/automação. Os limites não se cruzam ao arrastar. Novas notas usam a edição atual; vozes em andamento preservam os limites capturados para não saltar no meio do som.
+3. **Ouvir trecho** toca uma passagem para a frente do intervalo inteiro, no pitch original e através do rack, independentemente de Reverse/Slice. **Parar prévia** libera apenas essa voz; o MIDI permanece independente. Comece com volume de monitoração baixo.
+4. O estado do host preserva bytes originais do arquivo, trims, modo, cortes, parâmetros, rack, idioma e PLAY. O arquivo externo não é necessário para restaurar; MP3 é decodificado novamente pelo mesmo decoder local.
+
+### Modos e cortes por MIDI
+
+Escolha no menu ao lado da waveform:
+
+| Modo | Comportamento |
+| --- | --- |
+| Disparo único / One Shot | Início → fim uma vez, com afinação cromática relativa à raiz. |
+| Loop | Repete para a frente enquanto a voz estiver ativa, com afinação cromática. |
+| Reverso / Reverse | Fim → início uma vez, com afinação cromática. |
+| Ping-Pong | Alterna para a frente/trás dentro do intervalo, com afinação cromática. |
+| Cortes MIDI / MIDI Slices | Uma parte por nota, no pitch/velocidade original do arquivo. |
+
+**One Shot ignora o note-off comum:** soltar a tecla não interrompe o sample, que toca até o marcador de fim. Esta revisão corrige o comportamento anterior de liberação ao soltar.
+
+| Modo | Ao soltar a tecla (note-off) |
+| --- | --- |
+| One Shot | Continua até o fim do trim, mesmo após soltar. |
+| Loop | Inicia liberação de até ~30 ms; não faz outra volta se alcançar o fim durante a liberação. |
+| Reverse | Inicia liberação de até ~30 ms; pode terminar antes se alcançar o início do trim. |
+| Ping-Pong | Continua o movimento durante a liberação de até ~30 ms e então para. |
+| Slice | Libera o corte em até ~30 ms, ou termina antes na borda final do corte. |
+
+A liberação depende do nível atual do envelope: soltar durante o ataque pode parar antes de 30 ms. Caudas do rack (delay/reverb) podem continuar depois que a voz acaba. A flag legada `loop=1` continua sendo Loop e obedece note-off. O modo capturado no note-on vale para a voz, com a exceção já existente da automação legada de `loop`. **All Notes Off/All Sound Off**, proteção de overflow MIDI e **Parar prévia** continuam liberando as vozes (com fade, não corte abrupto), inclusive One Shot. Retrigger cria outra voz até o limite de 16; não há choke monofônico. Velocity controla volume e filtro ajustável; há até 16 vozes. Mudar a nota transpõe nos quatro primeiros modos e escolhe outro corte no Slice.
+
+Em **Cortes MIDI**, o menu numérico define **2–16 partes**. Alterar a quantidade pela UI redistribui os cortes igualmente dentro do trim. Depois arraste as **linhas verdes** para editar as divisões manualmente. Os números sob as partes são notas MIDI: com raiz 60 e oito cortes, **60–67** tocam as partes 1–8; notas fora do intervalo são ignoradas. A raiz é editável. Não há detecção automática de transientes. Automação de `sliceCount` usa os marcadores existentes; mudar pelo menu também redistribui os marcadores. Cada marcador é automatizável e persistente.
+
+O parâmetro antigo `loop` continua existindo: sessões antigas abrem no modo compatível e mantêm sua automação. O novo menu escreve uma escolha explícita e sincroniza a flag para escolhas novas. O checkbox foi substituído pelo menu, sem remover seu ID do host.
+
+### MP3: decoder, licença e limites
+
+O adaptador original `Source/Mp3Decoder.cpp` usa **minimp3**, revisão `ea99364f61c14656440e8d77e9c233ccf3124633`, sob **CC0 1.0 Universal**. A licença foi conferida; o cabeçalho não foi alterado e a dedicação/termos completos foram preservados em `third_party/minimp3/NOTICE.md` e `LICENSE`. CC0 permite incorporar e redistribuir esse código, inclusive comercialmente. Não foi habilitado o decoder MP3 opcional do JUCE; arquivos `.mp3` usam explicitamente o decoder vendorizado em todas as plataformas. As condições de licença do próprio JUCE continuam aplicáveis.
+
+Limites: até 32 MB codificados e 120 s; MP3 mono/estéreo de 8–48 kHz, convertido para PCM estéreo. Não há compensação automática de delay/padding de encoder ou edição gapless dos metadados Xing/LAME; recorte eventual silêncio nas extremidades. O estado armazena o MP3 original e a restauração é determinística com esse decoder. Os fixtures são senóides sintéticas próprias com dedicação CC0 documentada. FFmpeg/libmp3lame foi usado somente para gerá-los, não como dependência de build/runtime.
+
+### Preparação para um FX futuro
+
+`EngineTypes.h` define fonte/configuração; `Engine.h` cuida das vozes/modos MIDI; `EffectRack.h` processa um par de amostras sem depender de notas, GUI ou carregamento; `CharacterEffects.h` implementa os três DSPs novos. Um futuro RASTRO FX poderá reaproveitar o rack com seu próprio adaptador de host e barramentos. Hoje não existe target, categoria ou modo de áudio externo: o processador tem somente saída e `IS_SYNTH TRUE`.
+
+## Personalização visual e dança
+
+Abra **VISUAL** no cabeçalho. Cada submenu muda somente uma escolha: tema (Retro/Futuro/Arcade/Orgânico), paleta, estilo de knobs/botões, corpo, olhos e acessório (antena/fones/lenço). As escolhas são independentes: por exemplo, tema Futuro com corpo Engrenagem e fones. O menu marca a opção atual; todas as escolhas ficam salvas no estado da sessão e não participam do processamento sonoro. Esta primeira versão usa peças vetoriais predefinidas, sem upload/desenho livre ou desbloqueios.
+
+O avatar tem braços/pernas e dá um gesto/pulinho por nota; a velocity recebida controla sua energia. O envelope de áudio, PLAY e as medições dos efeitos acrescentam movimento, textura e rastro. A atualização ocorre somente na interface: 24 Hz no modo completo, 12 Hz reduzido e 6 Hz para controles/estado no modo desligado (avatar estático). MIDI muito rápido pode agrupar várias notas entre quadros; não há detecção de beat do arquivo nem análise de transientes. A versão atual usa os eventos recebidos e o sinal medido, não uma coreografia gravada.
+
+A personalização foi validada por restauração de estado, renderização das combinações e comparação bit a bit do áudio com escolhas visuais diferentes. **Ainda não foi compilada ou executada no macOS/Logic nesta revisão local.**
+
+## PLAY e caráter
+
+Esta evolução está **somente no workspace**, sem commit, push ou merge. Os artefatos do PR/GitHub Actions já publicados pertencem à versão anterior; não contêm estes recursos até que estas mudanças sejam revisadas e publicadas em outra etapa. Não houve compilação macOS nem teste no Logic desta evolução.
+
+- **PLAY:** arraste o pad. X multiplica a profundidade individual do WOBBLE; Y multiplica o nível do DUST e a intensidade do CRUSH. A fórmula é `valor individual × 2 × eixo`, limitada a 0–1: o centro (50%, 50%) preserva os valores do rack; a borda esquerda elimina a profundidade do WOBBLE e a borda inferior elimina a transformação DUST/CRUSH. Mix e bypass continuam independentes. Duplo clique, **Centralizar** ou Home volta ao centro. As setas permitem ajustes de 2%. Os dois eixos são parâmetros automatizáveis e têm MIDI Learn separado; os três mapeamentos de macros anteriores continuam disponíveis.
+- **WOBBLE:** atraso interpolado com oscilação lenta de 0,15–3 Hz e flutter mais rápido. Controles: intensidade, velocidade e mix. É DSP próprio de fita instável, não uma emulação calibrada de equipamento nem um algoritmo de terceiro. Mix parcial pode produzir coloração de fase; o atraso varia em torno de 8 ms e não é compensado como latência fixa do host.
+- **DUST:** mistura de chiado, ruído filtrado e estalos sintéticos limitados. Nível, caráter e mix. O envelope segue o sinal original das vozes, antes do rack, com ataque de 2 ms e liberação de 30 ms. Isso evita ruído contínuo quando não há execução; o resíduo do envelope é zerado abaixo do limiar. Silêncio dentro do próprio sample também fecha a textura. Caráter vai de chiado aberto a grão filtrado/estalos. Não usa samples externos.
+- **CRUSH:** um único controle combina quantização e redução de taxa por retenção de amostras. Mix independente. O retorno tem suavização curta (80 µs), os parâmetros têm dezipper de 15 ms e o estágio de saída continua limitado por saturação suave. Não há compensação automática de loudness nem anti-aliasing de alta qualidade: aliasing/grão faz parte da transformação, e material muito baixo pode desaparecer em quantização extrema. Não há ganho de saída adicional no módulo.
+- **GHOST, CRUMBLE e BLOOM** mantêm seus algoritmos anteriores. Nenhum foi substituído ou simplificado nesta etapa. Cada um dos seis módulos pode ser desligado, removido, reinserido e reordenado. Arraste um título até outro cartão para inserir o módulo naquela posição. O rack faz fade de 5 ms antes/depois da mudança de ordem.
+- **Rack compacto:** mix e bypass ficam visíveis nos seis cartões. Clique no título/corpo de um cartão para mostrar apenas seus controles detalhados na faixa inferior. Isso evita exibir todos os knobs simultaneamente.
+- **MUTAR / MUTATE:** varia apenas módulos presentes e ativos, inclusive mix, dentro de limites moderados; usa o macro MUTAÇÃO como intensidade. Não muda sample, raiz, trims, nível de saída, PLAY ou ordem. **Voltar variação / Undo mutation** restaura exatamente os parâmetros afetados pela última mutação; há um nível de histórico, salvo na sessão. Uma nova mutação substitui esse histórico. Restaurar efeitos limpa o histórico e centraliza PLAY. Com MUTAÇÃO em zero, MUTATE não altera parâmetros.
+- **Mascote vetorial original:** notas MIDI geram um pulso; o nível medido muda o corpo; a fase real do WOBBLE inclina o avatar; a energia realmente adicionada pelo DUST controla partículas; a diferença de sinal do CRUSH altera contorno/expressão; o retorno medido do BLOOM produz o rastro. PLAY altera direção/posição. Mix, bypass e mix global também entram nas medições. Não existe um relógio visual de oscilação independente do DSP.
+- **Animação completa/reduzida/desligada:** máximo de 24/12/6 atualizações da interface por segundo. O modo reduzido diminui o movimento a um quarto; desligado deixa o avatar estático e remove o cursor móvel da waveform. MIDI/valores dos controles continuam sendo indicadores funcionais. A preferência é salva e não muda o som. A UI continua atualizando lentamente para refletir CC/host, mesmo com o movimento desligado.
+
+### Compatibilidade, arquitetura e limites
+
+Os IDs antigos de parâmetros e o parâmetro de ordem dos três efeitos foram preservados. A nova ordem de seis módulos usa um parâmetro adicional, com 720 permutações; automação do parâmetro antigo continua compondo a ordem dos três módulos originais. Sessões sem `stateVersion=2` ganham defaults explícitos, PLAY centralizado e **WOBBLE/DUST/CRUSH desligados**, preservando a intenção sonora da versão antiga. Sessões novas salvam os seis módulos, os dois eixos/CC, animação e o snapshot de desfazer. Não se garante abrir sessões v2 em versões antigas do plugin.
+
+`CharacterEffects.h` contém o novo DSP independente do JUCE; `Rack.h` define IDs e ordem; `Performance.*` contém PLAY e avatar. O callback usa buffers preparados e escalares/arrays fixos: sem alocação, locks, arquivos ou desenho. A telemetria é publicada por atomics a cada 64 amostras e no fim do bloco para o medidor; a UI faz a suavização visual e os desenhos. Importação via seletor usa uma fila de trabalho do processador e produz uma waveform de 512 picos no carregamento, fora da thread gráfica. A restauração de sessão continua decodificando no thread chamador não realtime do host, como antes; estados grandes ainda podem custar tempo e memória ao salvar/restaurar.
+
+Referências de categoria e interação: [página oficial](https://www.xlnaudio.com/products/addictive_fx/effect/rc-20_retro_color) e [visão geral dos módulos](https://support.xlnaudio.com/hc/en-us/articles/16382602368541-Interface-overview-FX-Module-section) do RC-20. A análise foi limitada à ideia de controles imediatos, efeitos independentes e textura variável. Interface, mascote, algoritmos de efeitos e sons desta implementação são próprios; não foram incorporados código proprietário, presets ou assets. O código novo de terceiro é somente o decoder minimp3 sob CC0, documentado acima. JUCE continua com a licença já exigida pelo projeto.
+
+### Validar esta versão
+
+Verificação desta revisão local (Linux x86_64): build Release de **VST3 e Standalone** concluído; CTest **5/5**; testes portáveis com AddressSanitizer/UndefinedBehaviorSanitizer **4/4**; **pluginval nível 5, seed 42**, concluído com código de saída zero; `git diff --check` sem erros. LeakSanitizer ficou desligado (`ASAN_OPTIONS=detect_leaks=0`) por limitação de ptrace do ambiente. Os testes de UI geraram snapshots em quatro combinações visuais; a suíte também confirma estado visual persistente e áudio bit a bit idêntico com personalizações diferentes. Não houve teste de escuta nem execução macOS/Logic nesta revisão.
+
+Comandos usados no diretório de build local já configurado:
+
+```sh
+cmake --build /workspace/work/build -j2
+DISPLAY=:99 ctest --test-dir /workspace/work/build --output-on-failure
+cmake --build /workspace/work/play-sanitized -j2
+ASAN_OPTIONS=detect_leaks=0 ctest --test-dir /workspace/work/play-sanitized --output-on-failure
+DISPLAY=:99 pluginval --strictness-level 5 --random-seed 42 --validate /workspace/work/build/Rastro_artefacts/Release/VST3/RASTRO.vst3
+git diff --check
+```
+
+Esses caminhos são do ambiente Linux desta tarefa, não comandos para seu Mac; use a seção macOS abaixo no seu computador. O build sanitizado foi configurado com `RASTRO_CORE_ONLY=ON`, Debug e `-fsanitize=address,undefined -fno-omit-frame-pointer`.
+
+A compilação normal inclui quatro testes portáveis (`dsp`, `character`, `playback`, `mp3`); com `RASTRO_INTEGRATION_TESTS=ON` são cinco, incluindo `processor`. O workflow macOS foi ajustado localmente para também compilar `rastro_character_tests`, `rastro_playback_tests` e `rastro_mp3_tests`, e será executado ao atualizar o PR; confira o resultado do commit atual no GitHub Actions.
+
+- `character`: 720 ordens; diferença audível de WOBBLE/DUST/CRUSH; comparação seca com mix zero; DUST sem sample e após note-off; limites/valores finitos; PLAY/telemetria; quatro sample rates; proteção contra alocação no caminho DSP.
+- `playback`: cinco modos, cortes manuais por MIDI, trims e quatro sample rates. Compara One Shot com/sem note-off antecipado (áudio idêntico até o fim do trim), liberação dos quatro modos restantes, note-off de outra nota, Loop legado, all-off e parada de prévia. A suíte de processor também testa note-off MIDI com offset e teclado da interface nos cinco modos.
+- `mp3`: decoder offline mono/estéreo, sample rate, PCM, canais e entradas inválidas/truncadas.
+- `processor`: mantém WAV/AIFF, mono/estéreo, offset MIDI, tempo de host, restauração e renderização anteriores; acrescenta migração v1 para v2 numa instância já editada, estado dos seis módulos/XY/CC/animação, mutação apenas dos efeitos ativos, proteção de sample/raiz/trims/nível, desfazer exato após salvar/restaurar, PLAY com mouse/teclado/CC e avatar reativo/estático enquanto o áudio continua, velocity visual, personalização persistente e independência do áudio. Também verifica restauração idêntica de MP3, modo/cortes/trims persistentes, arrasto de marcadores, prévia e file drop assíncrono.
+- No Mac: recompilar AU/VST3/Standalone desta revisão, executar os testes, `auval`, verificar performance/interação do avatar, automação XY, MIDI real, instalação/assinatura, recall no Logic, audição comparativa dos efeitos e bounce. A aprovação da compilação macOS da versão anterior não valida estes arquivos locais.
+
 ## Play
 
-1. Load a WAV or AIFF using **CARREGAR SOM / LOAD SOUND**.
+1. Load a WAV, AIFF or MP3 using **CARREGAR SOM / LOAD SOUND**, or drop one audio file onto the interface.
 2. Play MIDI notes or the onscreen keyboard. MIDI note 60 plays at the original pitch with the default root of 60. Root and trims apply to newly triggered voices.
-3. Enable **Repetir / Loop** for looping while a note is held. With it off, playback stops at the trim end. Note-off releases in either mode (30 ms). Velocity controls amplitude and the adjustable low-pass response.
-4. Adjust the three effects. Drag a card's heading onto another card to swap their order. **Active / Bypassed** compares a module; **×** removes it; **+ Module** restores it. One instance of each type is available.
+3. Select One Shot, Loop, Reverse, Ping-Pong or MIDI Slices in the playback menu. One Shot ignores ordinary note-off and plays to the trim end; Loop, Reverse, Ping-Pong and MIDI Slices release within about 30 ms (or earlier at a non-looping boundary). Effect tails can continue. Velocity controls amplitude and the adjustable low-pass response.
+4. Adjust the six effects. Drag a card's heading onto another card to insert it at that position. Select a card to edit its detailed controls. **Active / Bypassed** compares a module; **×** removes it; **+ Module** restores it. One instance of each type is available.
 5. **Dry / rack** preserves a direct comparison with the sampler signal. At 0%, the rack is dry; output gain and the protective soft saturation still apply.
-6. Learn a MIDI CC for PRESENCE, TRAIL or MUTATION by clicking **Learn CC**, then sending a controller message. Click again to cancel. Mappings persist; MIDI is received on all channels.
+6. Learn a MIDI CC for PRESENCE, TRAIL, MUTATION or either PLAY axis by clicking **Learn CC**, then sending a controller message. Click again to cancel. Mappings persist; MIDI is received on all channels.
 7. Save the host session/preset to store the original sample bytes, parameters, rack order/presence/bypass, language and CC mappings. The original file is no longer required.
 
 ### Effects and macros
@@ -18,7 +122,7 @@ A native MIDI sample instrument and reorderable texture rack. First working prot
 - **CRUMBLE:** a simple windowed fragment repeater, not a full granular synthesizer. Rate spans 1/8–1/128 note; Fragment changes captured length; mix blends the repeated sound. MUTATION offsets fragment selection.
 - **BLOOM:** a simple four-line diffuse stereo tail, not a convolution or premium algorithmic reverb. Size changes delay lengths, tone filters the return, decay controls bounded feedback, and mix blends the tail.
 - **PRESENCE:** gentle output gain scaling. **TRAIL:** scales GHOST feedback and BLOOM decay. **MUTATION:** controls fragment variation and MUTATE intensity.
-- **MUTATE:** bounded changes to selected time, feedback, tone, rate, fragment, size and decay settings; sample, trim, root and output level are preserved. **Reset effects** restores effect and macro defaults; sample and rack order remain intact.
+- **MUTATE:** bounded changes to active/present modules, including their mixes; sample, trim, root, PLAY, order and output level are preserved. Undo mutation restores the last affected settings and its snapshot survives session restore. **Reset effects** restores effect and macro defaults; sample and rack order remain intact.
 - Host BPM is used when available; otherwise Manual tempo applies. Tempo sync is interval-based; it does not align fragments to the DAW bar/transport phase.
 
 ## Build
@@ -192,7 +296,7 @@ For that build, replace `build-mac` with `build-mac-universal` in the commands b
 The portable DSP test is included in the normal configuration:
 
 ```sh
-cmake --build build-mac --config Release --target rastro_tests --parallel 2
+cmake --build build-mac --config Release --target rastro_tests rastro_character_tests rastro_playback_tests rastro_mp3_tests --parallel 2
 ctest --test-dir build-mac -C Release --output-on-failure
 ```
 
@@ -200,11 +304,11 @@ For additional processor/state/editor checks, reconfigure with the integration t
 
 ```sh
 cmake -S . -B build-mac -DRASTRO_INTEGRATION_TESTS=ON
-cmake --build build-mac --config Release --target rastro_tests rastro_integration --parallel 2
+cmake --build build-mac --config Release --target rastro_tests rastro_character_tests rastro_playback_tests rastro_mp3_tests rastro_integration --parallel 2
 ctest --test-dir build-mac -C Release --output-on-failure
 ```
 
-The expected suite count is one without integration tests and two with them; success means all enabled tests pass. Run the editor checks in a logged-in graphical Mac session. Passing these tests is separate from passing AU validation and actually using Logic Pro.
+The expected suite count is four without integration tests and five with them; success means all enabled tests pass. Run the editor checks in a logged-in graphical Mac session. Passing these tests is separate from passing AU validation and actually using Logic Pro.
 
 #### 6. Install the bundles for your Mac user
 
@@ -287,23 +391,23 @@ xvfb-run -a ctest --test-dir build --output-on-failure
 
 ## Structure and realtime behavior
 
-- `Source/Engine.h`: JUCE-independent sample source representation, 16-voice sampler and effects. Buffers allocate only in prepare; audio rendering performs no file I/O, locking or allocation. Level, filter amount, mixes, effect controls and bypass use smoothing. Order changes fade out/in over 5 ms.
+- `Source/Engine.h`: JUCE-independent 16-voice MIDI sampler; `EngineTypes.h` holds sample/settings data and `EffectRack.h` holds the shared effects DSP. Buffers allocate only in prepare; audio rendering performs no file I/O, locking or allocation. Level, filter amount, mixes, effect controls and bypass use smoothing. Order changes fade out/in over 5 ms.
 - `Source/Processor.*`: host/MIDI adapter, parameters, tempo, file decoder and embedded state. Keyboard events use a fixed SPSC queue; host parameter notifications from CC changes are deferred off the audio thread. With the editor closed, CC changes affect audio immediately and are flushed to parameters when state is saved or the editor reopens.
-- `Source/Editor.*`: resizable JUCE vector interface, waveform/trim display, draggable cards, CC learn and keyboard.
+- `Source/Editor.*`, `Performance.*`, `SampleView.*`: resizable vector interface, interactive waveform, PLAY/avatar, draggable cards, CC learn and keyboard.
 - `Source/Strings.h`: centralized pt-BR / English UI text, tooltips, errors and About/help content. Module names remain unchanged.
 - `tests/`: portable engine tests and optional JUCE integration tests.
 
-The loader publishes immutable samples through an atomic pointer. Old sample buffers remain owned until processor destruction, so no sample can be freed on the audio thread or while a voice/editor reads it. Import is limited to **32 MB encoded, 120 seconds, 16 million frames**, with a **256 MB decoded-audio budget per instance lifetime**. Reopening the instance releases that budget. This simple retention strategy is deliberate for this prototype; a background retirement queue is a future improvement. Loading and state restoration decode on their caller's non-audio thread; the audio callback never decodes files. Hosts must use the normal non-realtime state lifecycle.
+The file chooser dispatches decoding and waveform precomputation to a processor-owned worker. The loader publishes immutable samples through an atomic pointer. Old sample buffers remain owned until processor destruction, so no sample can be freed on the audio thread or while a voice/editor reads it. Import is limited to **32 MB encoded, 120 seconds, 16 million frames**, with a **256 MB decoded-audio budget per instance lifetime**. Reopening the instance releases that budget. This simple retention strategy is deliberate for this prototype; a background retirement queue is a future improvement. Loading and state restoration decode on their caller's non-audio thread; the audio callback never decodes files. Hosts must use the normal non-realtime state lifecycle.
 
 ## Known limitations
 
 - Prototype DSP: linear interpolation can alias at high pitches; no high-quality resampling, sustain pedal, MPE, per-channel voice ownership or voice-steal crossfade. Overlapping same-pitch notes release together. Loop edges fade briefly rather than using an overlapping crossfade; very short loops can sound quiet.
-- One sample and one module of each type. Imported audio uses the first two channels. Source replacement stops active voices. No preset browser, undo system or standalone preset-file UI; use host state/presets. Restore errors retain the prior state.
+- One sample and one module of each type. Imported audio uses the first two channels. Source replacement stops active voices. One-level mutation undo is provided; there is no general undo/preset browser or standalone preset-file UI. Use host state/presets. Restore errors retain the prior state.
 - Effect timing follows BPM but not bar phase. Delay time/size movement can produce intentional pitch smearing. BLOOM is a basic diffuse tail; effect bypass keeps internal buffers warm, so old tails may reappear when re-enabled. The declared host tail is 12 seconds; extreme feedback can ring longer.
-- File decoding runs outside the callback but can briefly occupy the UI/state caller. Session states embed base64 source audio and can be large.
+- File-chooser decoding runs on a worker; state restoration still runs on its host caller outside the callback. Session states embed base64 source audio and can be large.
 - CC learn uses the first incoming CC, on any channel. Host automation notification for learned CC is deferred to the editor/state thread; closed-editor recording of those CC gestures as host automation is not implemented. Hardware MIDI, physical audio output and DAW workflow require hands-on testing.
-- The minimum editor size is 900 × 860. The sound trail follows a single most-recent voice position; there is no per-voice visualization or animation preference.
-- Video-derived audio and a separate audio-effect plugin are deliberately not implemented. Source decoding, engine and host/editor layers are separate to support those later.
+- The minimum editor size is 900 × 860. The waveform cursor follows a single most-recent voice position; the avatar uses aggregate measurements. Animation can be reduced or disabled.
+- Video-derived audio and the separate RASTRO FX plugin are deliberately not implemented. Decoder, sampler, shared rack and host/editor layers remain separate for later reuse.
 
 ## Verification in this cloud session
 

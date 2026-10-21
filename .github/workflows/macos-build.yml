@@ -57,7 +57,7 @@ jobs:
             executable="$bundle/Contents/MacOS/RASTRO"
             test -f "$executable"
             lipo -archs "$executable"
-            lipo -verify_arch arm64 x86_64 "$executable"
+            lipo "$executable" -verify_arch arm64 x86_64
             codesign --force --sign - --timestamp=none "$bundle"
             codesign --verify --deep --strict --verbose=2 "$bundle"
           done
@@ -90,7 +90,7 @@ jobs:
             done
           } > "$package/BUILD-INFO.txt"
           ditto -c -k --sequesterRsrc --keepParent "$package" "dist/$PACKAGE_NAME.zip"
-          shasum -a 256 "dist/$PACKAGE_NAME.zip" > "dist/$PACKAGE_NAME.zip.sha256"
+          (cd dist && shasum -a 256 "$PACKAGE_NAME.zip" > "$PACKAGE_NAME.zip.sha256")
           {
             echo "### Download RASTRO"
             echo "Artifact: **$PACKAGE_NAME** (contains a bundle-preserving ZIP and its SHA-256)."

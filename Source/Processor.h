@@ -1,0 +1,85 @@
+#pragma once
+#include "Engine.h"
+#include <juce_audio_utils/juce_audio_utils.h>
+class RastroProcessor : public juce::AudioProcessor, private juce::MidiKeyboardStateListener
+{
+  public:
+    RastroProcessor();
+    ~RastroProcessor() override { keyboard.removeListener(this); }
+    void applyCC();
+    const juce::String getName() const override { return "RASTRO"; }
+    void prepareToPlay(double, int) override;
+    void releaseResources() override {}
+    bool isBusesLayoutSupported(const BusesLayout &) const override;
+    void processBlock(juce::AudioBuffer<float> &, juce::MidiBuffer &) override;
+    bool acceptsMidi() const override { return true; }
+    bool producesMidi() const override { return false; }
+    bool isMidiEffect() const override { return false; }
+    double getTailLengthSeconds() const override { return 12; }
+    bool hasEditor() const override { return true; }
+    juce::AudioProcessorEditor *createEditor() override;
+    int getNumPrograms() override { return 1; }
+    int getCurrentProgram() override { return 0; }
+    void setCurrentProgram(int) override {}
+    const juce::String getProgramName(int) override { return {}; }
+    void changeProgramName(int, const juce::String &) override {}
+    void getStateInformation(juce::MemoryBlock &) override;
+    void setStateInformation(const void *, int) override;
+    juce::AudioProcessorValueTreeState params;
+    juce::MidiKeyboardState keyboard;
+    rastro::Engine engine;
+    std::atomic<const rastro::Sample *> source{nullptr};
+    std::atomic<int> language{0}, learn{-1};
+    std::array<std::atomic<int>, 3> cc{{-1, -1, -1}};
+    std::atomic<int> midiFlash{0};
+    std::atomic<float> hostBpm{0};
+    bool loadFile(const juce::File &);
+    bool loadData(const void *, size_t, juce::String);
+    juce::String sampleName();
+    rastro::Settings settings() const;
+    float value(const char *id) const { return params.getRawParameterValue(id)->load(); }
+    void set(const juce::String &, float);
+    void mutate();
+    void resetEffects();
+    void moveModule(int, int);
+
+  private:
+    static juce::AudioProcessorValueTreeState::ParameterLayout layout();
+    juce::AudioFormatManager formats;
+    struct KeyEvent
+    {
+        int note;
+        float velocity;
+        bool on;
+    };
+    std::array<KeyEvent, 256> keyEvents{};
+    std::atomic<unsigned> keyRead{0}, keyWrite{0};
+    std::atomic<bool> overflow{false};
+    void handleNoteOn(juce::MidiKeyboardState *, int, int n, float v) override
+    {
+        enqueue(n, v, true);
+    }
+    void handleNoteOff(juce::MidiKeyboardState *, int, int n, float) override
+    {
+        enqueue(n, 0, false);
+    }
+    void enqueue(int n, float v, bool on)
+    {
+        auto w = keyWrite.load();
+        if (w - keyRead.load(std::memory_order_acquire) >= 256)
+        {
+            overflow = true;
+            return;
+        }
+        keyEvents[w % 256] = {n, v, on};
+        keyWrite.store(w + 1, std::memory_order_release);
+    }
+    std::array<std::atomic<float>, 3> ccPending{{-1, -1, -1}};
+    const rastro::Sample *previousSource = nullptr;
+    juce::CriticalSection stateLock;
+    std::vector<std::unique_ptr<rastro::Sample>> owned;
+    size_t ownedBytes = 0;
+    juce::MemoryBlock sampleBytes;
+    juce::String loadedName;
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(RastroProcessor)
+};

@@ -1,0 +1,110 @@
+name: macOS build
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: macos-build-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: AU, VST3 and Standalone (universal)
+    runs-on: macos-15-intel
+    timeout-minutes: 40
+    env:
+      BUILD_DIR: build-macos-ci
+      PACKAGE_NAME: RASTRO-macOS-universal
+      SOURCE_COMMIT: ${{ github.event.pull_request.head.sha || github.sha }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Show toolchain
+        run: |
+          uname -m
+          sw_vers
+          xcodebuild -version
+          cmake --version
+
+      - name: Configure universal Release build
+        run: >-
+          cmake -S . -B "$BUILD_DIR" -G Xcode
+          -DCMAKE_OSX_ARCHITECTURES="arm64;x86_64"
+          -DCMAKE_OSX_DEPLOYMENT_TARGET=12.0
+          -DCMAKE_XCODE_ATTRIBUTE_CODE_SIGNING_ALLOWED=NO
+
+      - name: Build all Mac formats and DSP tests
+        run: >-
+          cmake --build "$BUILD_DIR" --config Release
+          --target Rastro_AU Rastro_VST3 Rastro_Standalone rastro_tests
+          --parallel 3
+
+      - name: Run portable DSP tests
+        run: ctest --test-dir "$BUILD_DIR" -C Release --output-on-failure
+
+      - name: Verify architectures and ad-hoc sign bundles
+        shell: bash
+        run: |
+          set -euo pipefail
+          root="$BUILD_DIR/Rastro_artefacts/Release"
+          for bundle in "$root/AU/RASTRO.component" "$root/VST3/RASTRO.vst3" "$root/Standalone/RASTRO.app"; do
+            executable="$bundle/Contents/MacOS/RASTRO"
+            test -f "$executable"
+            lipo -archs "$executable"
+            lipo -verify_arch arm64 x86_64 "$executable"
+            codesign --force --sign - --timestamp=none "$bundle"
+            codesign --verify --deep --strict --verbose=2 "$bundle"
+          done
+
+      - name: Package bundles with Mac permissions and symlinks
+        shell: bash
+        run: |
+          set -euo pipefail
+          root="$BUILD_DIR/Rastro_artefacts/Release"
+          package="staging/$PACKAGE_NAME"
+          mkdir -p "$package/AU" "$package/VST3" "$package/Standalone" dist
+          ditto "$root/AU/RASTRO.component" "$package/AU/RASTRO.component"
+          ditto "$root/VST3/RASTRO.vst3" "$package/VST3/RASTRO.vst3"
+          ditto "$root/Standalone/RASTRO.app" "$package/Standalone/RASTRO.app"
+          cp README.md "$package/README.md"
+          {
+            echo "RASTRO by Gab Calisman"
+            echo "Source commit: $SOURCE_COMMIT"
+            echo "Tested checkout (PR merge commit for PR runs): $(git rev-parse HEAD)"
+            echo "Runner architecture: $(uname -m)"
+            echo "Bundle architectures: arm64 + x86_64 (verified with lipo)"
+            echo "Minimum deployment target: macOS 12.0; Logic has its own OS requirements."
+            echo "Checks: all three formats built; native DSP tests passed; signatures verified."
+            echo "Ad-hoc signed for testing; NOT Developer ID signed or notarized."
+            echo "AU validation, arm64 execution, hardware audio/MIDI and Logic Pro playback NOT tested."
+            sw_vers
+            xcodebuild -version
+            for binary in "$package"/*/RASTRO.*/Contents/MacOS/RASTRO; do
+              echo "$binary: $(lipo -archs "$binary")"
+            done
+          } > "$package/BUILD-INFO.txt"
+          ditto -c -k --sequesterRsrc --keepParent "$package" "dist/$PACKAGE_NAME.zip"
+          shasum -a 256 "dist/$PACKAGE_NAME.zip" > "dist/$PACKAGE_NAME.zip.sha256"
+          {
+            echo "### Download RASTRO"
+            echo "Artifact: **$PACKAGE_NAME** (contains a bundle-preserving ZIP and its SHA-256)."
+            echo "Built AU, VST3 and Standalone for **arm64 + x86_64**, deployment target macOS 12.0."
+            echo "Ad-hoc signed, not notarized. No AU validation or Logic Pro playback test was performed."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload downloadable Mac ZIP
+        uses: actions/upload-artifact@v4
+        with:
+          name: RASTRO-macOS-universal
+          path: |
+            dist/RASTRO-macOS-universal.zip
+            dist/RASTRO-macOS-universal.zip.sha256
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 0

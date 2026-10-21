@@ -41,9 +41,43 @@ ctest --test-dir build --output-on-failure
 
 Built formats: **VST3 instrument** and **Standalone**. Outputs are in `build/Rastro_artefacts/Release/`. Copy the complete `VST3/RASTRO.vst3` bundle into `~/.vst3/` and rescan your Linux DAW. Standalone requires a working ALSA audio device; enable the desired MIDI input through its audio/MIDI settings.
 
+### Download a Mac build from GitHub Actions (no compiler needed)
+
+The **macOS build** workflow in `.github/workflows/macos-build.yml` runs for PRs into `main`, including draft PRs. It builds AU, VST3 and Standalone using Xcode on `macos-15-intel`, explicitly targeting **both Apple silicon (`arm64`) and Intel (`x86_64`)**. Each bundle's two architectures are checked with `lipo`. The deployment target is macOS 12.0; your version of Logic Pro may require a newer macOS. The runner executes the portable DSP tests natively on Intel; packaging arm64 code does not prove arm64 execution works.
+
+**A workflow definition is not proof of a successful build.** Check the actual run for the commit you want. These are local-test bundles: ad-hoc signed, not Developer ID signed or notarized. Automated checks do not include `auval` or Logic Pro playback.
+
+1. Sign into GitHub with access to this private repository. Open [draft PR #1](https://github.com/gabcalisman/rastro/pull/1), choose **Checks**, and open its **macOS build** run. Alternatively open the repository's [Actions page](https://github.com/gabcalisman/rastro/actions/workflows/macos-build.yml) and choose the run for `prepare-mac-testing`. Keep the PR in draft; merging is not required to get an artifact.
+2. Wait for the build job to finish with a **green success** status. Open the run's summary and scroll to **Artifacts**. Download **RASTRO-macOS-universal**. If the run failed, inspect the first failed step; do not assume a ZIP was produced. If Actions is disabled or GitHub requires approval, a repository owner must enable/approve the workflow in GitHub. No developer secrets or signing certificate are required by this workflow.
+3. In Finder, open the downloaded artifact ZIP. Inside is **`RASTRO-macOS-universal.zip`** plus a SHA-256 file. Open that **inner ZIP** too. This extra ZIP preserves the app/plugin permissions and symlinks that artifact downloads otherwise lose. Keep the complete `.component`, `.app` and `.vst3` bundles intact.
+4. Open the extracted `RASTRO-macOS-universal` folder. Check `BUILD-INFO.txt` for the source commit, actual bundle architectures, toolchain and testing limits. Artifacts expire after **14 days**. Re-run the workflow from its run page if GitHub offers that control and you have access; manual **Run workflow** is available once this workflow exists on the default branch.
+5. Quit Logic Pro. In Finder choose **Go → Go to Folder**, enter `~/Library/Audio/Plug-Ins/Components/`, and copy **`AU/RASTRO.component`** there. If the folder is absent, create it using the Terminal command below. Move any older RASTRO bundle to a backup outside the plugin folders first. Logic uses the AU `.component`; it cannot load the VST3 bundle.
+6. Optionally copy **`Standalone/RASTRO.app`** into your user `~/Applications` folder. The VST3 bundle is optional for another compatible Mac host; place it in `~/Library/Audio/Plug-Ins/VST3/`. You do not need Xcode/CMake just to download and install these bundles.
+
+For exact copy commands, open Terminal, type `cd ` (including the space), drag the **extracted inner `RASTRO-macOS-universal` folder** into Terminal, press Return, then run:
+
+```sh
+mkdir -p "$HOME/Library/Audio/Plug-Ins/Components" "$HOME/Applications"
+ditto "AU/RASTRO.component" "$HOME/Library/Audio/Plug-Ins/Components/RASTRO.component"
+ditto "Standalone/RASTRO.app" "$HOME/Applications/RASTRO.app"
+# Optional, for a VST3 host (not Logic):
+mkdir -p "$HOME/Library/Audio/Plug-Ins/VST3"
+ditto "VST3/RASTRO.vst3" "$HOME/Library/Audio/Plug-Ins/VST3/RASTRO.vst3"
+```
+
+The AU is now expected at **`~/Library/Audio/Plug-Ins/Components/RASTRO.component`** and the app at **`~/Applications/RASTRO.app`**. Downloaded unsigned/notarized test builds may be blocked by macOS security checks even with a valid ad-hoc signature. Follow macOS's explicit approval flow only for a build/commit you trust (for the app, look in System Settings → Privacy & Security if it was blocked). Do not disable Gatekeeper globally. If the AU cannot be approved/validated, use the local source-build steps below or share the exact error for diagnosis.
+
+Validate the installed AU in Terminal:
+
+```sh
+auval -v aumu Rstr GbCa
+```
+
+Look for **`AU VALIDATION SUCCEEDED`**, then open Logic Pro → Settings → Plug-in Manager and rescan RASTRO if necessary. Add it to a **Software Instrument** track through **AU Instruments → Gab Calisman → RASTRO → Stereo**, load a WAV/AIFF, and start at low listening volume. Follow the detailed Logic test checklist below for MIDI, note-off, effects, tempo, automation, project save/reopen and offline bounce. Those tests, Apple-silicon execution, physical audio/MIDI, and downloaded-bundle security behavior still require testing on your own Mac. **No Logic Pro playback test is claimed by the workflow.**
+
 ### macOS / Logic Pro: first build and test
 
-**These are instructions to run on your Mac, not a report of a successful Mac test.** This cloud workspace is Linux. It can check the source configuration and Linux builds; it cannot compile Apple's AU framework or run Logic Pro. Linux `.so` files and the Linux Standalone executable cannot be installed on a Mac.
+**These are instructions to run on your Mac, not a report of a successful Mac test.** This chat workspace is Linux. The separate GitHub Actions macOS workflow can build Mac bundles; check its actual run status for build evidence. Neither that workflow nor this workspace runs Logic Pro. Linux `.so` files and the Linux Standalone executable cannot be installed on a Mac.
 
 #### 1. Review and publish the source from Codex first
 

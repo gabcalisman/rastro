@@ -12,6 +12,7 @@ import zipfile
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument('--build', type=Path, required=True, help='CTest working directory containing rastro-final-*.png')
 parser.add_argument('--out', type=Path, required=True)
+parser.add_argument('--before-commit', default='234af84', help='Historical screenshot commit label')
 parser.add_argument('--before', type=Path, help='Optional historical screenshots: before-interface.png and before-character.png')
 args = parser.parse_args()
 shots = [
@@ -32,6 +33,9 @@ shots += [('adsr-compact', 'ADSR — quatro knobs e gráfico no compacto'),
           ('capture-ready', 'CAPTURAR — WAV finalizado e selecionado'),
           ('capture-loaded', 'CAPTURAR — tomada carregada na waveform'),
           ('capture-insert', 'RASTRO Capture — painel do insert gravando')]
+shots += [(f'room-{i}', f'Cenário original — opção {i}') for i in range(4)]
+shots += [('room-customizer', 'Personalizador — CENÁRIO'), ('dance-customizer', 'Personalizador — DANÇA'), ('rack-customizer', 'Personalizador — RACK e bloqueios JAM')]
+shots += [(f'creature-{species}-{presentation}', f'Criatura {species} — apresentação {presentation}') for species in [1, 2] for presentation in range(3)]
 shots += [(f'character-presentation-{i}', f'Personagem — apresentação {i}') for i in range(3)]
 shots += [(f'character-dance-{i}', f'Dança real — quadro {i}') for i in range(8)]
 shots += [(f'character-{light}-{i}', f'Personagem — {light} · apresentação {i}')
@@ -42,13 +46,13 @@ palette_names = ['After Hours', 'Solar Studio', 'Mint Condition', 'Sunrise', 'Su
 shots += [(f'palette-{i}', f'Paleta — {name}') for i,name in enumerate(palette_names,1)]
 shots += [(f'hardware-{i}', f'Hardware — {name}') for i,name in enumerate(['Marfim canelado', 'Metal escovado', 'Borracha', 'Plástico de console'],1)]
 if args.before:
-    shots += [('before-interface', 'Antes — interface publicada no commit 234af84'),
-              ('before-character', 'Antes — personagem publicado no commit 234af84')]
+    shots += [('before-interface', f'Antes — interface publicada no commit {args.before_commit}'),
+              ('before-character', f'Antes — personagem publicado no commit {args.before_commit}')]
 def source_name(key):
     special={'synth':'rastro-instrument-panel.png','patches':'rastro-patch-panel.png','patches-compact':'rastro-patch-compact.png','capture':'rastro-capture-receiver.png'}
     if key in special: return special[key]
     if key.startswith('before-'): return f'{key}.png'
-    if key.startswith(('character-', 'capture-')) or key == 'adsr-compact': return f'rastro-{key}.png'
+    if key.startswith(('character-', 'capture-', 'room-', 'creature-', 'dance-customizer', 'rack-customizer')) or key == 'adsr-compact': return f'rastro-{key}.png'
     return f'rastro-{key}.png' if key.startswith(('palette-', 'hardware-')) else f'rastro-final-{key}.png'
 def output_name(key):
     aliases = {'standard':'instrumento', 'compact':'compacto', 'colours':'cores',

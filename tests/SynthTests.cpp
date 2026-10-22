@@ -108,6 +108,26 @@ int main()
             rig.step(1.f / 12, 0, 0, .5f, .5f, 120, -1, 0);
         check(rig.footLeft == 0 && rig.armLeft == 0 && rig.head == 0,
               "dance naturally settles at silence");
+        rastro::DanceMotion soul, disco, slow, still;
+        float difference = 0;
+        for (int i = 0; i < 36; ++i)
+        {
+            soul.step(1.f / 24, .9f, .6f, .7f, .7f, 120, -1, .2f, 0, 1);
+            disco.step(1.f / 24, .9f, .6f, .7f, .7f, 120, -1, .2f, 1, 1);
+            slow.step(1.f / 24, .9f, .6f, .7f, .7f, 120, -1, .2f, 2, 1);
+            still.step(1.f / 24, .9f, .6f, .7f, .7f, 120, -1, .2f, 1, 0);
+            difference += std::abs(soul.footLeft - disco.footLeft);
+        }
+        check(difference > .5f, "disco shuffle differs from soul step");
+        check(std::abs(soul.phase - .5f) < .001f && std::abs(slow.phase - .75f) < .001f,
+              "half-time follows half the beat rate");
+        check(still.footLeft == 0 && still.armRight == 0 && still.phase == 0,
+              "zero dance intensity freezes the rig, even with notes");
+        for (int i = 0; i < 240; ++i)
+            for (auto *d : {&soul, &disco, &slow})
+                d->step(1.f / 12, 0, 0, .5f, .5f, 120, -1, 0, 1, 2);
+        check(soul.head == 0 && disco.footLeft == 0 && slow.armRight == 0,
+              "every dance style settles completely in silence");
     }
 
     for (double sr : {22050., 44100., 48000., 96000.})

@@ -117,7 +117,7 @@ void RastroEditor::Knob::resized()
     {
         bool macro = id == "presence" || id == "trail" || id == "mutation" || id == "drywet";
         label.setBounds(
-            r.removeFromTop(macro ? 30 : 18).withTrimmedRight(macro && id != "drywet" ? 38 : 0));
+            r.removeFromTop(macro ? 28 : 18).withTrimmedRight(macro && id != "drywet" ? 38 : 0));
     }
     slider.setBounds(r);
 }
@@ -184,8 +184,12 @@ void RastroEditor::Card::paint(juce::Graphics &g)
     bool present = ui.p.value(presentIds[module]) > .5f,
          active = present && ui.p.value(onIds[module]) > .5f;
     auto pal = visuals::palette(ui.p);
-    auto colour =
-        visuals::readable(accents[module].interpolatedWith(pal.highlight, .18f), pal.surface);
+    int custom = int(ui.p.value(rastro::rackColourIds[module]));
+    const juce::Colour rackColours[]{juce::Colour(0xffae94ff), juce::Colour(0xff63ddd5),
+                                     juce::Colour(0xffff8c76), juce::Colour(0xffe7c579)};
+    auto colour = visuals::readable(custom ? rackColours[juce::jlimit(0, 3, custom - 1)]
+                                           : accents[module].interpolatedWith(pal.highlight, .18f),
+                                    pal.surface);
     auto box = getLocalBounds().toFloat().reduced(1);
     g.setColour(pal.surface.interpolatedWith(colour, active ? .06f : .01f));
     g.fillRoundedRectangle(box, 6);
@@ -214,21 +218,69 @@ void RastroEditor::Card::paint(juce::Graphics &g)
                                                   : juce::String::fromUTF8("DRY · MIX/XY"))
                             : ui.tr(shortKeys[module]);
     g.drawText(status, 10, 25, getWidth() - 18, 16, juce::Justification::left);
-    g.drawText(!present ? ui.tr("removed") : ui.tr("mix"), 10, 96, 27, 24,
+    // Miniature diagrams show the actual controls and measured wet module energy.
+    // They are not a fabricated oscilloscope and have no independent animation clock.
+    float activity =
+        active ? std::min(1.f, ui.p.engine.rack.moduleActivity[module].load() * 12) : 0;
+    auto graph = juce::Rectangle<float>(10, 43, getWidth() - 20.f, 14);
+    float shape = ui.p.params.getParameter(primary->id)->getValue();
+    g.setColour(colour.withAlpha(.2f + .65f * activity));
+    if (module == 0)
+        for (int i = 0; i < 6; ++i)
+            g.fillRoundedRectangle(
+                graph.getX() + i * graph.getWidth() / 6,
+                graph.getCentreY() - 6 * std::pow(.25f + ui.p.value("gFeedback") * .7f, i),
+                3 + shape * 5, 12 * std::pow(.25f + ui.p.value("gFeedback") * .7f, i), 1);
+    else if (module == 2)
+        for (int i = 0; i < 5; ++i)
+            g.drawEllipse(graph.getCentreX() - 10 - i * (3 + shape * 6), graph.getCentreY() - 2 - i,
+                          20 + i * (6 + shape * 12), 4 + i * 2.f, 1);
+    else if (module == 4)
+        for (int i = 0; i < 20; ++i)
+            g.fillEllipse(graph.getX() + (i * 29 % int(graph.getWidth())),
+                          graph.getY() + (i * 7 % 11), 1 + shape * 2, 1 + shape * 2);
+    else
+    {
+        juce::Path trace;
+        int points = module == 5 ? int(18 - shape * 12) : module == 1 ? 16 : 30;
+        for (int i = 0; i <= points; ++i)
+        {
+            float t = float(i) / points;
+            float value = std::sin(t * juce::MathConstants<float>::twoPi * (module == 1 ? 3 : 1));
+            if (module == 3)
+                value *= .2f + .8f * shape;
+            if (module == 5)
+                value = std::round(value * (8 - shape * 6)) / (8 - shape * 6);
+            float x = graph.getX() + t * graph.getWidth(),
+                  y = graph.getCentreY() - value * (3 + activity * 3);
+            if (i == 0)
+                trace.startNewSubPath(x, y);
+            else if (module == 3)
+                trace.lineTo(x, y);
+            else
+            {
+                trace.lineTo(x, trace.getCurrentPosition().y);
+                trace.lineTo(x, y);
+            }
+        }
+        g.strokePath(trace, juce::PathStrokeType(1.3f));
+    }
+    g.setColour(pal.muted);
+    g.drawText(!present ? ui.tr("removed") : ui.tr("mix"), 10, 114, 27, 24,
                juce::Justification::left);
     g.setColour(pal.muted);
     if (rastro::timingSlot(module) < 0)
-        g.drawText(ui.tr(primary->id), getWidth() / 2, 43, getWidth() / 2 - 9, 24,
+        g.drawText(ui.tr(primary->id), getWidth() / 2, 61, getWidth() / 2 - 9, 24,
                    juce::Justification::right);
 }
 void RastroEditor::Card::resized()
 {
-    timing.setBounds(getWidth() / 2 + 3, 43, getWidth() / 2 - 12, 24);
+    timing.setBounds(getWidth() / 2 + 3, 61, getWidth() / 2 - 12, 24);
     remove.setBounds(getWidth() - 29, 3, 26, 25);
-    bypass.setBounds(9, 43, getWidth() / 2 - 13, 24);
-    primary->setBounds(8, 68, getWidth() - 16, 26);
+    bypass.setBounds(9, 61, getWidth() / 2 - 13, 24);
+    primary->setBounds(8, 86, getWidth() - 16, 26);
     primary->slider.setTextBoxStyle(juce::Slider::TextBoxRight, false, 43, 22);
-    mix->setBounds(36, 95, getWidth() - 44, 26);
+    mix->setBounds(36, 113, getWidth() - 44, 26);
     mix->slider.setTextBoxStyle(juce::Slider::TextBoxRight, false, 43, 22);
 }
 
@@ -267,9 +319,14 @@ void RastroEditor::selectModule(int m)
 }
 RastroEditor::RastroEditor(RastroProcessor &processor)
     : AudioProcessorEditor(processor), p(processor), deck(p), play(p), avatar(p), sampleView(p),
-      keyboard(p.keyboard, juce::MidiKeyboardComponent::horizontalKeyboard)
+      quickEnvelope(p), keyboard(p.keyboard, juce::MidiKeyboardComponent::horizontalKeyboard)
 {
     setLookAndFeel(&style);
+    addAndMakeVisible(quickEnvelope);
+    quickEnvelope.setComponentID("mainEnvelope");
+    quickEnvelope.setWantsKeyboardFocus(true);
+    quickEnvelope.setMouseCursor(juce::MouseCursor::PointingHandCursor);
+    quickEnvelope.onOpen = [this] { openInstrument.onClick(); };
     addChildComponent(captureShade);
     captureShade.setAlwaysOnTop(true);
     capturePanel = std::make_unique<CapturePanel>(p.capture, p.getTotalNumInputChannels() > 0);
@@ -386,7 +443,7 @@ RastroEditor::RastroEditor(RastroProcessor &processor)
     };
 
     addAndMakeVisible(openPatches);
-    openPatches.setButtonText("PATCHES");
+    openPatches.setButtonText("PATCH LAB");
     openPatches.setComponentID("openPatches");
     openPatches.onClick = [this]
     {
@@ -397,7 +454,7 @@ RastroEditor::RastroEditor(RastroProcessor &processor)
          {&load, &mutate, &undo, &reset, &add, &about, &center, &preview, &customize, &compact})
         addAndMakeVisible(b);
     customize.setComponentID("customize");
-    customize.setButtonText("CORES / KNOBS / PERSONAGEM");
+    customize.setButtonText("VISUAL / QUARTO / DANÇA");
     customize.onClick = [this] { showCustomizer(); };
     customizer = std::make_unique<VisualCustomizer>(p);
     addChildComponent(*customizer);
@@ -559,8 +616,8 @@ void RastroEditor::localize()
 {
     lastLanguage = p.language;
     language.setSelectedId(lastLanguage + 1, juce::dontSendNotification);
-    customize.setButtonText(p.language == 0 ? "CORES / KNOBS / PERSONAGEM"
-                                            : "COLOURS / KNOBS / CHARACTER");
+    customize.setButtonText(p.language == 0 ? juce::String::fromUTF8("VISUAL / QUARTO / DANÇA")
+                                            : "LOOK / ROOM / DANCE");
     load.setButtonText(p.language == 0 ? "IMPORTAR" : "IMPORT");
     openCapture.setButtonText(p.language == 0 ? "CAPTURAR" : "CAPTURE");
     mutate.setButtonText(tr("mutate"));
@@ -595,6 +652,11 @@ void RastroEditor::localize()
     for (auto &k : sampleKnobs)
     {
         k->label.setText(tr(k->id), juce::dontSendNotification);
+        if (k->id == "tempo")
+            k->label.setText("BPM", juce::dontSendNotification);
+        if (k->id == "velocity")
+            k->label.setText(p.language == 0 ? "Vel./filtro" : "Vel./filter",
+                             juce::dontSendNotification);
         k->slider.setTooltip(tr("help"));
     }
     for (auto &k : macros)
@@ -607,7 +669,12 @@ void RastroEditor::localize()
         c->remove.setTooltip(tr("remove"));
         c->mix->slider.setTooltip(tr("mix"));
         c->primary->slider.setTooltip(tr(c->primary->id));
-        c->setTooltip(tr(moduleDescriptions[c->module]));
+        c->setTooltip(
+            tr(moduleDescriptions[c->module]) +
+            (p.language == 0
+                 ? juce::String::fromUTF8("\nDiagrama dos controles; brilho = atividade medida no "
+                                          "DSP. Não é osciloscópio.")
+                 : "\nControl diagram; brightness = measured DSP activity. Not an oscilloscope."));
         c->bypass.setTooltip(tr("bypassHelp"));
         for (auto &k : c->knobs)
         {
@@ -619,8 +686,8 @@ void RastroEditor::localize()
         }
     }
     mutate.setTooltip(tr("randomHelp"));
-    undo.setTooltip(p.language == 0 ? juce::String::fromUTF8("Desfazer a última variação ALEATÓRIA")
-                                    : "Undo the last RANDOM variation");
+    undo.setTooltip(p.language == 0 ? juce::String::fromUTF8("Desfazer a última variação JAM")
+                                    : "Undo the last JAM variation");
     repaint();
 }
 void RastroEditor::applyAppearance()
@@ -677,6 +744,7 @@ void RastroEditor::synchroniseUi()
 {
     auto start = juce::Time::getMillisecondCounterHiRes();
     ++measurements.ticks;
+    quickEnvelope.update();
     p.applyCC();
     if (auto *sample = p.source.load(std::memory_order_acquire); sample != lastSource)
     {
@@ -766,10 +834,15 @@ void RastroEditor::synchroniseUi()
     int presenceMask = 0;
     for (int i = 0; i < moduleCount; ++i)
     {
-        std::array<float, 7> display{p.value(presentIds[i]), p.value(onIds[i]),
-                                     p.value(mixIds[i]),     p.value(controlIds[i][0]),
-                                     p.value("playX"),       p.value("playY"),
-                                     p.value("drywet")};
+        std::array<float, 8> display{p.value(presentIds[i]),
+                                     p.value(onIds[i]),
+                                     p.value(mixIds[i]),
+                                     p.value(controlIds[i][0]),
+                                     p.value("playX"),
+                                     p.value("playY"),
+                                     p.value("drywet"),
+                                     editing ? cards[i]->displayState[7]
+                                             : p.engine.rack.moduleActivity[i].load()};
         if (cards[i]->displayState != display)
         {
             cards[i]->displayState = display;
@@ -808,7 +881,7 @@ void RastroEditor::synchroniseUi()
     {
         auto label = i < 3 ? tr("learn") : (i == 3 ? "X / " : "Y / ") + tr("learn");
         auto text = p.learn == i ? (i < 3 ? "..." : tr("learning"))
-                    : i < 3      ? ("CC" + (p.cc[i] >= 0 ? juce::String(p.cc[i]) : ""))
+                    : i < 3      ? (p.cc[i] >= 0 ? juce::String(p.cc[i]) : "CC")
                                  : label + (p.cc[i] >= 0 ? " " + juce::String(p.cc[i]) : "");
         if (learns[i].getButtonText() != text)
             learns[i].setButtonText(text);
@@ -821,6 +894,11 @@ void RastroEditor::synchroniseUi()
     sliceCount.setVisible(mode == 4);
     preview.setButtonText(tr(p.engine.previewActive ? "stopPreview" : "preview"));
     undo.setEnabled(!editing && p.canUndoMutation());
+    bool jamAvailable = false;
+    for (int m = 0; m < moduleCount; ++m)
+        jamAvailable |= p.value(presentIds[m]) > .5f && p.value(onIds[m]) > .5f &&
+                        p.value(rastro::jamLockIds[m]) < .5f;
+    mutate.setEnabled(!editing && jamAvailable && p.value("mutation") > 0);
     wasCustomizing = editing;
     measurements.updateMs += juce::Time::getMillisecondCounterHiRes() - start;
 }
@@ -843,30 +921,34 @@ void RastroEditor::resized()
     captureShade.setBounds(getLocalBounds());
     capturePanel->setBounds((w - std::min(860, w - 48)) / 2, 92, std::min(860, w - 48),
                             std::min(450, h - 112));
-    samplePanel = {20, 84, content, compactLayout ? 190 : 224};
-    load.setBounds(w - 190, 96, 80, 30);
-    openCapture.setBounds(w - 104, 96, 84, 30);
-    playbackMode.setBounds(w - 390, 96, 190, 30);
-    preview.setBounds(w - 510, 96, 110, 30);
-    sliceCount.setBounds(w - 576, 96, 56, 30);
-    int sampleX = compactLayout ? 204 : 220;
-    deck.setBounds(32, compactLayout ? 100 : 110, compactLayout ? 160 : 176,
-                   compactLayout ? 130 : 140);
-    wave = {sampleX, 124, w - sampleX - 32, compactLayout ? 100 : 136};
+    // Sampler/performance at left; a real room/character and envelope at right.
+    int roomWidth = content * 30 / 100;
+    int sampleRight = w - 32 - roomWidth;
+    int leftWidth = sampleRight - 20;
+    samplePanel = {20, 84, leftWidth, compactLayout ? 190 : 224};
+    load.setBounds(sampleRight - 174, 96, 78, 30);
+    openCapture.setBounds(sampleRight - 88, 96, 80, 30);
+    playbackMode.setBounds(sampleRight - 322, 96, 140, 30);
+    preview.setBounds(32, compactLayout ? 236 : 268, compactLayout ? 148 : 176, 28);
+    sliceCount.setBounds(sampleRight - 384, 96, 56, 30);
+    int sampleX = compactLayout ? 192 : 220;
+    deck.setBounds(32, compactLayout ? 112 : 116, compactLayout ? 148 : 176,
+                   compactLayout ? 120 : 140);
+    wave = {sampleX, 130, sampleRight - sampleX - 12, compactLayout ? 96 : 128};
     sampleView.setBounds(wave);
     int sampleY = compactLayout ? 230 : 264;
-    int column = (w - 180 - sampleX - 10) / 6;
+    int column = (sampleRight - 126 - sampleX - 12) / 6;
     for (int i = 0; i < 6; ++i)
-        sampleKnobs[i]->setBounds(sampleX + i * column, sampleY, column - 8, 42);
-    pitchLabel.setBounds(w - 180, sampleY, 148, 18);
-    pitchMode.setBounds(w - 180, sampleY + 20, 148, 28);
+        sampleKnobs[i]->setBounds(sampleX + i * column, sampleY, column - 6, 42);
+    pitchLabel.setBounds(sampleRight - 126, sampleY, 118, 18);
+    pitchMode.setBounds(sampleRight - 126, sampleY + 20, 118, 28);
     int performanceY = samplePanel.getBottom() + 12;
-    int performanceHeight = compactLayout ? 116 : 144 + std::max(0, h - 760) / 3;
-    int playW = content * 31 / 100, avatarW = content * 20 / 100, macroX = 44 + playW + avatarW,
-        macroW = (w - 20 - macroX) / 4;
+    int performanceHeight = compactLayout ? 98 : 126 + std::max(0, h - 760) / 3;
+    int playW = leftWidth * 36 / 100, macroX = 30 + playW, macroW = (sampleRight - macroX) / 4;
     play.setBounds(20, performanceY, playW, performanceHeight);
-    avatar.setBounds(30 + playW, performanceY, avatarW, performanceHeight);
-    macroPanel = {macroX - 4, performanceY, w - 16 - macroX, performanceHeight};
+    avatar.setBounds(sampleRight + 12, 84, roomWidth, performanceY + performanceHeight - 84 - 76);
+    quickEnvelope.setBounds(sampleRight + 12, avatar.getBottom() + 8, roomWidth, 68);
+    macroPanel = {macroX - 4, performanceY, sampleRight - macroX + 4, performanceHeight};
     for (int i = 0; i < 4; ++i)
     {
         macros[i]->setBounds(macroX + i * macroW, performanceY + 5, macroW - 6,
@@ -883,11 +965,11 @@ void RastroEditor::resized()
     rackTitle = {20, barY + 32, content, 24};
     reset.setBounds(w - 328, rackTitle.getY(), 186, 28);
     add.setBounds(w - 134, rackTitle.getY(), 114, 28);
-    rack = {20, rackTitle.getBottom() + 4, content, 124};
+    rack = {20, rackTitle.getBottom() + 4, content, 142};
     auto order = p.settings().order;
     int cw = (content - 40) / 6;
     for (int i = 0; i < moduleCount; ++i)
-        cards[order[i]]->setBounds(20 + i * (cw + 8), rack.getY(), cw, 124);
+        cards[order[i]]->setBounds(20 + i * (cw + 8), rack.getY(), cw, 142);
     int keyboardHeight = compactLayout ? 34 : 36;
     keyboard.setBounds(20, h - keyboardHeight - 8, content, keyboardHeight);
     detail = {20, rack.getBottom() + 6, content, keyboard.getY() - rack.getBottom() - 14};
@@ -922,7 +1004,7 @@ void RastroEditor::paint(juce::Graphics &g)
     word.addLineOfText(logo, "RASTRO", 20, 35);
     int playX = juce::roundToInt(word.getBoundingBox(0, -1, true).getRight()) + 6;
     g.setFont(juce::Font(juce::FontOptions(19)));
-    g.drawSingleLineText("Play", playX, 35);
+    g.drawSingleLineText("PLAY", playX, 35);
     g.setColour(pal.muted);
     g.setFont(juce::Font(juce::FontOptions(11)));
     g.drawText("by Gab Calisman", 21, 36, 190, 14, juce::Justification::left);
@@ -940,7 +1022,7 @@ void RastroEditor::paint(juce::Graphics &g)
     g.drawRoundedRectangle(detail.toFloat(), visuals::panelRadius((int)p.value("visualTheme")), 1);
     g.setColour(pal.text);
     g.setFont(juce::Font(juce::FontOptions(13, juce::Font::bold)));
-    int titleWidth = std::max(120, sliceCount.getX() - wave.getX() - 10);
+    int titleWidth = std::max(40, playbackMode.getX() - wave.getX() - 10);
     g.drawText(tr("sample"), wave.getX(), 92, titleWidth, 18, juce::Justification::left);
     g.setFont(juce::Font(juce::FontOptions(12)));
     g.setColour(pal.muted);

@@ -78,6 +78,17 @@ jobs:
             codesign --verify --deep --strict --verbose=2 "$bundle"
           done
 
+      - name: Validate both Audio Units with auval
+        shell: bash
+        run: |
+          set -euo pipefail
+          component_dir="$HOME/Library/Audio/Plug-Ins/Components"
+          mkdir -p "$component_dir"
+          ditto "$BUILD_DIR/Rastro_artefacts/Release/AU/RASTRO.component" "$component_dir/RASTRO.component"
+          ditto "$BUILD_DIR/RastroCapture_artefacts/Release/AU/RASTRO Capture.component" "$component_dir/RASTRO Capture.component"
+          auval -v aumu Rstr GbCa 2>&1 | tee auval-play.log
+          auval -v aufx Rcpt GbCa 2>&1 | tee auval-capture.log
+
       - name: Package bundles with Mac permissions and symlinks
         shell: bash
         run: |
@@ -100,9 +111,9 @@ jobs:
             echo "Runner architecture: $(uname -m)"
             echo "Bundle architectures: arm64 + x86_64 (verified with lipo)"
             echo "Minimum deployment target: macOS 12.0; Logic has its own OS requirements."
-            echo "Checks: PLAY AU/VST3/Standalone + Capture AU/VST3 built; ten native suites including CoreAudio M4A/capture IPC passed; both VST3s passed pluginval 1.0.3 level 5 seed 42; signatures verified."
+            echo "Checks: PLAY AU/VST3/Standalone + Capture AU/VST3 built; ten native suites including CoreAudio M4A/capture IPC passed; both VST3s passed pluginval 1.0.3 level 5 seed 42; both AUs passed auval; signatures verified."
             echo "Ad-hoc signed for testing; NOT Developer ID signed or notarized."
-            echo "AU validation, arm64 execution, hardware audio/MIDI and Logic Pro playback NOT tested."
+            echo "Native arm64 execution, hardware audio/MIDI and Logic Pro playback NOT tested."
             sw_vers
             xcodebuild -version
             for binary in "$package"/*/*.*/Contents/MacOS/*; do
@@ -110,7 +121,7 @@ jobs:
             done
           } > "$package/BUILD-INFO.txt"
           mkdir -p dist/report
-          cp "$package/BUILD-INFO.txt" native-tests.log pluginval-play.log pluginval-capture.log dist/report/
+          cp "$package/BUILD-INFO.txt" native-tests.log pluginval-play.log pluginval-capture.log auval-play.log auval-capture.log dist/report/
           ditto -c -k --sequesterRsrc --keepParent "$package" "dist/$PACKAGE_NAME.zip"
           (cd dist && shasum -a 256 "$PACKAGE_NAME.zip" > "$PACKAGE_NAME.zip.sha256")
           cp "dist/$PACKAGE_NAME.zip.sha256" dist/report/
@@ -118,7 +129,7 @@ jobs:
             echo "### Download RASTRO"
             echo "Artifact: **$PACKAGE_NAME** (contains a bundle-preserving ZIP and its SHA-256)."
             echo "Built PLAY AU, VST3 and Standalone + Capture AU/VST3 for **arm64 + x86_64**, deployment target macOS 12.0."
-            echo "Ad-hoc signed, not notarized. No AU validation or Logic Pro playback test was performed."
+            echo "Ad-hoc signed, not notarized. Both AUs passed auval; no Logic Pro playback test was performed."
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload downloadable Mac ZIP

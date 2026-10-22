@@ -12,9 +12,12 @@ inline void drawRastroCharacter(juce::Graphics &g, RastroProcessor &p,
         presentation = int(p.value("avatarPresentation")), clothes = int(p.value("avatarClothes")),
         instrument = int(p.value("avatarInstrument"));
     auto enamel = skin ? visuals::accent(skin - 1) : pal.highlight;
+    int species = int(p.value("avatarSpecies")), finish = int(p.value("avatarMaterial"));
+    if (finish == 1)
+        enamel = enamel.interpolatedWith(juce::Colour(0xffb8c7da), .7f);
     auto ink = juce::Colour(0xff171925), shadow = juce::Colour(0xff0d1020),
          silver = juce::Colour(0xffe8ddc7), trim = pal.secondary;
-    auto fabric = ink.interpolatedWith(enamel, clothes == 1 ? .42f : .16f);
+    auto fabric = ink.interpolatedWith(enamel, finish == 2 ? .55f : clothes == 1 ? .42f : .16f);
     auto stroke = [&](const juce::Path &path, juce::Colour c, float width)
     {
         g.setColour(c);
@@ -192,6 +195,26 @@ inline void drawRastroCharacter(juce::Graphics &g, RastroProcessor &p,
         head.cubicTo(40, -10, 14, 4, -4, -2);
         head.cubicTo(-28, -3, -38, -20, -30, -42);
         head.closeSubPath();
+        if (species)
+        {
+            head.clear();
+            head.startNewSubPath(-33, -43);
+            if (species == 1)
+            {
+                head.cubicTo(-60, -53, -68, -104, -29, -79);
+                head.cubicTo(-8, -91, 9, -91, 29, -78);
+                head.cubicTo(68, -103, 60, -51, 34, -42);
+            }
+            else
+            {
+                head.cubicTo(-81, -60, -48, -105, -13, -86);
+                head.cubicTo(13, -110, 67, -83, 47, -54);
+                head.quadraticTo(63, -26, 34, -32);
+            }
+            head.cubicTo(42, -13, 16, 8, -6, -3);
+            head.cubicTo(-32, -2, -49, -17, -33, -43);
+            head.closeSubPath();
+        }
         if (body == 1)
             head.applyTransform(juce::AffineTransform::scale(1.1f, .94f));
         if (body == 2)
@@ -204,7 +227,8 @@ inline void drawRastroCharacter(juce::Graphics &g, RastroProcessor &p,
             fin.quadraticTo(side * 50, -53, side * 37, -14);
             fin.quadraticTo(side * 31, -19, side * 28, -36);
             fin.closeSubPath();
-            material(fin, silver, enamel.darker(.6f), side * 31, -42, side * 40, -16);
+            material(fin, species ? enamel : silver, enamel.darker(.6f), side * 31, -42, side * 40,
+                     -16);
             line(side * 33, -33, side * 36, -25, 1, shadow);
         }
         juce::Path face;
@@ -238,7 +262,7 @@ inline void drawRastroCharacter(juce::Graphics &g, RastroProcessor &p,
             socket.addEllipse(cx - 8, -40, 16, opening + 4);
             g.setColour(shadow);
             g.fillPath(socket);
-            g.setColour(silver);
+            g.setColour(species ? pal.secondary.interpolatedWith(silver, .5f) : silver);
             g.fillEllipse(cx - 6, -38, 12, opening);
             g.setColour(ink);
             g.fillEllipse(cx - 1 + (gaze - .5f) * 4, -39, 5, opening + 2);
@@ -265,6 +289,21 @@ inline void drawRastroCharacter(juce::Graphics &g, RastroProcessor &p,
         mouth.startNewSubPath(-6, -13);
         mouth.quadraticTo(4, -11 + energy * strength, 13, -17 - posture);
         stroke(mouth, ink, 2);
+        if (species)
+        {
+            juce::Path fang;
+            fang.startNewSubPath(-3, -12);
+            fang.lineTo(1, -5);
+            fang.lineTo(4, -12);
+            fang.closeSubPath();
+            g.setColour(silver);
+            g.fillPath(fang);
+            for (int i = 0; i < 3; ++i)
+            {
+                g.setColour(enamel.darker(.5f));
+                g.fillEllipse(-29.f + i * 5, -28.f + i % 2 * 3, 2.5f, 2.5f);
+            }
+        }
         line(11, -18, 15, -16, 1, ink);
         int horns = int(p.value("avatarHorns"));
         if (horns)
@@ -404,6 +443,21 @@ inline void drawRastroCharacter(juce::Graphics &g, RastroProcessor &p,
             g.fillRoundedRectangle(-42, 41, 12, 7, 2);
             g.setColour(ink);
             g.fillRect(-39, 43, 6, 3);
+        }
+        // Hands rest on the instrument, with note/energy-driven finger accents. No idle playing.
+        for (int hand = 0; hand < 2; ++hand)
+        {
+            float hx = hand == 0 ? -20.f : 35.f, hy = 45 - impact * (hand ? 2 : 4);
+            g.setColour(ink);
+            g.fillRoundedRectangle(hx - 9, hy - 5, 20, 14, 5);
+            g.setColour(enamel);
+            g.fillRoundedRectangle(hx - 8, hy - 5, 18, 11, 5);
+            for (int finger = 0; finger < 3; ++finger)
+            {
+                g.setColour(enamel.darker(.45f));
+                g.drawLine(hx - 4 + finger * 4, hy, hx - 4 + finger * 4,
+                           hy + 5 + (finger == 1 ? impact * 3 : 0), 1);
+            }
         }
     }
 }

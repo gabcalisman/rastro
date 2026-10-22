@@ -5,8 +5,8 @@ class PatchPanel : public juce::Component
 {
     RastroProcessor &p;
     juce::TextButton generate, pause, cancel, compare, variation, undo, save, load;
-    juce::ComboBox direction;
-    juce::Label status, help;
+    juce::ComboBox direction, loadScope;
+    juce::Label status, help, scopeNotice;
     std::array<juce::TextButton, 6> candidates;
     std::unique_ptr<juce::FileChooser> chooser;
     rastro::PatchValues before{}, selected{}, variationBefore{};

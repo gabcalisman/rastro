@@ -8,6 +8,21 @@ class EnvelopeView : public juce::Component, public juce::SettableTooltipClient
     juce::uint32 lastColour = 0;
 
   public:
+    std::function<void()> onOpen;
+    void mouseDown(const juce::MouseEvent &) override
+    {
+        if (onOpen)
+            onOpen();
+    }
+    bool keyPressed(const juce::KeyPress &key) override
+    {
+        if (onOpen && (key == juce::KeyPress::returnKey || key == juce::KeyPress::spaceKey))
+        {
+            onOpen();
+            return true;
+        }
+        return false;
+    }
     explicit EnvelopeView(RastroProcessor &processor) : p(processor)
     {
         setComponentID("amplitudeEnvelope");
@@ -29,7 +44,8 @@ class EnvelopeView : public juce::Component, public juce::SettableTooltipClient
     }
     std::array<juce::Point<float>, 5> points() const
     {
-        auto area = getLocalBounds().toFloat().reduced(16, 26);
+        auto area = getLocalBounds().toFloat().reduced(16, 0).withTrimmedTop(26).withTrimmedBottom(
+            getHeight() < 90 ? 14.f : 26.f);
         float a = p.value("ampAttack"), d = p.value("ampDecay"), r = p.value("ampRelease"),
               hold = .4f, total = a + d + hold + r;
         float sustain = area.getBottom() - p.value("ampSustain") * area.getHeight();
@@ -70,8 +86,10 @@ class EnvelopeView : public juce::Component, public juce::SettableTooltipClient
             g.fillEllipse(pts[i].x - 3, pts[i].y - 3, 6, 6);
         g.setFont(juce::Font(juce::FontOptions(11)));
         g.setColour(pal.text);
-        g.drawText(active ? juce::String::fromUTF8("ADSR · AMPLITUDE")
-                          : juce::String::fromUTF8("ADSR · OFF"),
+        g.drawText(onOpen ? juce::String::fromUTF8(active ? "ADSR · ON · " : "ADSR · OFF · ") +
+                                (p.language == 0 ? "EDITAR" : "EDIT")
+                   : active ? juce::String::fromUTF8("ADSR · AMPLITUDE")
+                            : juce::String::fromUTF8("ADSR · OFF"),
                    12, 5, getWidth() - 24, 18, juce::Justification::left);
         g.setColour(pal.muted);
         g.drawText("A     D       S                     R", 16, getHeight() - 22, getWidth() - 32,

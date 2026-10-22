@@ -18,6 +18,10 @@ gravador complementar. Não há RASTRO FX, multisample ou motores independentes 
 - `Editor`, `SampleView`, `Performance`, `DanceMotion`, `Hardware`, `Customizer`, `InstrumentPanel`:
   `CharacterArtwork.h` e `EnvelopeView.h`: interface/desenho, personagem vetorial e gráfico ADSR; telemetria atômica do áudio, animação suspensa quando coberta/invisível.
 
+`Appearance.h` centraliza os IDs visuais para arquivos .rastro-look, undo/redo e carregamento de
+patch só com som. `SceneArtwork.h` desenha o quarto original em cache; luzes ficam na UI.
+Cenário/figurino mais detalhados e editor livre de objetos são refinamentos futuros, sujeitos à revisão visual.
+
 Defaults de migração preservam o caminho antigo: synth/região LOOP novos desligados; relógios legados;
 PLAY Y sem CRUMBLE. IDs/ranges não são redefinidos. Novos controles têm IDs adicionais.
 

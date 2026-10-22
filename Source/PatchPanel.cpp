@@ -18,9 +18,18 @@ PatchPanel::PatchPanel(RastroProcessor &processor) : p(processor)
     direction.addItem("Mais fiel / Faithful", 1);
     direction.addItem("Transformado / Transformed", 2);
     direction.setSelectedId(1);
+    addAndMakeVisible(loadScope);
+    loadScope.setComponentID("patchLoadScope");
+    loadScope.addItem("Somente som / Sound only", 1);
+    loadScope.addItem("Completo + visual / Full + look", 2);
+    loadScope.setSelectedId(1);
+    loadScope.onChange = [this] { update(); };
     status.setComponentID("patchStatus");
     addAndMakeVisible(status);
     addAndMakeVisible(help);
+    addAndMakeVisible(scopeNotice);
+    scopeNotice.setJustificationType(juce::Justification::topLeft);
+    scopeNotice.setMinimumHorizontalScale(1);
     help.setMinimumHorizontalScale(1);
     help.setJustificationType(juce::Justification::topLeft);
     for (int i = 0; i < 6; ++i)
@@ -149,27 +158,29 @@ void PatchPanel::chooseFile(bool saving)
                 file = file.withFileExtension("rastro");
             safe->fileBusy = true;
             safe->update();
-            safe->p.patchFileAsync(file, saving,
-                                   [safe, saving](bool ok)
-                                   {
-                                       if (!safe)
-                                           return;
-                                       safe->fileBusy = false;
-                                       safe->fileStatus =
-                                           ok ? (saving ? "Patch salvo / Patch saved"
-                                                        : "Patch carregado / Patch loaded")
-                                              : "Falha no arquivo / File failed (max 64 MB)";
-                                       if (ok && !saving)
-                                       {
-                                           safe->hasSelection = true;
-                                           safe->selectedSource = safe->p.source.load();
-                                           safe->selected = safe->p.patchValues();
-                                           safe->before = safe->selected;
-                                           safe->showingBefore = false;
-                                           safe->hasUndo = false;
-                                       }
-                                       safe->update();
-                                   });
+            bool soundOnly = safe->loadScope.getSelectedId() == 1;
+            safe->p.patchFileAsync(
+                file, saving,
+                [safe, saving](bool ok)
+                {
+                    if (!safe)
+                        return;
+                    safe->fileBusy = false;
+                    safe->fileStatus = ok ? (saving ? "Patch salvo / Patch saved"
+                                                    : "Patch carregado / Patch loaded")
+                                          : "Falha no arquivo / File failed (max 64 MB)";
+                    if (ok && !saving)
+                    {
+                        safe->hasSelection = true;
+                        safe->selectedSource = safe->p.source.load();
+                        safe->selected = safe->p.patchValues();
+                        safe->before = safe->selected;
+                        safe->showingBefore = false;
+                        safe->hasUndo = false;
+                    }
+                    safe->update();
+                },
+                soundOnly);
         });
 }
 void PatchPanel::update()
@@ -191,7 +202,7 @@ void PatchPanel::update()
         seenRevision = p.patchSearch.revision;
         results = p.patchSearch.results();
     }
-    generate.setButtonText(pt ? "GERAR PATCHES" : "GENERATE PATCHES");
+    generate.setButtonText(pt ? "PATCH LAB: GERAR" : "PATCH LAB: GENERATE");
     pause.setButtonText(p.patchSearch.paused ? (pt ? "RETOMAR" : "RESUME")
                                              : (pt ? "PAUSAR" : "PAUSE"));
     cancel.setButtonText(pt ? "CANCELAR" : "CANCEL");
@@ -209,6 +220,24 @@ void PatchPanel::update()
     undo.setEnabled(hasUndo && !fileBusy);
     save.setEnabled(p.source.load() && !fileBusy);
     load.setEnabled(!busy && !fileBusy);
+    loadScope.setEnabled(!busy && !fileBusy);
+    scopeNotice.setText(
+        loadScope.getSelectedId() == 1
+            ? (pt ? juce::String::fromUTF8("ABRIR: troca som/sample; mantém cores, personagem, "
+                                           "quarto, dança e preferências.")
+                  : "LOAD: replaces sound/sample; keeps colours, character, room, dance and "
+                    "preferences.")
+            : (pt ? juce::String::fromUTF8("ABRIR COMPLETO: substitui som, sample, aparência, "
+                                           "quarto, dança e preferências do arquivo.")
+                  : "LOAD FULL: replaces sound, sample, look, room, dance and file preferences."),
+        juce::dontSendNotification);
+    scopeNotice.setColour(juce::Label::textColourId, pal.text);
+    loadScope.setTooltip(
+        pt ? juce::String::fromUTF8(
+                 "Somente som preserva personagem, cenário, cores, dança, tamanho, idioma e MIDI "
+                 "Learn. Completo substitui tudo isso pelos dados salvos no patch.")
+           : "Sound only preserves character, room, colours, dance, size, language and MIDI Learn. "
+             "Full replaces these with the saved patch data.");
     juce::String message =
         pt ? juce::String::fromUTF8("Selecione a região na waveform e gere opções.")
            : "Select the waveform region and generate options.";
@@ -241,11 +270,12 @@ void PatchPanel::update()
                  "Busca aproximada: 48 candidatos reais, trecho de até 0,4 s a 16 kHz. "
                  "Compara envelope e bandas espectrais; não é IA nem transcrição. Usa o "
                  "sample original e o trim, sem inferir a raiz. O rack atual continua na "
-                 "audição. A/B compara parâmetros; salvar inclui o áudio e a sessão inteira.")
+                 "audição. A/B compara parâmetros. Salvar inclui áudio e sessão; abrir permite "
+                 "preservar o visual.")
            : "Approximate search: 48 real candidates, up to 0.4 s at 16 kHz. Compares "
              "envelope and spectral bands; no AI or transcription. Uses the source sample "
              "and trim; does not infer root. Audition retains the current rack. A/B "
-             "compares settings; save embeds audio and the whole session.",
+             "compares settings; save embeds audio/session; loading can preserve your look.",
         juce::dontSendNotification);
     help.setColour(juce::Label::textColourId, pal.muted);
     for (int i = 0; i < 6; ++i)
@@ -262,8 +292,8 @@ void PatchPanel::update()
                            : "Renders candidates on a worker; preserves source, root and trim.");
     variation.setTooltip(
         pt ? juce::String::fromUTF8(
-                 "Variação limitada do synth, separada do ALEATÓRIO do rack. Pode ser desfeita.")
-           : "Bounded synth variation, separate from rack RANDOM. Undo available.");
+                 "Variação limitada do synth, separada do JAM do rack. Pode ser desfeita.")
+           : "Bounded synth variation, separate from rack JAM. Undo available.");
     compare.setTooltip(
         pt ? juce::String::fromUTF8(
                  "Alterna A (antes da escolha) e B (patch escolhido), com audição MIDI.")
@@ -284,7 +314,9 @@ void PatchPanel::resized()
     std::array<juce::TextButton *, 5> tools{&compare, &variation, &undo, &save, &load};
     for (int i = 0; i < 5; ++i)
         tools[i]->setBounds(8 + i * (bw + 10), 240, bw, 38);
-    help.setBounds(8, 298, w - 16, 100);
+    loadScope.setBounds(8, 290, std::min(430, w - 16), 32);
+    scopeNotice.setBounds(8, 330, w - 16, 40);
+    help.setBounds(8, 376, w - 16, 100);
 }
 void PatchPanel::paint(juce::Graphics &g)
 {

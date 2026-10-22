@@ -6,7 +6,7 @@ class VisualCustomizer : public juce::Component
     RastroProcessor &p;
     using Snapshot = std::array<float, std::size(visuals::visualIds)>;
     Snapshot entry{}, observed{};
-    std::vector<Snapshot> undoStack;
+    std::vector<Snapshot> undoStack, redoStack;
     int tab = 0, lastLanguage = -1;
     bool restoring = false, previewDirty = true;
     juce::Image instrumentPreview;
@@ -20,8 +20,13 @@ class VisualCustomizer : public juce::Component
     std::array<std::unique_ptr<Choice>, 9> palettes;
     std::array<std::unique_ptr<Choice>, 4> knobs;
     std::array<std::unique_ptr<Choice>, 3> bodies;
-    std::array<juce::TextButton, 3> tabs;
-    juce::TextButton close, reset, undo, revert;
+    std::array<juce::TextButton, 6> tabs;
+    juce::TextButton close, reset, undo, redo, revert, saveLook, loadLook;
+    juce::ComboBox lookScope;
+    juce::Label fileStatus;
+    std::unique_ptr<juce::FileChooser> chooser;
+    bool fileBusy = false;
+    void chooseLook(bool);
     juce::Slider previewKnob;
     juce::Label previewLabel;
     RastroAvatar avatar;
@@ -50,6 +55,7 @@ class VisualCustomizer : public juce::Component
     void invalidatePreview() { previewDirty = true; }
     bool update(int); // true only when the visible avatar was stepped
     void undoAppearance();
+    void redoAppearance();
     void paint(juce::Graphics &) override;
     void resized() override;
     bool keyPressed(const juce::KeyPress &) override;

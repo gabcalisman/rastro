@@ -38,6 +38,8 @@ class RastroAvatar : public juce::Component
     bool observedControls = false;
     float controlPulse = 0, staleTime = 0;
     unsigned lastBlock = 0;
+    juce::Image roomLayer;
+    std::array<juce::uint32, 10> roomKey{};
 
   public:
     explicit RastroAvatar(RastroProcessor &processor) : p(processor) {}

@@ -5,7 +5,7 @@ Clique nos PNGs para abrir/baixar o original. O Codex no navegador não exibiu a
 anteriores; estes links são um caminho de acesso verificável, não confirmação de exibição no chat.
 
 **No pacote do build:** abra `Previews/ABRIR-PREVIAS.html` por duplo clique, offline, ou qualquer PNG.
-São 54 capturas atuais e duas referências históricas da árvore JUCE no **Linux x86_64**, não mockups, Mac/Logic ou prova de teste de escuta.
+São 67 capturas atuais e duas referências históricas da árvore JUCE no **Linux x86_64**, não mockups, Mac/Logic ou prova de teste de escuta.
 HiDPI é render 2× simulado. O sample visual.wav e a atividade musical são sintéticos dos testes.
 
 ## Cosmic Arcade
@@ -64,7 +64,7 @@ Essas telas usam a ponte local real e entrada sintética dos testes. Não são p
 
 ## Redesign do personagem — antes e depois
 
-Referências do commit anterior `234af84`, preservadas para comparação:
+Referências do commit anterior `f852c34`, preservadas para comparação:
 
 ![Interface anterior](before-interface.png)
 
@@ -115,3 +115,23 @@ O HTML offline permite alternar oito quadros capturados da dança com áudio MID
 - [Plástico](hardware-4.png)
 
 [Render HiDPI 2×](hidpi.png) · [Checksums SHA-256](SHA256SUMS.txt)
+
+## Workshop: quartos e criaturas
+
+[Palco legado](room-0.png) · [Soul Bedroom](room-1.png) · [Orbital Studio](room-2.png) · [Sunset Loft](room-3.png)
+
+![Quarto e criatura](room-1.png)
+
+![Loft com paleta clara](room-3.png)
+
+![Personalizar cenário](room-customizer.png)
+
+[Dança](dance-customizer.png) · [Rack e bloqueios JAM](rack-customizer.png)
+
+![Mooncat](creature-1-0.png)
+
+![Nova](creature-2-2.png)
+
+[Mooncat 1](creature-1-1.png) · [Mooncat 2](creature-1-2.png) · [Nova 0](creature-2-0.png) · [Nova 1](creature-2-1.png)
+
+As referências artísticas anexadas não fazem parte destes PNGs. São renders do código JUCE original.

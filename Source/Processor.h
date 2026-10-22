@@ -1,4 +1,5 @@
 #pragma once
+#include "Appearance.h"
 #include "CaptureBridge.h"
 #include "CaptureLink.h"
 #include "Engine.h"
@@ -22,7 +23,8 @@ class RastroProcessor : public juce::AudioProcessor, private juce::MidiKeyboardS
     rastro::PatchSearch patchSearch;
     rastro::PatchValues patchValues() const;
     void applyPatch(const rastro::PatchValues &);
-    void patchFileAsync(juce::File, bool save, std::function<void(bool)>);
+    void patchFileAsync(juce::File, bool save, std::function<void(bool)>, bool soundOnly = false);
+    void appearanceFileAsync(juce::File, bool save, int scope, std::function<void(bool)>);
     void setPlaybackMode(int);
     void equalSlices(int);
     std::atomic<int> previewRequest{0};

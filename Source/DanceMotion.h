@@ -12,18 +12,20 @@ struct DanceMotion
     std::array<float, 8> speed{};
     void reset() { *this = {}; }
     void step(float dt, float activity, float note, float playX, float playY, float bpm,
-              float hostBeat, float change)
+              float hostBeat, float change, int style = 0, float amount = 1)
     {
         activity = std::clamp(activity, 0.f, 1.f);
+        activity = std::min(1.f, activity * std::clamp(amount, 0.f, 1.3f));
         pulse += (change - pulse) * (1 - std::exp(-dt / .09f));
         if (std::abs(pulse - change) < .0001f)
             pulse = change;
         if (activity > .0001f)
         {
-            phase += dt * std::clamp(bpm, 30.f, 300.f) / 120;
+            phase += dt * std::clamp(bpm, 30.f, 300.f) / (style == 2 ? 240 : 120);
             if (hostBeat >= 0)
             {
-                float target = std::fmod(hostBeat * .5f, 1.f), delta = target - phase;
+                float target = std::fmod(hostBeat * (style == 2 ? .25f : .5f), 1.f),
+                      delta = target - phase;
                 delta -= std::floor(delta + .5f);
                 phase += delta * .12f;
             }
@@ -31,9 +33,10 @@ struct DanceMotion
         }
         float a = phase * 6.28318530718f;
         float stride = activity * (.35f + .45f * playY + .2f * note);
+        float shuffle = style == 1 ? .22f * std::sin(a * 2) * activity : 0;
         // Alternating foot placement, counter-rotating shoulders, delayed arms/head.
-        std::array<float, 8> target{std::sin(a) * stride,
-                                    -std::sin(a) * stride,
+        std::array<float, 8> target{std::sin(a) * stride + shuffle,
+                                    -std::sin(a) * stride + shuffle,
                                     std::sin(a - .65f) * stride,
                                     std::sin(a + 2.1f) * stride,
                                     std::sin(a + .35f) * activity,

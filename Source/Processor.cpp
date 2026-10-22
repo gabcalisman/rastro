@@ -105,6 +105,20 @@ juce::AudioProcessorValueTreeState::ParameterLayout RastroProcessor::layout()
     add("bendRange", 0, 12, 2);
     add("triggerMode", 0, 2, 0, 1);
     add("avatarHalo", 0, 1, 0, 1);
+    // Append-only visual/interaction parameters. Old sessions migrate to the previous stage/rig.
+    add("avatarSpecies", 0, 2, 1, 1);
+    add("avatarMaterial", 0, 2, 0, 1);
+    add("sceneKind", 0, 3, 1, 1);
+    add("sceneColour", 0, 4, 0, 1);
+    add("sceneLight", 0, 2, 0, 1);
+    add("sceneDecor", 0, 3, 1, 1);
+    add("sceneReaction", 0, 2, 1, 1);
+    add("danceStyle", 0, 2, 0, 1);
+    add("danceAmount", 0, 2, 1, 1);
+    for (auto id : rastro::rackColourIds)
+        add(id, 0, 4, 0, 1);
+    for (auto id : rastro::jamLockIds)
+        add(id, 0, 1, 0, 1);
     return l;
 }
 RastroProcessor::RastroProcessor(bool directCaptureForTests)
@@ -567,6 +581,8 @@ void RastroProcessor::mutate()
     if (amount <= 0)
         return;
     auto active = settings().enabled;
+    for (int m = 0; m < rastro::moduleCount; ++m)
+        active[m] = active[m] && value(rastro::jamLockIds[m]) < .5f;
     if (std::none_of(active.begin(), active.end(), [](bool enabled) { return enabled; }))
         return;
     mutationAffected = {};
@@ -574,7 +590,7 @@ void RastroProcessor::mutate()
     auto &random = juce::Random::getSystemRandom();
     for (int m = 0; m < rastro::moduleCount; ++m)
     {
-        if (value(rastro::onIds[m]) < .5f || value(rastro::presentIds[m]) < .5f)
+        if (!active[m])
             continue;
         any = mutationAffected[m] = true;
         for (int i = 0; i < 4; ++i)
@@ -657,7 +673,7 @@ void RastroProcessor::getStateInformation(juce::MemoryBlock &dest)
     applyCC();
     juce::ScopedLock lock(stateLock);
     auto tree = params.copyState();
-    tree.setProperty("stateVersion", 4, nullptr);
+    tree.setProperty("stateVersion", 5, nullptr);
     auto previous = tree.getChildWithName("MutationUndo");
     if (previous.isValid())
         tree.removeChild(previous, nullptr);
@@ -716,6 +732,8 @@ bool RastroProcessor::restoreState(const void *data, int n)
                     auto accessory = tree.getChildWithProperty("id", "avatarAccessory");
                     v = !accessory.isValid() || int(accessory["value"]) == 0 ? 1.f : 0.f;
                 }
+                if (id == "sceneKind" || id == "sceneDecor" || id == "avatarSpecies")
+                    v = 0;
                 if (id == "xyCrumble" || id == "gTiming" || id == "cTiming" || id == "wTiming" ||
                     id == "lfoTiming")
                     v = 0;
@@ -812,10 +830,11 @@ void RastroProcessor::applyPatch(const rastro::PatchValues &values)
     for (size_t i = 0; i < values.size(); ++i)
         set(rastro::patchIds[i], values[i]);
 }
-void RastroProcessor::patchFileAsync(juce::File file, bool save, std::function<void(bool)> complete)
+void RastroProcessor::patchFileAsync(juce::File file, bool save, std::function<void(bool)> complete,
+                                     bool soundOnly)
 {
     loader.addJob(
-        [this, file, save, complete = std::move(complete)]
+        [this, file, save, soundOnly, complete = std::move(complete)]
         {
             bool ok = false;
             if (save)
@@ -829,7 +848,37 @@ void RastroProcessor::patchFileAsync(juce::File file, bool save, std::function<v
             {
                 juce::MemoryBlock data;
                 if (file.loadFileAsData(data))
+                {
+                    // Merge visual state before restoring, so sound-only loading never flashes a
+                    // foreign appearance or replaces UI preferences/MIDI Learn assignments.
+                    if (soundOnly)
+                        if (auto xml = getXmlFromBinary(data.getData(), int(data.getSize()));
+                            xml && xml->hasTagName("RASTRO"))
+                        {
+                            auto tree = juce::ValueTree::fromXml(*xml);
+                            for (auto *param : getParameters())
+                                if (auto *ranged =
+                                        dynamic_cast<juce::RangedAudioParameter *>(param);
+                                    ranged && (rastro::isAppearance(ranged->paramID) ||
+                                               ranged->paramID == "uiCompact"))
+                                {
+                                    auto node = tree.getChildWithProperty("id", ranged->paramID);
+                                    if (!node.isValid())
+                                    {
+                                        node = juce::ValueTree("PARAM");
+                                        node.setProperty("id", ranged->paramID, nullptr);
+                                        tree.addChild(node, -1, nullptr);
+                                    }
+                                    node.setProperty("value", value(ranged->paramID.toRawUTF8()),
+                                                     nullptr);
+                                }
+                            tree.setProperty("language", language.load(), nullptr);
+                            for (int i = 0; i < 5; ++i)
+                                tree.setProperty("cc" + juce::String(i), cc[i].load(), nullptr);
+                            copyXmlToBinary(*tree.createXml(), data);
+                        }
                     ok = restoreState(data.getData(), int(data.getSize()));
+                }
             }
             juce::MessageManager::callAsync(
                 [complete, ok]
@@ -856,6 +905,68 @@ void RastroProcessor::pollCaptureLinks(
                 {
                     if (complete)
                         complete(std::move(files), std::move(links));
+                });
+        });
+}
+void RastroProcessor::appearanceFileAsync(juce::File file, bool save, int scope,
+                                          std::function<void(bool)> complete)
+{
+    loader.addJob(
+        [this, file, save, scope, complete = std::move(complete)]
+        {
+            bool ok = false;
+            if (save && scope >= 0 && scope <= 4)
+            {
+                juce::XmlElement xml("RASTRO_LOOK");
+                xml.setAttribute("version", 1);
+                xml.setAttribute("scope", scope);
+                for (auto id : rastro::appearanceIds)
+                    if (scope == 0 || rastro::appearanceGroup(id) == scope)
+                    {
+                        auto *node = xml.createNewChildElement("PARAM");
+                        node->setAttribute("id", id);
+                        node->setAttribute("value", double(value(id)));
+                    }
+                juce::TemporaryFile temp(file);
+                ok = temp.getFile().replaceWithText(xml.toString()) &&
+                     temp.overwriteTargetFileWithTemporary();
+            }
+            else if (!save && file.getSize() > 0 && file.getSize() < 65536)
+            {
+                auto xml = juce::XmlDocument::parse(file);
+                std::vector<std::pair<juce::String, float>> values;
+                ok = xml && xml->hasTagName("RASTRO_LOOK") && xml->getIntAttribute("version") == 1;
+                int kind = ok ? xml->getIntAttribute("scope", -1) : -1;
+                ok = ok && kind >= 0 && kind <= 4;
+                if (ok)
+                    for (auto *node : xml->getChildIterator())
+                    {
+                        auto id = node->getStringAttribute("id");
+                        double v = node->getDoubleAttribute(
+                            "value", std::numeric_limits<double>::quiet_NaN());
+                        auto *param = params.getParameter(id);
+                        if (!node->hasTagName("PARAM") || !rastro::isAppearance(id) ||
+                            (kind != 0 && rastro::appearanceGroup(id) != kind) || !param ||
+                            !std::isfinite(v) || v < param->getNormalisableRange().start ||
+                            v > param->getNormalisableRange().end ||
+                            std::any_of(values.begin(), values.end(),
+                                        [&](auto &x) { return x.first == id; }))
+                        {
+                            ok = false;
+                            break;
+                        }
+                        values.emplace_back(id, float(v));
+                    }
+                ok = ok && !values.empty();
+                if (ok)
+                    for (auto &v : values)
+                        set(v.first, v.second);
+            }
+            juce::MessageManager::callAsync(
+                [complete, ok]
+                {
+                    if (complete)
+                        complete(ok);
                 });
         });
 }

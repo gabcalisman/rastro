@@ -38,7 +38,7 @@ class RastroEditor : public juce::AudioProcessorEditor,
     {
         RastroEditor &ui;
         int module;
-        std::array<float, 7> displayState{};
+        std::array<float, 8> displayState{};
         juce::TextButton bypass, remove, timing;
         bool updateTiming();
         std::unique_ptr<Knob> mix, primary;
@@ -70,6 +70,7 @@ class RastroEditor : public juce::AudioProcessorEditor,
         pitchAttach;
     PlayPad play;
     RastroAvatar avatar;
+    EnvelopeView quickEnvelope;
     juce::ToggleButton loop, regionLoop;
     std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> regionAttach;
     std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> loopAttach;

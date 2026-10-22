@@ -33,7 +33,9 @@ Optional Terminal check after installation:
   auval -v aumu Rstr GbCa
 Optional recorder check:
   auval -v aufx Rcpt GbCa
-No auval, Logic playback, Apple silicon execution, Retina or physical audio/MIDI test is claimed by CI.
+The workflow attempts auval for both AUs; check the actual result in BUILD-INFO.txt and the run logs. Logic playback, Apple silicon execution, Retina and physical audio/MIDI tests are not claimed by CI.
 
 Capture diagnostics: EMPTY = no frames/host callbacks; NO SIGNAL = silent frames; SAVE ERROR = actual WAV/disk failure. A connected insert is not proof that Logic is sending audio. New takes use ~/Library/Application Support/RASTRO/Captures; the old ~/Library/RASTRO/Captures location is still readable. No take is deleted automatically.
 UI defaults to 1100x760; RASTRO Play logo, fixed-proportion reels, redesigned character and direct SYNTH/ADSR access. The envelope graph reflects real controls; Sustain is percent. Screenshots in Previews are Linux JUCE renders, not Logic screenshots.
+
+New visual workshop: COLOURS/KNOBS/CHARACTER/ROOM/DANCE/RACK. Save/open .rastro-look files by group; undo/redo stays inside the current workshop opening. Patch Lab defaults to Sound only when loading, so your look stays intact; Full + look replaces the saved visual/preferences too. JAM respects module locks in the RACK page.

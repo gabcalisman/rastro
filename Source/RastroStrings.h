@@ -44,9 +44,9 @@ inline const Entry entries[]{
     {"stable", "ESTÁVEL", "STABLE"},
     {"ready", "PRONTO", "READY"},
     {"randomHelp",
-     "Nova variação aleatória dos efeitos ativos; preserva sample, raiz, trims e modo. Desfazer "
+     "JAM: variação limitada dos efeitos ativos e desbloqueados; preserva sample, raiz, trims e modo. Desfazer "
      "variação recupera o anterior.",
-     "New random variation of active effects; preserves sample, root, trims and playback mode. "
+     "JAM: bounded variation of active, unlocked effects; preserves sample, root, trims and mode. "
      "Undo variation restores the previous sound."},
     {"regionLoopHelp",
      "LOOP independente não troca o modo. Vale para novas notas. Região própria ou seleção; em "
@@ -280,7 +280,7 @@ inline const Entry entries[]{
     {"tempo", "Tempo manual", "Manual tempo"},
     {"presence", "PRESENÇA", "PRESENCE"},
     {"trail", "RASTRO", "TRAIL"},
-    {"mutation", "MUTAÇÃO", "MUTATION"},
+    {"mutation", "JAM", "JAM"},
     {"drywet", "Original / rack", "Dry / rack"},
     {"gTime", "Divisão", "Division"},
     {"gFeedback", "Retorno", "Feedback"},
@@ -293,7 +293,7 @@ inline const Entry entries[]{
     {"bTone", "Tonalidade", "Tone"},
     {"bDecay", "Cauda", "Decay"},
     {"bMix", "Mistura", "Mix"},
-    {"mutate", "ALEATÓRIO", "RANDOM"},
+    {"mutate", "JAM", "JAM"},
     {"reset", "Restaurar efeitos", "Reset effects"},
     {"add", "+ Módulo", "+ Module"},
     {"about", "Sobre", "About"},

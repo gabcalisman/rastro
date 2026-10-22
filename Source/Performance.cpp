@@ -1,5 +1,6 @@
 #include "Performance.h"
 #include "CharacterArtwork.h"
+#include "SceneArtwork.h"
 #include "Visuals.h"
 namespace
 {
@@ -240,7 +241,8 @@ bool RastroAvatar::update(int animationMode)
     if (mode > 0)
         dance.step(dt, std::min(1.f, level * 7 + note), note, x, y,
                    p.hostBpm > 0 ? p.hostBpm.load() : p.value("tempo"),
-                   p.hostPlaying ? p.hostBeat.load() : -1.f, controlPulse);
+                   p.hostPlaying ? p.hostBeat.load() : -1.f, controlPulse,
+                   int(p.value("danceStyle")), p.value("danceAmount"));
     std::array<float, 32> frame{};
     std::array<float, 12> original{level, wobble, dust,  crush, tail,          note,
                                    x,     y,      swing, lift,  swingVelocity, liftVelocity};
@@ -272,7 +274,10 @@ void RastroAvatar::paint(juce::Graphics &g)
     g.setFont(juce::Font(juce::FontOptions(12, juce::Font::bold)));
     g.drawText(p.language == 0 ? "PERSONAGEM" : "CHARACTER", 12, 4, getWidth() - 24, 18,
                juce::Justification::left);
-    const float strength = mode == 0 ? 0 : mode == 1 ? .22f : 1.f;
+    const float strength = (mode == 0   ? 0
+                            : mode == 1 ? .22f
+                                        : 1.f) *
+                           std::min(1.3f, p.value("danceAmount"));
     const float energy = std::min(1.f, level * 7), impact = note * strength;
     const float activity = std::min(1.f, energy + note);
     float posture = (y - .5f) * 2 * activity * strength;
@@ -291,6 +296,36 @@ void RastroAvatar::paint(juce::Graphics &g)
     g.setGradientFill(juce::ColourGradient(pal.bg, box.getCentreX(), 34, pal.surface,
                                            box.getCentreX(), box.getBottom(), false));
     g.fillRoundedRectangle(stage, 10);
+    if (p.value("sceneKind") > .5f)
+    {
+        std::array<juce::uint32, 10> key{(juce::uint32)p.value("sceneKind"),
+                                         (juce::uint32)p.value("sceneColour"),
+                                         (juce::uint32)p.value("sceneLight"),
+                                         (juce::uint32)p.value("sceneDecor"),
+                                         (juce::uint32)getWidth(),
+                                         (juce::uint32)getHeight(),
+                                         pal.bg.getARGB(),
+                                         pal.surface.getARGB(),
+                                         pal.highlight.getARGB(),
+                                         pal.secondary.getARGB()};
+        if (!roomLayer.isValid() || key != roomKey)
+        {
+            roomKey = key;
+            roomLayer = juce::Image(juce::Image::ARGB, getWidth(), getHeight(), true);
+            juce::Graphics cached(roomLayer);
+            drawRastroRoom(cached, p, stage, 0, 0);
+        }
+        g.drawImageAt(roomLayer, 0, 0);
+        float light = std::min(.25f, (sceneEnergy + controlPulse * sceneEnergy) *
+                                         p.value("sceneReaction") * .12f);
+        auto lightColour = p.value("sceneLight") > 1.5f  ? juce::Colour(0xffffbe70)
+                           : p.value("sceneLight") > .5f ? pal.secondary
+                                                         : pal.highlight;
+        g.setColour(lightColour.withAlpha(light));
+        g.fillEllipse(stage.getX() + stage.getWidth() * .66f,
+                      stage.getY() + stage.getHeight() * .09f, stage.getWidth() * .25f,
+                      stage.getHeight() * .63f);
+    }
     // Six distinct scene cues. Their levels come from measured DSP activity, never an idle clock.
     for (int i = 3; i > 0; --i)
     {

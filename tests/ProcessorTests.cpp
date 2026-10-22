@@ -438,6 +438,7 @@ void characterStateTests()
     const auto &visualIds = visuals::visualIds;
     for (auto id : visualIds)
         p.set(id, 2);
+    p.set("animation", 1);
     p.set("wDepth", .7f);
     p.set("dCharacter", .3f);
     p.set("kAmount", .55f);
@@ -468,7 +469,9 @@ void characterStateTests()
         for (int i = 0; i < 512; ++i)
             check(a.getSample(c, i) == b.getSample(c, i), "visuals do not change audio");
     check(std::abs(p.engine.noteVelocity.load() - .8f) < .01f, "velocity telemetry");
-    // Only active/present modules mutate; one exact snapshot survives session restore.
+    // Only active/present, unlocked modules mutate; one exact snapshot survives session restore.
+    for (auto id : rastro::jamLockIds)
+        restored.set(id, 0);
     restored.set("gOn", 0);
     restored.set("dPresent", 0);
     restored.set("mutation", 1);
@@ -1728,6 +1731,7 @@ void parentVisibilityTests()
     check(editor->uiMetrics().ticks > hidden, "parent window reopen resumes updates");
     window.clearContentComponent();
 }
+#include "AppearanceIntegration.h"
 int main()
 {
     juce::ScopedJuceInitialiser_GUI gui;
@@ -1879,6 +1883,7 @@ int main()
             }
         }
     visualStageTests();
+    appearanceWorkshopTests();
     std::cout << "PASS: legacy migration, six-module state/order, XY mouse/keyboard/CC, exact "
                  "undo/session history, reactive/frozen avatar; WAV/AIFF mono/stereo, MIDI "
                  "offsets, release, state/sample/rack/language/CC "

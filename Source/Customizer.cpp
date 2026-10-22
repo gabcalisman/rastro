@@ -27,19 +27,70 @@ void VisualCustomizer::beforeEdit()
     if (undoStack.size() == 32)
         undoStack.erase(undoStack.begin());
     undoStack.push_back(capture());
+    redoStack.clear();
+    undo.setEnabled(true);
+    redo.setEnabled(false);
 }
 void VisualCustomizer::undoAppearance()
 {
     if (undoStack.empty())
         return;
+    redoStack.push_back(capture());
     auto s = undoStack.back();
     undoStack.pop_back();
     restore(s);
+}
+void VisualCustomizer::redoAppearance()
+{
+    if (redoStack.empty())
+        return;
+    undoStack.push_back(capture());
+    auto s = redoStack.back();
+    redoStack.pop_back();
+    restore(s);
+}
+void VisualCustomizer::chooseLook(bool saving)
+{
+    chooser = std::make_unique<juce::FileChooser>(saving ? "Salvar visual / Save look"
+                                                         : "Abrir visual / Load look",
+                                                  juce::File{}, "*.rastro-look");
+    chooser->launchAsync(
+        juce::FileBrowserComponent::canSelectFiles |
+            (saving ? juce::FileBrowserComponent::saveMode |
+                          juce::FileBrowserComponent::warnAboutOverwriting
+                    : juce::FileBrowserComponent::openMode),
+        [safe = juce::Component::SafePointer<VisualCustomizer>(this),
+         saving](const juce::FileChooser &fc)
+        {
+            if (!safe || fc.getResult() == juce::File{})
+                return;
+            auto file = saving ? fc.getResult().withFileExtension("rastro-look") : fc.getResult();
+            if (!saving)
+                safe->beforeEdit();
+            safe->fileBusy = true;
+            safe->p.appearanceFileAsync(
+                file, saving, safe->lookScope.getSelectedId() - 1,
+                [safe, saving](bool ok)
+                {
+                    if (!safe)
+                        return;
+                    safe->fileBusy = false;
+                    safe->fileStatus.setText(
+                        ok ? (saving ? "Visual salvo / Look saved"
+                                     : "Visual aplicado / Look applied")
+                           : juce::String::fromUTF8("Arquivo visual inválido / Look file failed"),
+                        juce::dontSendNotification);
+                    safe->observed = safe->capture();
+                    safe->syncFields();
+                    safe->repaint();
+                });
+        });
 }
 void VisualCustomizer::open()
 {
     entry = observed = capture();
     undoStack.clear();
+    redoStack.clear();
     syncFields();
     setVisible(true);
     toFront(true);
@@ -165,7 +216,7 @@ VisualCustomizer::VisualCustomizer(RastroProcessor &processor) : p(processor), a
     setComponentID("visualCustomizer");
     setWantsKeyboardFocus(true);
     setFocusContainerType(FocusContainerType::focusContainer);
-    for (auto *b : {&close, &reset, &undo, &revert})
+    for (auto *b : {&close, &reset, &undo, &redo, &revert, &saveLook, &loadLook})
     {
         addAndMakeVisible(b);
         b->setWantsKeyboardFocus(true);
@@ -173,6 +224,22 @@ VisualCustomizer::VisualCustomizer(RastroProcessor &processor) : p(processor), a
     close.setComponentID("closeCustomizer");
     reset.setComponentID("resetVisuals");
     undo.setComponentID("undoVisuals");
+    redo.setComponentID("redoVisuals");
+    saveLook.setComponentID("saveLook");
+    loadLook.setComponentID("loadLook");
+    lookScope.setComponentID("lookScope");
+    addAndMakeVisible(lookScope);
+    addAndMakeVisible(fileStatus);
+    lookScope.addItemList({"Visual completo / Full look", "Personagem / Character",
+                           utf("Cenário / Room"), utf("Dança / Dance"), "Rack"},
+                          1);
+    lookScope.setSelectedId(1);
+    lookScope.setTooltip(
+        "Salvar: escolha os grupos incluidos. Abrir: aplica apenas os grupos contidos no arquivo, "
+        "sem mudar o som. / Save scope; loading applies only file groups, never sound.");
+    saveLook.onClick = [this] { chooseLook(true); };
+    loadLook.onClick = [this] { chooseLook(false); };
+    redo.onClick = [this] { redoAppearance(); };
     revert.setComponentID("revertVisuals");
     close.onClick = [this] { dismiss(); };
     undo.onClick = [this] { undoAppearance(); };
@@ -192,14 +259,17 @@ VisualCustomizer::VisualCustomizer(RastroProcessor &processor) : p(processor), a
         }
         restore(s);
     };
-    for (int i = 0; i < 3; ++i)
+    for (int i = 0; i < 6; ++i)
     {
         addAndMakeVisible(tabs[i]);
         tabs[i].setComponentID("visualTab" + juce::String(i));
         tabs[i].setWantsKeyboardFocus(true);
         tabs[i].onClick = [this, i] { chooseTab(i); };
-        bodies[i] = std::make_unique<Choice>(*this, i, 2);
-        addChildComponent(*bodies[i]);
+        if (i < 3)
+        {
+            bodies[i] = std::make_unique<Choice>(*this, i, 2);
+            addChildComponent(*bodies[i]);
+        }
     }
     for (int i = 0; i < 9; ++i)
     {
@@ -226,12 +296,17 @@ VisualCustomizer::VisualCustomizer(RastroProcessor &processor) : p(processor), a
                       "avatarColour", "avatarBody",       "avatarEyes",       "avatarAccessory",
                       "avatarHair",   "avatarHorns",      "avatarClothes",    "avatarGlasses",
                       "avatarTail",   "avatarWings",      "avatarInstrument", "avatarPresentation",
-                      "avatarHalo"};
+                      "avatarHalo",   "avatarSpecies",    "avatarMaterial",   "sceneKind",
+                      "sceneColour",  "sceneLight",       "sceneDecor",       "sceneReaction",
+                      "animation",    "danceStyle",       "danceAmount",      "gColour",
+                      "cColour",      "bColour",          "wColour",          "dColour",
+                      "kColour",      "gJamLock",         "cJamLock",         "bJamLock",
+                      "wJamLock",     "dJamLock",         "kJamLock"};
     for (int i = 0; i < int(std::size(ids)); ++i)
     {
         auto f = std::make_unique<Field>();
         f->id = ids[i];
-        f->area = i < 4 ? 0 : 2;
+        f->area = i < 4 ? 0 : i < 19 ? 2 : i < 24 ? 3 : i < 27 ? 4 : 5;
         f->combo.setComponentID(f->id);
         f->label.setComponentID(f->id + "Label");
         f->combo.setWantsKeyboardFocus(true);
@@ -261,6 +336,7 @@ void VisualCustomizer::syncFields()
     for (auto &f : fields)
         f->combo.setSelectedId((int)p.value(f->id.toRawUTF8()) + 1, juce::dontSendNotification);
     undo.setEnabled(!undoStack.empty());
+    redo.setEnabled(!redoStack.empty());
 }
 void VisualCustomizer::localize()
 {
@@ -269,11 +345,14 @@ void VisualCustomizer::localize()
     close.setButtonText(pt ? "VOLTAR" : "BACK");
     reset.setButtonText(pt ? utf("Padrão") : "Defaults");
     undo.setButtonText(pt ? "Desfazer" : "Undo");
+    redo.setButtonText(pt ? "Refazer" : "Redo");
+    saveLook.setButtonText(pt ? "Salvar visual" : "Save look");
+    loadLook.setButtonText(pt ? "Abrir visual" : "Load look");
     revert.setButtonText(pt ? "Voltar ao abrir" : "Revert to opening");
-    const char *namesPt[]{"CORES", "KNOBS", "PERSONAGEM"},
-        *namesEn[]{"COLOURS", "KNOBS", "CHARACTER"};
-    for (int i = 0; i < 3; ++i)
-        tabs[i].setButtonText(pt ? namesPt[i] : namesEn[i]);
+    const char *namesPt[]{"CORES", "KNOBS", "PERSONAGEM", "CENÁRIO", "DANÇA", "RACK"},
+        *namesEn[]{"COLOURS", "KNOBS", "CHARACTER", "ROOM", "DANCE", "RACK"};
+    for (int i = 0; i < 6; ++i)
+        tabs[i].setButtonText(utf(pt ? namesPt[i] : namesEn[i]));
     const juce::StringArray bodyNames = pt ? juce::StringArray{"Orbit", "Soul", "Metro"}
                                            : juce::StringArray{"Orbit", "Soul", "Metro"};
     for (int i = 0; i < 3; ++i)
@@ -297,11 +376,68 @@ void VisualCustomizer::localize()
                                   "Ombreiras",
                                   "Instrumento",
                                   utf("Apresentação"),
-                                  utf("Auréola")};
-    const juce::String labelsEn[]{
-        "Chassis",    "Background",   "Accent", "Controls", "Character colour", "Body", "Eyes",
-        "Accessory",  "Hair",         "Metal",  "Clothes",  "Glasses",          "Tail", "Shoulders",
-        "Instrument", "Presentation", "Halo"};
+                                  utf("Auréola"),
+                                  "Criatura",
+                                  "Material",
+                                  "Ambiente",
+                                  "Cor do quarto",
+                                  "Luz",
+                                  utf("Decoração"),
+                                  utf("Reação musical"),
+                                  utf("Animação"),
+                                  "Estilo",
+                                  "Intensidade",
+                                  "GHOST / cor",
+                                  "CRUMBLE / cor",
+                                  "BLOOM / cor",
+                                  "WOBBLE / cor",
+                                  "DUST / cor",
+                                  "CRUSH / cor",
+                                  "GHOST / JAM",
+                                  "CRUMBLE / JAM",
+                                  "BLOOM / JAM",
+                                  "WOBBLE / JAM",
+                                  "DUST / JAM",
+                                  "CRUSH / JAM"};
+    const juce::String labelsEn[]{"Chassis",
+                                  "Background",
+                                  "Accent",
+                                  "Controls",
+                                  "Character colour",
+                                  "Body",
+                                  "Eyes",
+                                  "Accessory",
+                                  "Hair",
+                                  "Metal",
+                                  "Clothes",
+                                  "Glasses",
+                                  "Tail",
+                                  "Shoulders",
+                                  "Instrument",
+                                  "Presentation",
+                                  "Halo",
+                                  "Creature",
+                                  "Material",
+                                  "Room",
+                                  "Room colour",
+                                  "Lighting",
+                                  "Decoration",
+                                  "Musical reaction",
+                                  "Animation",
+                                  "Style",
+                                  "Intensity",
+                                  "GHOST / colour",
+                                  "CRUMBLE / colour",
+                                  "BLOOM / colour",
+                                  "WOBBLE / colour",
+                                  "DUST / colour",
+                                  "CRUSH / colour",
+                                  "GHOST / JAM",
+                                  "CRUMBLE / JAM",
+                                  "BLOOM / JAM",
+                                  "WOBBLE / JAM",
+                                  "DUST / JAM",
+                                  "CRUSH / JAM"};
     const juce::StringArray choices[]{
         {"Retro", "Futuro", "Arcade", pt ? juce::String::fromUTF8("Orgânico") : "Organic"},
         {pt ? "Da paleta" : "Follow palette", "Midnight", "Lagoon", "Afterparty", "Ember"},
@@ -324,7 +460,29 @@ void VisualCustomizer::localize()
         {pt ? "Nenhum" : "None", pt ? "Keytar" : "Keytar", "Beat pads"},
         {pt ? utf("Andrógina") : "Androgynous", pt ? "Masculina" : "Masculine",
          pt ? "Feminina" : "Feminine"},
-        {pt ? "Desligada" : "Off", pt ? "Ligada" : "On"}};
+        {pt ? "Desligada" : "Off", pt ? "Ligada" : "On"},
+        {"Pilot", "Mooncat", "Nova"},
+        {"Satin", "Chrome", "Enamel"},
+        {"Stage", "Soul Bedroom", "Orbital Studio", "Sunset Loft"},
+        {pt ? "Da paleta" : "Follow palette", "Violet", "Coral", "Lagoon", "Ivory"},
+        {"Soft", "Neon", "Golden hour"},
+        {"Minimal", "Plants", "Vinyl", "Synth wall"},
+        {"Off", "Soft", "Bold"},
+        {"Off", "Reduced", "Full"},
+        {"Soul step", "Disco", "Half-time"},
+        {"Still", "Groove", "Expressive"},
+        {"Auto", "Violet", "Cyan", "Coral", "Gold"},
+        {"Auto", "Violet", "Cyan", "Coral", "Gold"},
+        {"Auto", "Violet", "Cyan", "Coral", "Gold"},
+        {"Auto", "Violet", "Cyan", "Coral", "Gold"},
+        {"Auto", "Violet", "Cyan", "Coral", "Gold"},
+        {"Auto", "Violet", "Cyan", "Coral", "Gold"},
+        {"JAM: free", "JAM: locked"},
+        {"JAM: free", "JAM: locked"},
+        {"JAM: free", "JAM: locked"},
+        {"JAM: free", "JAM: locked"},
+        {"JAM: free", "JAM: locked"},
+        {"JAM: free", "JAM: locked"}};
     for (size_t i = 0; i < fields.size(); ++i)
     {
         auto &f = *fields[i];
@@ -336,8 +494,8 @@ void VisualCustomizer::localize()
 }
 void VisualCustomizer::chooseTab(int next)
 {
-    tab = juce::jlimit(0, 2, next);
-    for (int i = 0; i < 3; ++i)
+    tab = juce::jlimit(0, 5, next);
+    for (int i = 0; i < 6; ++i)
         tabs[i].setToggleState(tab == i, juce::dontSendNotification);
     for (auto &b : palettes)
         b->setVisible(tab == 0);
@@ -351,9 +509,9 @@ void VisualCustomizer::chooseTab(int next)
         f->label.setVisible(visible);
         f->combo.setVisible(visible);
     }
-    if (tab == 2)
+    if (tab >= 2 && tab <= 4)
         avatar.resume();
-    avatar.setVisible(tab == 2);
+    avatar.setVisible(tab >= 2 && tab <= 4);
     previewKnob.setVisible(tab == 1);
     previewLabel.setVisible(tab == 1);
     resized();
@@ -370,14 +528,30 @@ bool VisualCustomizer::update(int mode)
         syncFields();
         repaint();
     }
-    if (tab == 0 && previewDirty && renderInstrumentPreview)
+    if ((tab == 0 || tab == 5) && previewDirty && renderInstrumentPreview)
     {
         instrumentPreview = renderInstrumentPreview();
         previewDirty = false;
         repaint();
     }
     undo.setEnabled(!undoStack.empty());
-    if (tab == 2)
+    redo.setEnabled(!redoStack.empty());
+    saveLook.setEnabled(!fileBusy);
+    loadLook.setEnabled(!fileBusy);
+    lookScope.setEnabled(!fileBusy);
+    for (auto &f : fields)
+        f->combo.setEnabled(!fileBusy);
+    for (auto &b : palettes)
+        b->setEnabled(!fileBusy);
+    for (auto &b : knobs)
+        b->setEnabled(!fileBusy);
+    for (auto &b : bodies)
+        b->setEnabled(!fileBusy);
+    undo.setEnabled(!fileBusy && !undoStack.empty());
+    redo.setEnabled(!fileBusy && !redoStack.empty());
+    reset.setEnabled(!fileBusy);
+    revert.setEnabled(!fileBusy);
+    if (tab >= 2 && tab <= 4)
     {
         avatar.update(mode);
         return true;
@@ -393,14 +567,17 @@ bool VisualCustomizer::keyPressed(const juce::KeyPress &key)
     }
     if (key.getModifiers().isCommandDown() && key.getKeyCode() == 'Z')
     {
-        undoAppearance();
+        if (key.getModifiers().isShiftDown())
+            redoAppearance();
+        else
+            undoAppearance();
         return true;
     }
     if (key == juce::KeyPress::leftKey || key == juce::KeyPress::rightKey)
-        for (int i = 0; i < 3; ++i)
+        for (int i = 0; i < 6; ++i)
             if (tabs[i].hasKeyboardFocus(true))
             {
-                chooseTab((tab + (key == juce::KeyPress::rightKey ? 1 : 2)) % 3);
+                chooseTab((tab + (key == juce::KeyPress::rightKey ? 1 : 5)) % 6);
                 tabs[tab].grabKeyboardFocus();
                 return true;
             }
@@ -410,36 +587,43 @@ void VisualCustomizer::resized()
 {
     int w = getWidth(), h = getHeight(), right = w * 62 / 100, left = 24, width = right - left - 20;
     close.setBounds(w - 114, 15, 90, 30);
-    for (int i = 0; i < 3; ++i)
-        tabs[i].setBounds(24 + i * 165, 62, 155, 34);
+    for (int i = 0; i < 6; ++i)
+        tabs[i].setBounds(24 + i * (w - 48) / 6, 62, (w - 48) / 6 - 6, 34);
     for (int i = 0; i < 9; ++i)
         palettes[i]->setBounds(left + (i % 3) * width / 3, 115 + (i / 3) * 74, width / 3 - 5, 70);
     for (int i = 0; i < 4; ++i)
         knobs[i]->setBounds(left + (i % 2) * width / 2, 120 + (i / 2) * 143, width / 2 - 8, 130);
     for (int i = 0; i < 3; ++i)
         bodies[i]->setBounds(left + i * width / 3, 118, width / 3 - 8, 102);
-    int colourIndex = 0, bodyIndex = 0;
+    std::array<int, 6> indices{};
     for (auto &f : fields)
     {
-        int n = f->area == 0 ? colourIndex++ : bodyIndex++;
+        int n = indices[f->area]++;
         if (f->id == "avatarBody")
         {
-            --bodyIndex;
+            --indices[f->area];
             continue;
         }
         int columns = f->area == 0 ? 2 : 3;
-        int x = left + (n % columns) * width / columns,
-            y = (f->area == 0 ? 353 : 242) + (n / columns) * 60;
+        int x = left + (n % columns) * width / columns, y = (f->area == 0   ? 353
+                                                             : f->area == 2 ? 230
+                                                                            : 120) +
+                                                            (n / columns) * 54;
         f->label.setBounds(x, y, width / columns - 10, 20);
         f->combo.setBounds(x, y + 22, width / columns - 10, 30);
     }
     int previewWidth = w - right - 32;
-    avatar.setBounds(right + 8, 116, previewWidth, std::min(h - 185, 410));
+    avatar.setBounds(right + 8, 116, previewWidth, std::min(h - 240, 410));
     previewKnob.setBounds(right + 30, 160, previewWidth - 44, std::min(245, h - 275));
     previewLabel.setBounds(right + 8, 120, previewWidth, 40);
-    undo.setBounds(24, h - 48, 110, 32);
-    revert.setBounds(144, h - 48, 190, 32);
-    reset.setBounds(344, h - 48, 110, 32);
+    undo.setBounds(24, h - 90, 100, 32);
+    redo.setBounds(132, h - 90, 100, 32);
+    revert.setBounds(240, h - 90, 174, 32);
+    reset.setBounds(422, h - 90, 100, 32);
+    lookScope.setBounds(24, h - 48, 210, 32);
+    saveLook.setBounds(242, h - 48, 120, 32);
+    loadLook.setBounds(370, h - 48, 120, 32);
+    fileStatus.setBounds(504, h - 48, w - 528, 32);
 }
 void VisualCustomizer::paint(juce::Graphics &g)
 {
@@ -455,7 +639,7 @@ void VisualCustomizer::paint(juce::Graphics &g)
                juce::Justification::left);
     g.setColour(pal.muted);
     g.setFont(juce::Font(juce::FontOptions(13)));
-    if (tab == 0 && instrumentPreview.isValid())
+    if ((tab == 0 || tab == 5) && instrumentPreview.isValid())
     {
         int right = getWidth() * 62 / 100;
         g.setColour(pal.text);
@@ -464,7 +648,7 @@ void VisualCustomizer::paint(juce::Graphics &g)
         g.drawImageWithin(instrumentPreview, right + 12, 153, getWidth() - right - 30, 242,
                           juce::RectanglePlacement::centred);
     }
-    if (tab != 2)
+    if (tab < 2)
     {
         int right = getWidth() * 62 / 100;
         g.drawFittedText(
@@ -477,7 +661,7 @@ void VisualCustomizer::paint(juce::Graphics &g)
                       "prévia para experimentar o gesto sem mudar o som.")
                 : "Your choice styles the instrument's real knobs.\n\nDrag this preview to try the "
                   "gesture without changing sound.",
-            right + 20, 425, getWidth() - right - 46, std::max(30, getHeight() - 490),
+            right + 20, 425, getWidth() - right - 46, std::max(30, getHeight() - 540),
             juce::Justification::topLeft, 7);
     }
 }

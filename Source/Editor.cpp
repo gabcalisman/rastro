@@ -1022,7 +1022,8 @@ void RastroEditor::paint(juce::Graphics &g)
     g.drawRoundedRectangle(detail.toFloat(), visuals::panelRadius((int)p.value("visualTheme")), 1);
     g.setColour(pal.text);
     g.setFont(juce::Font(juce::FontOptions(13, juce::Font::bold)));
-    int titleWidth = std::max(40, playbackMode.getX() - wave.getX() - 10);
+    int titleWidth = std::max(
+        40, (sliceCount.isVisible() ? sliceCount.getX() : playbackMode.getX()) - wave.getX() - 10);
     g.drawText(tr("sample"), wave.getX(), 92, titleWidth, 18, juce::Justification::left);
     g.setFont(juce::Font(juce::FontOptions(12)));
     g.setColour(pal.muted);

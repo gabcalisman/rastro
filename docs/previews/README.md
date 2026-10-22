@@ -5,7 +5,7 @@ Clique nos PNGs para abrir/baixar o original. O Codex no navegador não exibiu a
 anteriores; estes links são um caminho de acesso verificável, não confirmação de exibição no chat.
 
 **No pacote do build:** abra `Previews/ABRIR-PREVIAS.html` por duplo clique, offline, ou qualquer PNG.
-São 67 capturas atuais e duas referências históricas da árvore JUCE no **Linux x86_64**, não mockups, Mac/Logic ou prova de teste de escuta.
+São 68 capturas atuais e duas referências históricas da árvore JUCE no **Linux x86_64**, não mockups, Mac/Logic ou prova de teste de escuta.
 HiDPI é render 2× simulado. O sample visual.wav e a atividade musical são sintéticos dos testes.
 
 ## Cosmic Arcade
@@ -135,3 +135,5 @@ O HTML offline permite alternar oito quadros capturados da dança com áudio MID
 [Mooncat 1](creature-1-1.png) · [Mooncat 2](creature-1-2.png) · [Nova 0](creature-2-0.png) · [Nova 1](creature-2-1.png)
 
 As referências artísticas anexadas não fazem parte destes PNGs. São renders do código JUCE original.
+
+[Waveform com Slice e marcadores](slice-room.png).

@@ -80,7 +80,7 @@ controles visíveis atualizam regiões quando necessário. Passagem curta/softwa
 não prevê CPU/latência em Mac/Windows/DAW. Uma medição antiga tinha 40,5% em performance; o escopo DSP
 agora é maior, portanto não tratar os números como benchmark controlado entre versões.
 
-[Capturas reais verificadas](previews/README.md): 67 PNGs atuais + duas referências do commit f852c34, padrão/compacto, Cosmic Arcade, paletas,
+[Capturas reais verificadas](previews/README.md): 68 PNGs atuais + duas referências do commit f852c34, padrão/compacto, Cosmic Arcade, paletas,
 quatro materiais, três apresentações, oito quadros de dança, ADSR padrão/compacto, PATCHES e captura gravando/pronta/carregada/insert.
 Personagem inclui três apresentações em fundo claro/escuro, 380×300 e 160×144. Sem mockups.
 HiDPI é render 2× simulado, não Retina físico. Os PNGs foram abertos/inspecionados aqui, incluindo

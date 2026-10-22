@@ -162,6 +162,12 @@ void appearanceWorkshopTests()
         editor->synchroniseUi();
         saveUi(*editor, ("rastro-room-" + juce::String(kind) + ".png").toRawUTF8());
     }
+    p.set("playMode", 4);
+    editor->synchroniseUi();
+    checkUiLayout(*editor);
+    saveUi(*editor, "rastro-slice-room.png");
+    p.set("playMode", 0);
+    editor->synchroniseUi();
     RastroAvatar portrait(p);
     for (int species : {1, 2})
         for (int presentation = 0; presentation < 3; ++presentation)

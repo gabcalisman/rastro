@@ -33,6 +33,7 @@ shots += [('adsr-compact', 'ADSR — quatro knobs e gráfico no compacto'),
           ('capture-ready', 'CAPTURAR — WAV finalizado e selecionado'),
           ('capture-loaded', 'CAPTURAR — tomada carregada na waveform'),
           ('capture-insert', 'RASTRO Capture — painel do insert gravando')]
+shots += [('slice-room', 'Sampler — Slice e marcadores no novo layout')]
 shots += [(f'room-{i}', f'Cenário original — opção {i}') for i in range(4)]
 shots += [('room-customizer', 'Personalizador — CENÁRIO'), ('dance-customizer', 'Personalizador — DANÇA'), ('rack-customizer', 'Personalizador — RACK e bloqueios JAM')]
 shots += [(f'creature-{species}-{presentation}', f'Criatura {species} — apresentação {presentation}') for species in [1, 2] for presentation in range(3)]
@@ -52,7 +53,7 @@ def source_name(key):
     special={'synth':'rastro-instrument-panel.png','patches':'rastro-patch-panel.png','patches-compact':'rastro-patch-compact.png','capture':'rastro-capture-receiver.png'}
     if key in special: return special[key]
     if key.startswith('before-'): return f'{key}.png'
-    if key.startswith(('character-', 'capture-', 'room-', 'creature-', 'dance-customizer', 'rack-customizer')) or key == 'adsr-compact': return f'rastro-{key}.png'
+    if key.startswith(('character-', 'capture-', 'room-', 'creature-', 'dance-customizer', 'rack-customizer')) or key in ('adsr-compact', 'slice-room'): return f'rastro-{key}.png'
     return f'rastro-{key}.png' if key.startswith(('palette-', 'hardware-')) else f'rastro-final-{key}.png'
 def output_name(key):
     aliases = {'standard':'instrumento', 'compact':'compacto', 'colours':'cores',

@@ -48,7 +48,10 @@ jobs:
           --parallel 3
 
       - name: Run native DSP, codec and capture tests
-        run: ctest --test-dir "$BUILD_DIR" -C Release --output-on-failure | tee native-tests.log
+        shell: bash
+        run: |
+          set -euo pipefail
+          ctest --test-dir "$BUILD_DIR" -C Release --output-on-failure | tee native-tests.log
 
       - name: Validate both VST3s with pluginval 1.0.3
         shell: bash

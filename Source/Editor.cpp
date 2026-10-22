@@ -2,73 +2,73 @@
 #include "Visuals.h"
 namespace
 {
-const juce::Colour ink(0xff261e19), cream(0xfff2e3c5), orange(0xffdf682f);
+const auto ink = visuals::text, cream = visuals::panel, orange = visuals::accent(0);
 const juce::Colour accents[]{juce::Colour(0xffe69b62), juce::Colour(0xffbec863),
                              juce::Colour(0xff68b8ab), juce::Colour(0xffe8ba63),
                              juce::Colour(0xffd4aaac), juce::Colour(0xffb7a1d8)};
 using namespace rastro;
 const auto &names = moduleNames;
 } // namespace
-RastroEditor::Style::Style()
+RastroEditor::Style::Style() {}
+void RastroEditor::Style::apply(const visuals::Palette &pal, int design, int theme)
 {
-    setColour(juce::TextButton::buttonColourId, orange);
-    setColour(juce::TextButton::textColourOffId, ink);
-    setColour(juce::Slider::textBoxTextColourId, ink);
+    controlStyle = design;
+    chassis = theme;
+    accent = pal.control;
+    surface = pal.button;
+    outline = pal.outline;
+    setColour(juce::TextButton::buttonColourId, pal.button);
+    setColour(juce::TextButton::textColourOffId, pal.text);
+    setColour(juce::TextButton::textColourOnId, pal.text);
+    setColour(juce::Slider::textBoxTextColourId, pal.text);
+    setColour(juce::Slider::textBoxBackgroundColourId, pal.bg);
     setColour(juce::Slider::textBoxOutlineColourId, juce::Colours::transparentBlack);
-    setColour(juce::ComboBox::backgroundColourId, cream);
-    setColour(juce::ComboBox::textColourId, ink);
-    setColour(juce::ToggleButton::textColourId, ink);
-    setColour(juce::ToggleButton::tickColourId, orange);
+    setColour(juce::Slider::thumbColourId, pal.control);
+    setColour(juce::Slider::trackColourId, pal.control);
+    setColour(juce::Slider::backgroundColourId, pal.outline);
+    setColour(juce::ComboBox::backgroundColourId, pal.button);
+    setColour(juce::ComboBox::outlineColourId, pal.outline);
+    setColour(juce::ComboBox::textColourId, pal.text);
+    setColour(juce::ComboBox::arrowColourId, pal.control);
+    setColour(juce::Label::textColourId, pal.text);
+    setColour(juce::PopupMenu::backgroundColourId, pal.surface);
+    setColour(juce::PopupMenu::textColourId, pal.text);
+    setColour(juce::PopupMenu::highlightedBackgroundColourId, pal.button);
+    setColour(juce::PopupMenu::highlightedTextColourId, pal.text);
+    setColour(juce::ToggleButton::textColourId, pal.text);
+    setColour(juce::ToggleButton::tickColourId, pal.control);
 }
 void RastroEditor::Style::drawRotarySlider(juce::Graphics &g, int x, int y, int w, int h, float v,
                                            float a, float b, juce::Slider &)
 {
-    auto box = juce::Rectangle<float>((float)x, (float)y, (float)w, (float)h).reduced(3);
-    float r = std::min(box.getWidth(), box.getHeight()) * .5f;
-    auto c = box.getCentre();
-    g.setColour(ink.withAlpha(.2f));
-    g.fillEllipse(c.x - r + 2, c.y - r + 4, 2 * r, 2 * r);
-    g.setColour(ink);
-    g.fillEllipse(c.x - r, c.y - r, 2 * r, 2 * r);
-    if (controlStyle == 1)
-    {
-        g.setColour(accent.withAlpha(.4f));
-        g.drawRoundedRectangle(box, 3, 2);
-    }
-    else if (controlStyle == 2)
-    {
-        g.setColour(cream.withAlpha(.7f));
-        for (int i = 0; i <= 10; ++i)
-        {
-            float t = a + (b - a) * i / 10.f;
-            g.drawLine(c.x + std::sin(t) * r * .82f, c.y - std::cos(t) * r * .82f,
-                       c.x + std::sin(t) * r, c.y - std::cos(t) * r, 1);
-        }
-    }
-    juce::Path arc;
-    arc.addCentredArc(c.x, c.y, r - 3, r - 3, 0, a, a + (b - a) * v, true);
-    g.setColour(accent);
-    g.strokePath(arc, juce::PathStrokeType(3));
-    float angle = a + (b - a) * v;
-    g.setColour(cream);
-    g.drawLine(c.x + std::sin(angle) * r * .5f, c.y - std::cos(angle) * r * .5f,
-               c.x + std::sin(angle) * r * .8f, c.y - std::cos(angle) * r * .8f, 3);
+    visuals::knob(g, juce::Rectangle<float>((float)x, (float)y, (float)w, (float)h).reduced(4), v,
+                  a, b, controlStyle, accent);
 }
 void RastroEditor::Style::drawButtonBackground(juce::Graphics &g, juce::Button &b,
                                                const juce::Colour &colour, bool over, bool down)
 {
-    g.setColour(colour.withMultipliedBrightness(down ? .8f : over ? 1.1f : 1.f));
     auto box = b.getLocalBounds().toFloat().reduced(1);
-    g.fillRoundedRectangle(box, controlStyle == 1 ? 2.f : controlStyle == 2 ? 12.f : 6.f);
-    g.setColour(juce::Colour(0xff261e19));
-    g.drawRoundedRectangle(box, controlStyle == 1 ? 2.f : controlStyle == 2 ? 12.f : 6.f, 1);
+    g.setColour(surface.brighter(down   ? .15f
+                                 : over ? .1f
+                                        : 0)
+                    .interpolatedWith(accent, b.getToggleState() ? .13f : 0));
+    const float radius = visuals::panelRadius(chassis);
+    g.fillRoundedRectangle(box, radius);
+    g.setColour((b.isEnabled() ? (b.getToggleState() ? accent : outline) : outline.withAlpha(.5f))
+                    .withAlpha(over ? 1.f : .65f));
+    g.drawRoundedRectangle(box, radius, b.hasKeyboardFocus(true) ? 2.f : 1.f);
+    juce::ignoreUnused(colour);
 }
-RastroEditor::Knob::Knob(RastroProcessor &p, juce::String key, bool rotary) : id(key)
+RastroEditor::Knob::Knob(RastroProcessor &p, juce::String key, bool rotary) : p(p), id(key)
 {
     slider.setColour(juce::Slider::textBoxTextColourId, ink);
     slider.setColour(juce::Slider::textBoxOutlineColourId, juce::Colours::transparentBlack);
     slider.setColour(juce::Slider::thumbColourId, orange);
     slider.setColour(juce::Slider::trackColourId, orange);
+    setComponentID("control_" + key);
+    slider.setComponentID("parameter_" + key);
+    slider.setWantsKeyboardFocus(true);
+    slider.setMouseDragSensitivity(180);
     addAndMakeVisible(slider);
     addAndMakeVisible(label);
     slider.setSliderStyle(rotary ? juce::Slider::RotaryHorizontalVerticalDrag
@@ -95,14 +95,25 @@ RastroEditor::Knob::Knob(RastroProcessor &p, juce::String key, bool rotary) : id
     };
     slider.updateText();
 }
+void RastroEditor::Knob::applyPalette()
+{
+    auto pal = visuals::palette(p);
+    label.setColour(juce::Label::textColourId, pal.text);
+    slider.setColour(juce::Slider::textBoxTextColourId, pal.text);
+    slider.setColour(juce::Slider::thumbColourId, pal.control);
+    slider.setColour(juce::Slider::trackColourId, pal.control.withAlpha(.65f));
+    slider.setColour(juce::Slider::backgroundColourId, pal.outline);
+}
 void RastroEditor::Knob::resized()
 {
     auto r = getLocalBounds();
-    label.setBounds(r.removeFromTop(19));
+    if (label.isVisible())
+        label.setBounds(r.removeFromTop(18));
     slider.setBounds(r);
 }
 RastroEditor::Card::Card(RastroEditor &e, int m) : ui(e), module(m)
 {
+    setComponentID("rack_" + juce::String(m));
     addAndMakeVisible(bypass);
     addAndMakeVisible(remove);
     remove.setButtonText(juce::String::fromUTF8("×"));
@@ -115,6 +126,11 @@ RastroEditor::Card::Card(RastroEditor &e, int m) : ui(e), module(m)
     mix = std::make_unique<Knob>(ui.p, mixIds[m], false);
     addAndMakeVisible(*mix);
     mix->label.setVisible(false);
+    primary = std::make_unique<Knob>(ui.p, controlIds[m][0], false);
+    primary->setComponentID("rackPrimary_" + juce::String(m));
+    primary->slider.setComponentID("rackPrimarySlider_" + juce::String(m));
+    primary->label.setVisible(false);
+    addAndMakeVisible(*primary);
     for (auto id : controlIds[m])
         if (id && juce::String(id) != mixIds[m])
         {
@@ -126,35 +142,41 @@ void RastroEditor::Card::paint(juce::Graphics &g)
 {
     bool present = ui.p.value(presentIds[module]) > .5f,
          active = present && ui.p.value(onIds[module]) > .5f;
-    g.setColour(present ? accents[module] : cream.darker(.25f));
-    g.fillRoundedRectangle(getLocalBounds().toFloat(), 10);
-    if (ui.selected == module)
-    {
-        g.setColour(cream);
-        g.drawRoundedRectangle(getLocalBounds().toFloat().reduced(2), 9, 2);
-    }
-    g.setColour(ink.withAlpha(active ? 1.f : .55f));
-    g.setFont(juce::Font(juce::FontOptions(22, juce::Font::bold)));
-    g.drawText(names[module], 12, 3, getWidth() - 116, 30, juce::Justification::left);
-    if (!present)
-    {
-        g.setFont(juce::Font(juce::FontOptions(11)));
-        g.drawFittedText(ui.tr("removed"), 12, 36, getWidth() - 24, 30, juce::Justification::left,
-                         2);
-    }
-    else
-    {
-        g.setFont(juce::Font(juce::FontOptions(11)));
-        g.drawText(ui.tr("mix"), 12, 39, 48, 22, juce::Justification::left);
-    }
+    auto pal = visuals::palette(ui.p);
+    auto colour =
+        visuals::readable(accents[module].interpolatedWith(pal.highlight, .18f), pal.surface);
+    auto box = getLocalBounds().toFloat().reduced(1);
+    g.setColour(pal.surface.interpolatedWith(colour, active ? .06f : .01f));
+    g.fillRoundedRectangle(box, 6);
+    g.setColour(ui.selected == module ? colour : pal.outline);
+    g.drawRoundedRectangle(box, 6, ui.selected == module ? 2.f : 1.f);
+    g.setColour(active ? colour : pal.muted);
+    g.fillRoundedRectangle(3, 7, 3, getHeight() - 14.f, 1.5f);
+    visuals::glyph(g, module, {10, 6, 19, 19}, active ? colour : pal.muted);
+    g.setColour(active ? pal.text : pal.muted);
+    g.setFont(juce::Font(juce::FontOptions(13, juce::Font::bold)));
+    g.drawText(names[module], 33, 3, getWidth() - 62, 23, juce::Justification::left);
+    const char *shortKeys[]{"ghostShort",  "crumbleShort", "bloomShort",
+                            "wobbleShort", "dustShort",    "crushShort"};
+    g.setFont(juce::Font(juce::FontOptions(11)));
+    g.setColour(pal.muted);
+    g.drawText(ui.tr(shortKeys[module]), 10, 25, getWidth() - 18, 16, juce::Justification::left);
+    g.drawText(!present ? ui.tr("removed") : ui.tr("mix"), 10, 96, 27, 24,
+               juce::Justification::left);
+    g.setColour(pal.muted);
+    g.drawText(ui.tr(primary->id), getWidth() / 2, 43, getWidth() / 2 - 9, 24,
+               juce::Justification::right);
 }
 void RastroEditor::Card::resized()
 {
-    remove.setBounds(getWidth() - 29, 5, 22, 23);
-    bypass.setBounds(getWidth() - 105, 5, 71, 23);
-    mix->setBounds(58, 27, getWidth() - 66, std::max(43, getHeight() - 29));
-    mix->slider.setTextBoxStyle(juce::Slider::TextBoxRight, true, 43, 18);
+    remove.setBounds(getWidth() - 29, 3, 26, 25);
+    bypass.setBounds(9, 43, getWidth() / 2 - 13, 24);
+    primary->setBounds(8, 68, getWidth() - 16, 26);
+    primary->slider.setTextBoxStyle(juce::Slider::TextBoxRight, false, 43, 22);
+    mix->setBounds(36, 95, getWidth() - 44, 26);
+    mix->slider.setTextBoxStyle(juce::Slider::TextBoxRight, false, 43, 22);
 }
+
 void RastroEditor::Card::mouseDrag(const juce::MouseEvent &e)
 {
     if (e.getMouseDownY() < 32 && e.getDistanceFromDragStart() > 5)
@@ -179,7 +201,8 @@ void RastroEditor::Card::mouseUp(const juce::MouseEvent &e)
                     ui.p.moveModule(from, to);
     ui.dragged = -1;
     setMouseCursor(juce::MouseCursor::NormalCursor);
-    ui.resized();
+    ui.lastPresence = -1;
+    ui.synchroniseUi();
 }
 void RastroEditor::selectModule(int m)
 {
@@ -188,15 +211,64 @@ void RastroEditor::selectModule(int m)
     repaint();
 }
 RastroEditor::RastroEditor(RastroProcessor &processor)
-    : AudioProcessorEditor(processor), p(processor), play(p), avatar(p), sampleView(p),
+    : AudioProcessorEditor(processor), p(processor), deck(p), play(p), avatar(p), sampleView(p),
       keyboard(p.keyboard, juce::MidiKeyboardComponent::horizontalKeyboard)
 {
     setLookAndFeel(&style);
-    for (auto *b : {&load, &mutate, &undo, &reset, &add, &about, &center, &preview, &customize})
+    for (auto *b :
+         {&load, &mutate, &undo, &reset, &add, &about, &center, &preview, &customize, &compact})
         addAndMakeVisible(b);
     customize.setComponentID("customize");
-    customize.setButtonText("VISUAL");
+    customize.setButtonText("CORES / KNOBS / GROOVEIRO");
     customize.onClick = [this] { showCustomizer(); };
+    customizer = std::make_unique<VisualCustomizer>(p);
+    addChildComponent(*customizer);
+    customizer->setAlwaysOnTop(true);
+    customizer->onClose = [this] { customizerClosed(); };
+    customizer->renderInstrumentPreview = [this]
+    {
+        // Paint the existing components, excluding the sheet. No second editor/timer/DSP.
+        constexpr float factor = .32f;
+        juce::Image shot(juce::Image::ARGB, juce::roundToInt(getWidth() * factor),
+                         juce::roundToInt(getHeight() * factor), true);
+        juce::Graphics g(shot);
+        g.addTransform(juce::AffineTransform::scale(factor));
+        paint(g);
+        for (auto *child : getChildren())
+            if (child != customizer.get() && child->isVisible())
+            {
+                juce::Graphics::ScopedSaveState state(g);
+                bool enabled = child->isEnabled();
+                child->setEnabled(true);
+                g.addTransform(
+                    juce::AffineTransform::translation((float)child->getX(), (float)child->getY()));
+                g.reduceClipRegion(child->getLocalBounds());
+                child->paintEntireComponent(g, true);
+                child->setEnabled(enabled);
+            }
+        return shot;
+    };
+    compact.setComponentID("compactMode");
+    compact.onClick = [this]
+    {
+        p.set("uiCompact", p.value("uiCompact") > .5f ? 0 : 1);
+        synchroniseUi();
+    };
+    play.setComponentID("playPad");
+    avatar.setComponentID("mainAvatar");
+    sampleView.setComponentID("sampleWaveform");
+    lastVisual.fill(-1);
+    addAndMakeVisible(deck);
+    addAndMakeVisible(pitchMode);
+    addAndMakeVisible(pitchLabel);
+    pitchMode.setComponentID("pitchMode");
+    pitchMode.addItem("REPITCH", 1);
+    pitchMode.addItem("FIXED PITCH", 2);
+    pitchLabel.setText("PITCH MODE", juce::dontSendNotification);
+    pitchLabel.setJustificationType(juce::Justification::centred);
+    pitchLabel.setFont(juce::Font(juce::FontOptions(12)));
+    pitchAttach = std::make_unique<juce::AudioProcessorValueTreeState::ComboBoxAttachment>(
+        p.params, "pitchMode", pitchMode);
     addAndMakeVisible(sampleView);
     addAndMakeVisible(playbackMode);
     addAndMakeVisible(sliceCount);
@@ -260,7 +332,7 @@ RastroEditor::RastroEditor(RastroProcessor &processor)
     load.onClick = [this]
     {
         chooser = std::make_unique<juce::FileChooser>(tr("choose"), juce::File{},
-                                                      "*.wav;*.aiff;*.aif;*.mp3");
+                                                      "*.wav;*.aiff;*.aif;*.mp3;*.m4a;*.mov;*.qt");
         chooser->launchAsync(
             juce::FileBrowserComponent::openMode | juce::FileBrowserComponent::canSelectFiles,
             [safe = juce::Component::SafePointer<RastroEditor>(this)](const juce::FileChooser &fc)
@@ -289,11 +361,11 @@ RastroEditor::RastroEditor(RastroProcessor &processor)
                            });
     };
     setResizable(true, true);
-    setResizeLimits(900, 860, 1600, 1200);
-    setSize(1180, 960);
+    setResizeLimits(980, 700, 1680, 1100);
+    setSize(p.value("uiCompact") > .5f ? 1000 : 1180, p.value("uiCompact") > .5f ? 700 : 840);
     localize();
     timerCallback();
-    startTimerHz(24);
+    startTimerHz((int)p.value("animation") == 0 ? 6 : (int)p.value("animation") == 1 ? 12 : 24);
 }
 RastroEditor::~RastroEditor()
 {
@@ -304,11 +376,14 @@ void RastroEditor::localize()
 {
     lastLanguage = p.language;
     language.setSelectedId(lastLanguage + 1, juce::dontSendNotification);
+    customize.setButtonText(p.language == 0 ? "CORES / KNOBS / GROOVEIRO"
+                                            : "COLOURS / KNOBS / GROOVEIRO");
     load.setButtonText(tr("load"));
     mutate.setButtonText(tr("mutate"));
     reset.setButtonText(tr("reset"));
     undo.setButtonText(tr("undoMutation"));
     center.setButtonText(tr("center"));
+    compact.setButtonText(p.language == 0 ? "Compacto" : "Compact");
     int animationSelection = animations.getSelectedId();
     animations.clear(juce::dontSendNotification);
     for (int i = 0; i < 3; ++i)
@@ -330,6 +405,8 @@ void RastroEditor::localize()
     playbackMode.setTooltip(tr("modeHelp"));
     sliceCount.setTooltip(tr("sliceHelp"));
     sampleView.setTooltip(tr("waveHelp"));
+    pitchMode.setTooltip(tr("pitchHelp"));
+    deck.setTooltip(tr("deckHelp"));
     for (auto &k : sampleKnobs)
     {
         k->label.setText(tr(k->id), juce::dontSendNotification);
@@ -344,6 +421,7 @@ void RastroEditor::localize()
     {
         c->remove.setTooltip(tr("remove"));
         c->mix->slider.setTooltip(tr("mix"));
+        c->primary->slider.setTooltip(tr(c->primary->id));
         c->setTooltip(tr(moduleDescriptions[c->module]));
         c->bypass.setTooltip(tr("bypassHelp"));
         for (auto &k : c->knobs)
@@ -358,36 +436,144 @@ void RastroEditor::localize()
     mutate.setTooltip(tr("mutateHelp"));
     repaint();
 }
-void RastroEditor::timerCallback()
+void RastroEditor::applyAppearance()
 {
+    style.apply(visuals::palette(p), visuals::knobStyle(p), (int)p.value("visualTheme"));
+    // JUCE ComboBox caches its label's ink; changing only LookAndFeel leaves stale white text.
+    auto pal = visuals::palette(p);
+    std::function<void(juce::Component &)> refreshCombos = [&](juce::Component &c)
+    {
+        if (auto *combo = dynamic_cast<juce::ComboBox *>(&c))
+            combo->setColour(juce::ComboBox::textColourId, pal.text);
+        for (auto *child : c.getChildren())
+            refreshCombos(*child);
+    };
+    refreshCombos(*this);
+    for (auto &k : sampleKnobs)
+        k->applyPalette();
+    for (auto &k : macros)
+        k->applyPalette();
+    for (auto &c : cards)
+    {
+        c->mix->applyPalette();
+        c->primary->applyPalette();
+        for (auto &k : c->knobs)
+            k->applyPalette();
+    }
+    keyboard.setColour(juce::MidiKeyboardComponent::keyDownOverlayColourId,
+                       pal.highlight.withAlpha(.6f));
+    keyboard.setColour(juce::MidiKeyboardComponent::mouseOverKeyOverlayColourId,
+                       pal.control.withAlpha(.3f));
+    ++measurements.fullRepaints;
+    repaint();
+}
+void RastroEditor::timerCallback() { synchroniseUi(); }
+void RastroEditor::synchroniseUi()
+{
+    auto start = juce::Time::getMillisecondCounterHiRes();
+    ++measurements.ticks;
     p.applyCC();
-    style.controlStyle = (int)p.value("controlStyle");
-    style.accent = visuals::accent((int)p.value("visualPalette"));
-    style.setColour(juce::TextButton::buttonColourId, style.accent);
+    if (auto *sample = p.source.load(std::memory_order_acquire); sample != lastSource)
+    {
+        lastSource = sample;
+        sampleView.repaint();
+        repaint(wave.getX(), 110, std::max(1, preview.getX() - wave.getX() - 10), 17);
+        deck.repaint();
+        customizer->invalidatePreview();
+        ++measurements.sampleRefreshes;
+    }
+    bool appearance = false;
+    for (size_t i = 0; i < lastVisual.size(); ++i)
+    {
+        auto value = p.value(visuals::visualIds[i]);
+        if (value != lastVisual[i])
+        {
+            lastVisual[i] = value;
+            appearance = true;
+        }
+    }
+    if (appearance)
+        applyAppearance();
     if (lastLanguage != p.language)
         localize();
-    int animationMode = (int)p.value("animation");
-    int hz = animationMode == 0 ? 6 : animationMode == 1 ? 12 : 24;
+    int requested = (int)p.value("uiCompact");
+    if (lastCompact != requested)
+    {
+        bool first = lastCompact < 0;
+        lastCompact = requested;
+        if (!first)
+            setSize(requested ? 1000 : 1180, requested ? 700 : 840);
+        compact.setToggleState(requested != 0, juce::dontSendNotification);
+    }
+    int animationMode = (int)p.value("animation"), hz = animationMode == 0   ? 6
+                                                        : animationMode == 1 ? 12
+                                                                             : 24;
     if (getTimerInterval() != 1000 / hz)
         startTimerHz(hz);
-    glow = std::max(glow * .8f, p.engine.meter.load());
-    avatar.update(animationMode);
+    bool editing = customizer->isVisible();
+    if (editing)
+    {
+        if (customizer->update(animationMode))
+            ++measurements.previewAvatar;
+    }
+    else
+    {
+        if (deck.isShowing())
+        {
+            deck.update(animationMode);
+            ++measurements.deckUpdates;
+        }
+        avatar.update(animationMode);
+        ++measurements.mainAvatar;
+        if (p.engine.meter > .0001f)
+        {
+            sampleView.repaint();
+        }
+        float x = p.value("playX"), y = p.value("playY");
+        if (x != lastPlayX || y != lastPlayY)
+        {
+            lastPlayX = x;
+            lastPlayY = y;
+            play.repaint();
+        }
+    }
     if (p.midiFlash > 0)
+    {
         --p.midiFlash;
+        repaint(220, 47, 140, 26);
+    }
+    int presenceMask = 0;
     for (int i = 0; i < moduleCount; ++i)
     {
         bool present = p.value(presentIds[i]) > .5f;
+        presenceMask |= (present ? 1 : 0) << i;
         cards[i]->mix->setVisible(present);
+        cards[i]->primary->setVisible(present);
         cards[i]->bypass.setVisible(present);
         cards[i]->remove.setVisible(present);
-        cards[i]->bypass.setButtonText(tr(p.value(onIds[i]) > .5f ? "on" : "off"));
+        auto label = tr(p.value(onIds[i]) > .5f ? "on" : "off");
+        if (cards[i]->bypass.getButtonText() != label)
+        {
+            cards[i]->bypass.setButtonText(label);
+            cards[i]->repaint();
+        }
+    }
+    auto order = p.settings().order;
+    if (order != lastOrder || presenceMask != lastPresence)
+    {
+        lastOrder = order;
+        lastPresence = presenceMask;
+        resized();
+        ++measurements.fullRepaints;
+        repaint();
     }
     for (int i = 0; i < 5; ++i)
     {
         auto label = i < 3 ? tr("learn") : (i == 3 ? "X / " : "Y / ") + tr("learn");
-        learns[i].setButtonText(p.learn == i
-                                    ? tr("learning")
-                                    : label + (p.cc[i] >= 0 ? " " + juce::String(p.cc[i]) : ""));
+        auto text = p.learn == i ? tr("learning")
+                                 : label + (p.cc[i] >= 0 ? " " + juce::String(p.cc[i]) : "");
+        if (learns[i].getButtonText() != text)
+            learns[i].setButtonText(text);
     }
     int mode = (int)p.value("playMode");
     if (mode == 0 && p.value("loop") > .5f)
@@ -396,128 +582,175 @@ void RastroEditor::timerCallback()
     sliceCount.setSelectedId((int)p.value("sliceCount"), juce::dontSendNotification);
     sliceCount.setVisible(mode == 4);
     preview.setButtonText(tr(p.engine.previewActive ? "stopPreview" : "preview"));
-    undo.setEnabled(p.canUndoMutation());
-    resized();
-    repaint();
+    undo.setEnabled(!editing && p.canUndoMutation());
+    wasCustomizing = editing;
+    measurements.updateMs += juce::Time::getMillisecondCounterHiRes() - start;
 }
 void RastroEditor::resized()
 {
-    int w = getWidth();
-    float scale = getHeight() / 960.f;
-    auto y = [scale](int n) { return juce::roundToInt(n * scale); };
-    customize.setBounds(w - 510, 53, 90, 26);
-    language.setBounds(w - 190, 18, 165, 28);
-    about.setBounds(w - 276, 18, 75, 28);
-    animations.setBounds(w - 410, 53, 385, 26);
-    load.setBounds(w - 205, y(104), 175, 30);
-    playbackMode.setBounds(w - 205, y(140), 175, y(26));
-    preview.setBounds(w - 205, y(173), 105, y(26));
-    sliceCount.setBounds(w - 94, y(173), 64, y(26));
-    wave = {28, y(138), w - 250, y(64)};
+    ++measurements.layouts;
+    int w = getWidth(), h = getHeight();
+    compactLayout = h < 780;
+    int margin = 20, content = w - margin * 2;
+    customize.setBounds(w - 655, 12, 270, 30);
+    compact.setBounds(w - 375, 12, 100, 30);
+    about.setBounds(w - 265, 12, 70, 30);
+    language.setBounds(w - 185, 12, 165, 30);
+    animations.setBounds(w - 350, 48, 330, 28);
+    customizer->setBounds(12, 80, w - 24, h - 92);
+    samplePanel = {20, 84, content, compactLayout ? 146 : 162};
+    load.setBounds(w - 190, 96, 170, 30);
+    playbackMode.setBounds(w - 390, 96, 190, 30);
+    preview.setBounds(w - 510, 96, 110, 30);
+    sliceCount.setBounds(w - 576, 96, 56, 30);
+    int sampleX = compactLayout ? 204 : 220;
+    deck.setBounds(32, 94, sampleX - 44, samplePanel.getBottom() - 106);
+    wave = {sampleX, 128, w - sampleX - 32, compactLayout ? 43 : 53};
     sampleView.setBounds(wave);
-    int kw = (w - 56) / 6;
+    int sampleY = compactLayout ? 176 : 190;
+    int column = (w - 180 - sampleX - 10) / 6;
     for (int i = 0; i < 6; ++i)
-        sampleKnobs[i]->setBounds(28 + i * kw, y(207), kw - 8, y(65));
-    int padWidth = juce::roundToInt((w - 56) * .41f),
-        avatarWidth = juce::roundToInt((w - 56) * .25f);
-    play.setBounds(28, y(312), padWidth, y(224));
-    avatar.setBounds(40 + padWidth, y(312), avatarWidth, y(224));
-    center.setBounds(28, y(543), 90, y(26));
-    int learnW = (padWidth - 106) / 2;
-    learns[3].setBounds(128, y(543), learnW, y(26));
-    learns[4].setBounds(134 + learnW, y(543), learnW, y(26));
-    int macroX = 52 + padWidth + avatarWidth, macroW = (w - 28 - macroX) / 2;
+        sampleKnobs[i]->setBounds(sampleX + i * column, sampleY, column - 8, 50);
+    pitchLabel.setBounds(w - 180, sampleY, 148, 18);
+    pitchMode.setBounds(w - 180, sampleY + 20, 148, 28);
+    int performanceY = samplePanel.getBottom() + 12;
+    int performanceHeight = compactLayout ? 144 : std::max(174, h - 640);
+    int playW = content * 31 / 100, avatarW = content * 20 / 100, macroX = 44 + playW + avatarW,
+        macroW = (w - 20 - macroX) / 4;
+    play.setBounds(20, performanceY, playW, performanceHeight);
+    avatar.setBounds(30 + playW, performanceY, avatarW, performanceHeight);
+    macroPanel = {macroX - 4, performanceY, w - 16 - macroX, performanceHeight};
     for (int i = 0; i < 4; ++i)
     {
-        macros[i]->setBounds(macroX + (i % 2) * macroW, y(310 + (i / 2) * 110), macroW - 4, y(84));
+        macros[i]->setBounds(macroX + i * macroW, performanceY + 5, macroW - 6,
+                             performanceHeight - 37);
         if (i < 3)
-            learns[i].setBounds(macroX + (i % 2) * macroW, y(395 + (i / 2) * 110), macroW - 5,
-                                y(22));
+            learns[i].setBounds(macroX + i * macroW + 3, performanceY + performanceHeight - 30,
+                                macroW - 12, 26);
     }
-    mutate.setBounds(macroX, y(543), macroW, y(28));
-    undo.setBounds(macroX + macroW + 4, y(543), macroW - 4, y(28));
-    rack = {28, y(609), w - 56, y(157)};
+    int barY = performanceY + performanceHeight + 8;
+    center.setBounds(20, barY, 92, 28);
+    learns[3].setBounds(120, barY, (playW - 100) / 2, 28);
+    learns[4].setBounds(126 + (playW - 100) / 2, barY, (playW - 100) / 2, 28);
+    mutate.setBounds(macroX, barY, macroW * 2 - 8, 28);
+    undo.setBounds(macroX + macroW * 2, barY, macroW * 2 - 8, 28);
+    rackTitle = {20, barY + 36, content, 24};
+    reset.setBounds(w - 328, rackTitle.getY(), 186, 28);
+    add.setBounds(w - 134, rackTitle.getY(), 114, 28);
+    rack = {20, rackTitle.getBottom() + 8, content, 124};
     auto order = p.settings().order;
-    int cw = (w - 76) / 3;
+    int cw = (content - 40) / 6;
     for (int i = 0; i < moduleCount; ++i)
-        cards[order[i]]->setBounds(28 + (i % 3) * (cw + 10), y(609 + (i / 3) * 82), cw, y(75));
-    add.setBounds(w - 152, y(578), 122, y(25));
-    reset.setBounds(w - 340, y(578), 180, y(25));
-    detail = {28, y(778), w - 56, y(103)};
+        cards[order[i]]->setBounds(20 + i * (cw + 8), rack.getY(), cw, 124);
+    int keyboardHeight = compactLayout ? 34 : 44;
+    keyboard.setBounds(20, h - keyboardHeight - 8, content, keyboardHeight);
+    detail = {20, rack.getBottom() + 10, content, keyboard.getY() - rack.getBottom() - 18};
     for (int m = 0; m < moduleCount; ++m)
         for (auto &k : cards[m]->knobs)
             k->setVisible(m == selected && p.value(presentIds[m]) > .5f);
     auto &controls = cards[selected]->knobs;
-    int dk = (w - 270) / std::max(1, (int)controls.size());
+    int dk = (content - 210) / std::max(1, (int)controls.size());
     for (size_t i = 0; i < controls.size(); ++i)
-        controls[i]->setBounds(240 + (int)i * dk, y(782), dk - 8, y(94));
-    keyboard.setBounds(28, y(895), w - 56, std::max(24, getHeight() - y(915)));
+    {
+        auto &slider = controls[i]->slider;
+        slider.setSliderStyle(compactLayout ? juce::Slider::LinearHorizontal
+                                            : juce::Slider::RotaryHorizontalVerticalDrag);
+        slider.setTextBoxStyle(
+            compactLayout ? juce::Slider::TextBoxRight : juce::Slider::TextBoxBelow, false, 65, 19);
+        controls[i]->setBounds(224 + (int)i * dk, detail.getY() + 4, dk - 12,
+                               detail.getHeight() - 8);
+    }
 }
 void RastroEditor::paint(juce::Graphics &g)
 {
-    style.controlStyle = (int)p.value("controlStyle");
-    style.accent = visuals::accent((int)p.value("visualPalette"));
-    style.setColour(juce::TextButton::buttonColourId, style.accent);
-    g.fillAll(visuals::background((int)p.value("visualTheme")));
-    g.setColour(orange);
-    g.setFont(juce::Font(juce::FontOptions(52, juce::Font::bold | juce::Font::italic)));
-    g.drawText("RASTRO", 27, 12, 330, 65, juce::Justification::left);
-    g.setColour(cream);
-    g.setFont(juce::Font(juce::FontOptions(14)));
-    g.drawText("by Gab Calisman", 340, 43, 200, 24, juce::Justification::left);
-    float scale = getHeight() / 960.f;
-    auto y = [scale](int n) { return juce::roundToInt(n * scale); };
-    g.setColour(cream);
-    g.fillRoundedRectangle(18.f, (float)y(94), (float)getWidth() - 36, (float)y(183), 12);
-    g.setColour(ink);
+    auto pal = visuals::palette(p);
+    g.fillAll(pal.bg);
+    if (p.value("cosmicArcade") > .5f)
+        visuals::cosmicTexture(g, getLocalBounds().toFloat(), pal.highlight);
+    g.setColour(pal.highlight);
+    g.setFont(juce::Font(juce::FontOptions(36, juce::Font::bold | juce::Font::italic)));
+    g.drawText("RASTRO", 20, 7, 220, 40, juce::Justification::left);
+    g.setColour(pal.muted);
     g.setFont(juce::Font(juce::FontOptions(12)));
-    g.drawText(tr("sample"), 30, y(101), getWidth() - 260, y(22), juce::Justification::left);
-    g.drawText(p.sampleName(), 30, y(119), getWidth() - 260, y(18), juce::Justification::left);
-    g.setColour(cream);
+    g.drawText("PLAY / by Gab Calisman", 20, 49, 220, 18, juce::Justification::left);
+    g.setColour(pal.surface);
+    g.fillRoundedRectangle(samplePanel.toFloat(),
+                           visuals::panelRadius((int)p.value("visualTheme")));
+    g.fillRoundedRectangle(macroPanel.toFloat(), visuals::panelRadius((int)p.value("visualTheme")));
+    g.fillRoundedRectangle(detail.toFloat(), visuals::panelRadius((int)p.value("visualTheme")));
+    g.setColour(pal.text.withAlpha(.025f));
+    for (int y = macroPanel.getY() + 4; y < macroPanel.getBottom() - 3; y += 7)
+        g.drawHorizontalLine(y, (float)macroPanel.getX() + 5, (float)macroPanel.getRight() - 5);
+    g.setColour(pal.outline);
+    g.drawRoundedRectangle(samplePanel.toFloat(), visuals::panelRadius((int)p.value("visualTheme")),
+                           1);
+    g.drawRoundedRectangle(detail.toFloat(), visuals::panelRadius((int)p.value("visualTheme")), 1);
+    g.setColour(pal.text);
+    g.setFont(juce::Font(juce::FontOptions(13, juce::Font::bold)));
+    int titleWidth = std::max(120, sliceCount.getX() - wave.getX() - 10);
+    g.drawText(tr("sample"), wave.getX(), 92, titleWidth, 18, juce::Justification::left);
     g.setFont(juce::Font(juce::FontOptions(12)));
-    g.drawText(tr("perform"), 30, y(284), 450, y(25), juce::Justification::left);
-    int mx = 52 + juce::roundToInt((getWidth() - 56) * .41f) +
-             juce::roundToInt((getWidth() - 56) * .25f);
-    g.setColour(cream);
-    g.fillRoundedRectangle((float)mx - 4, (float)y(310), (float)(getWidth() - 24 - mx),
-                           (float)y(222), 10);
-    g.setColour(cream);
-    g.drawText(tr("rack"), 30, y(578), getWidth() - 390, y(25), juce::Justification::left);
-    g.setColour(cream);
-    g.fillRoundedRectangle(detail.toFloat(), 10);
-    g.setColour(ink);
-    g.setFont(juce::Font(juce::FontOptions(21, juce::Font::bold)));
-    g.drawText(names[selected], 40, y(789), 185, y(28), juce::Justification::left);
+    g.setColour(pal.muted);
+    g.drawText(p.sampleName(), wave.getX(), 110, titleWidth, 17, juce::Justification::left);
+    g.setColour(pal.text);
+    g.drawText(tr("rack"), rackTitle.withWidth(440), juce::Justification::left);
+    g.setFont(juce::Font(juce::FontOptions(compactLayout ? 15 : 20, juce::Font::bold)));
+    g.drawText(names[selected], 32, detail.getY() + (compactLayout ? 2 : 12), 175, 24,
+               juce::Justification::left);
     g.setFont(juce::Font(juce::FontOptions(12)));
-    g.drawFittedText(tr(moduleDescriptions[selected]), 40, y(821), 185, y(43),
-                     juce::Justification::left, 2);
+    g.setColour(pal.muted);
+    g.drawFittedText(tr(moduleDescriptions[selected]), 32,
+                     detail.getY() + (compactLayout ? 27 : 44), 170,
+                     std::max(20, detail.getHeight() - (compactLayout ? 29 : 50)),
+                     juce::Justification::topLeft, 3);
     if (p.value(presentIds[selected]) < .5f)
-        g.drawText(tr("removed"), 240, y(813), getWidth() - 290, y(40),
+        g.drawText(tr("removed"), 224, detail.getY() + 24, getWidth() - 260, 40,
                    juce::Justification::centred);
-    g.setColour(p.midiFlash > 0 ? accents[1] : cream.darker(.6f));
-    g.fillEllipse(250.f, 67, 8, 8);
-    g.setColour(cream);
-    g.drawText("MIDI", 265, 60, 55, 24, juce::Justification::left);
+    g.setColour(p.midiFlash > 0 ? pal.secondary : pal.outline);
+    g.fillEllipse(230, 54, 7, 7);
+    g.setColour(pal.muted);
+    g.drawText("MIDI", 242, 48, 40, 20, juce::Justification::left);
     float bpm = p.hostBpm;
-    g.drawText((bpm > 0 ? tr("host") + " " + juce::String(bpm, 1)
-                        : tr("tempo") + " " + juce::String(juce::roundToInt(p.value("tempo")))) +
-                   " BPM",
-               28, 69, 450, 20, juce::Justification::left);
+    g.drawText(juce::String(bpm > 0 ? bpm : p.value("tempo"), bpm > 0 ? 1 : 0) + " BPM", 290, 48,
+               120, 20, juce::Justification::left);
 }
-
+bool RastroEditor::keyPressed(const juce::KeyPress &key)
+{
+    if (key == juce::KeyPress::escapeKey && customizer->isVisible())
+    {
+        customizer->setVisible(false);
+        customizerClosed();
+        return true;
+    }
+    return false;
+}
+void RastroEditor::customizerClosed()
+{
+    avatar.resume();
+    deck.resume();
+    for (auto *child : getChildren())
+        if (child != customizer.get())
+            child->setEnabled(true);
+    synchroniseUi();
+    customize.grabKeyboardFocus();
+    ++measurements.fullRepaints;
+    repaint();
+}
 void RastroEditor::import(juce::File file)
 {
-    p.loadFileAsync(file,
-                    [safe = juce::Component::SafePointer<RastroEditor>(this)](bool ok)
-                    {
-                        if (safe && !ok)
-                            juce::AlertWindow::showMessageBoxAsync(
-                                juce::MessageBoxIconType::WarningIcon, "RASTRO", safe->tr("error"));
-                    });
+    p.importFileAsync(
+        file,
+        [safe = juce::Component::SafePointer<RastroEditor>(this)](rastro::ImportError result)
+        {
+            if (safe && result != rastro::ImportError::none)
+                juce::AlertWindow::showMessageBoxAsync(juce::MessageBoxIconType::WarningIcon,
+                                                       "RASTRO", safe->p.importMessage(result));
+        });
 }
 bool RastroEditor::isInterestedInFileDrag(const juce::StringArray &files)
 {
-    return files.size() == 1 && juce::File(files[0]).hasFileExtension("wav;aiff;aif;mp3");
+    return files.size() == 1 && (rastro::offeredAudioFile(juce::File(files[0])) ||
+                                 rastro::editableRecording(juce::File(files[0])));
 }
 void RastroEditor::filesDropped(const juce::StringArray &files, int, int)
 {
@@ -527,37 +760,15 @@ void RastroEditor::filesDropped(const juce::StringArray &files, int, int)
 
 void RastroEditor::showCustomizer()
 {
-    const bool pt = p.language == 0;
-    juce::PopupMenu menu;
-    const char *ids[]{"visualTheme", "visualPalette", "controlStyle",
-                      "avatarBody",  "avatarEyes",    "avatarAccessory"};
-    const juce::String titles[]{pt ? "Tema" : "Theme",         pt ? "Paleta" : "Palette",
-                                pt ? "Controles" : "Controls", pt ? "Corpo" : "Body",
-                                pt ? "Olhos" : "Eyes",         pt ? "Acessório" : "Accessory"};
-    const juce::StringArray choices[]{
-        {"Retro", "Futuro", "Arcade", pt ? "Orgânico" : "Organic"},
-        {pt ? "Laranja" : "Orange", pt ? "Turquesa" : "Teal", "Rosa", "Lima"},
-        {"Classic", "Studio", "Groove"},
-        {pt ? "Engrenagem" : "Gear", pt ? "Cápsula" : "Capsule", pt ? "Quadrado" : "Square"},
-        {pt ? "Redondos" : "Round", pt ? "Visor" : "Visor", "Pixel"},
-        {pt ? "Antena" : "Antenna", pt ? "Fones" : "Headphones", pt ? "Lenço" : "Scarf"}};
-    for (int group = 0; group < 6; ++group)
+    if (customizer->isVisible())
     {
-        juce::PopupMenu sub;
-        for (int i = 0; i < choices[group].size(); ++i)
-            sub.addItem(group * 10 + i + 1, choices[group][i], true, (int)p.value(ids[group]) == i);
-        menu.addSubMenu(titles[group], sub);
+        customizer->setVisible(false);
+        customizerClosed();
+        return;
     }
-    menu.showMenuAsync(juce::PopupMenu::Options().withTargetComponent(&customize),
-                       [safe = juce::Component::SafePointer<RastroEditor>(this)](int result)
-                       {
-                           if (!safe || result == 0)
-                               return;
-                           const char *keys[]{"visualTheme", "visualPalette", "controlStyle",
-                                              "avatarBody",  "avatarEyes",    "avatarAccessory"};
-                           int group = (result - 1) / 10, choice = (result - 1) % 10;
-                           if (group < 6)
-                               safe->p.set(keys[group], (float)choice);
-                           safe->repaint();
-                       });
+    for (auto *child : getChildren())
+        if (child != customizer.get())
+            child->setEnabled(false);
+    customizer->open();
+    synchroniseUi();
 }

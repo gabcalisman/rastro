@@ -1,5 +1,6 @@
 #pragma once
 #include "Engine.h"
+#include "RecordingImport.h"
 #include <juce_audio_utils/juce_audio_utils.h>
 class RastroProcessor : public juce::AudioProcessor, private juce::MidiKeyboardStateListener
 {
@@ -41,6 +42,11 @@ class RastroProcessor : public juce::AudioProcessor, private juce::MidiKeyboardS
     std::atomic<int> midiFlash{0};
     std::atomic<float> hostBpm{0};
     bool loadFile(const juce::File &);
+    rastro::ImportError importFile(const juce::File &);
+    rastro::ImportError importData(const void *, size_t, juce::String);
+    void importFileAsync(juce::File, std::function<void(rastro::ImportError)>);
+    std::atomic<rastro::ImportError> importError{rastro::ImportError::none};
+    juce::String importMessage(rastro::ImportError) const;
     void loadFileAsync(juce::File, std::function<void(bool)>);
     bool loadData(const void *, size_t, juce::String);
     juce::String sampleName();

@@ -1,4 +1,5 @@
 #include "SampleView.h"
+#include "Visuals.h"
 namespace
 {
 const juce::Colour ink(0xff261e19), cream(0xfff2e3c5), orange(0xffdf682f), lime(0xffced968);
@@ -62,6 +63,8 @@ void SampleView::mouseDrag(const juce::MouseEvent &e)
 }
 void SampleView::paint(juce::Graphics &g)
 {
+    auto pal = visuals::palette(p);
+    const auto ink = pal.bg, cream = pal.text, orange = pal.highlight, lime = pal.secondary;
     g.setColour(ink);
     g.fillRoundedRectangle(getLocalBounds().toFloat(), 6);
     auto *sample = p.source.load(std::memory_order_acquire);

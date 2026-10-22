@@ -29,7 +29,8 @@ class Engine
     std::atomic<float> position{0};
     std::atomic<float> noteVelocity{0};
     std::atomic<unsigned> noteSerial{0};
-    std::atomic<bool> previewActive{false};
+    std::atomic<bool> previewActive{false}, playbackActive{false};
+    std::atomic<unsigned> blockSerial{0};
     void prepare(double sampleRate)
     {
         sr = sampleRate;
@@ -38,18 +39,21 @@ class Engine
         voices = {};
         position = 0;
         previewActive = false;
+        playbackActive = false;
     }
     void reset()
     {
         voices = {};
         position = 0;
         previewActive = false;
+        playbackActive = false;
         rack.reset();
     }
     void clearVoices()
     {
         voices = {};
         previewActive = false;
+        playbackActive = false;
     }
     void noteOn(int note, float vel, const Sample *sample, const Settings &p)
     {
@@ -97,7 +101,8 @@ class Engine
         v->begin = begin;
         v->end = end;
         v->pos = mode == 2 ? std::max(begin, end - 1) : begin;
-        v->step = sample->rate / sr * (mode == 4 ? 1. : std::pow(2., (note - p.root) / 12.));
+        v->step = sample->rate / sr *
+                  (mode == 4 || p.pitchMode == 1 ? 1. : std::pow(2., (note - p.root) / 12.));
     }
     void noteOff(int note, const Settings &p)
     {
@@ -116,7 +121,15 @@ class Engine
         for (auto &v : voices)
             v.release = true;
     }
-    void endBlock() { rack.endBlock(); }
+    void endBlock()
+    {
+        rack.endBlock();
+        bool active = false;
+        for (const auto &v : voices)
+            active |= v.note >= 0 && v.env > 0;
+        playbackActive.store(active, std::memory_order_relaxed);
+        blockSerial.fetch_add(1, std::memory_order_relaxed);
+    }
     void frame(float &l, float &r, const Sample *sample, const Settings &p)
     {
         velocity += (p.velocity - velocity) * smoothing;

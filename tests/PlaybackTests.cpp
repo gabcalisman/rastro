@@ -7,7 +7,7 @@ void check(bool b, const char *m)
     if (!b)
         throw std::runtime_error(m);
 }
-void noteOffTests(double rate)
+void noteOffTests(double rate, int pitchMode = 0)
 {
     rastro::Sample sample;
     sample.rate = rate;
@@ -18,6 +18,7 @@ void noteOffTests(double rate)
             channel[i] = .4f * std::sin(i * .07f);
     }
     rastro::Settings p;
+    p.pitchMode = pitchMode;
     p.enabled.fill(false);
     p.drywet = 0;
     p.velocity = 0;
@@ -97,11 +98,92 @@ void noteOffTests(double rate)
     render(e, (int)(rate * .035));
     check(render(e, 256) == 0 && !e.previewActive, "explicit preview stop still works");
 }
+void pitchModeTests(double rate)
+{
+    rastro::Sample sample;
+    sample.rate = 44100;
+    for (auto &c : sample.data)
+    {
+        c.resize(44100);
+        for (int i = 0; i < 44100; ++i)
+            c[i] = .4f * std::sin(i * .07f);
+    }
+    rastro::Settings p;
+    p.enabled.fill(false);
+    p.drywet = 0;
+    p.velocity = 0;
+    p.start = .1f;
+    p.end = .9f;
+    auto render = [&](int mode, int pitchMode, int note)
+    {
+        p.mode = mode;
+        p.pitchMode = pitchMode;
+        rastro::Engine engine;
+        engine.prepare(rate);
+        engine.noteOn(note, 1, &sample, p);
+        std::vector<float> pcm(2048);
+        for (auto &v : pcm)
+        {
+            float r;
+            engine.frame(v, r, &sample, p);
+        }
+        return pcm;
+    };
+    for (int mode = 0; mode < 4; ++mode)
+    {
+        auto original = render(mode, 0, 60);
+        for (int note : {12, 48, 60, 72, 108, 127})
+            check(render(mode, 1, note) == original, "FIXED PITCH: identical original-speed PCM on "
+                                                     "every MIDI note in each playback mode");
+        check(render(mode, 0, 72) != original,
+              "REPITCH octave changes audio in each playback mode");
+    }
+    auto crossings = [](const std::vector<float> &pcm)
+    {
+        int n = 0;
+        for (size_t i = 1; i < pcm.size(); ++i)
+            n += pcm[i - 1] < 0 && pcm[i] >= 0;
+        return n;
+    };
+    check(std::abs(crossings(render(0, 0, 72)) - 2 * crossings(render(0, 0, 60))) <= 2,
+          "REPITCH octave doubles measured waveform frequency");
+    auto positionAfter = [&](int pitch, int note)
+    {
+        p.mode = 0;
+        p.pitchMode = pitch;
+        rastro::Engine engine;
+        engine.prepare(rate);
+        engine.noteOn(note, 1, &sample, p);
+        float l, r;
+        engine.frame(l, r, &sample, p);
+        float start = engine.position;
+        for (int i = 0; i < 1000; ++i)
+            engine.frame(l, r, &sample, p);
+        return engine.position.load() - start;
+    };
+    float native = positionAfter(0, 60);
+    check(std::abs(native - 1000.f / (float)rate) < .00001f,
+          "root plays original source duration across host sample rates");
+    check(std::abs(positionAfter(0, 72) - native * 2) < .00001f &&
+              std::abs(positionAfter(0, 48) - native * .5f) < .00001f,
+          "REPITCH octave doubles/halves sample traversal speed");
+    check(positionAfter(1, 48) == native && positionAfter(1, 72) == native,
+          "FIXED PITCH keeps sample traversal speed regardless of note");
+    for (int note = 60; note < 68; ++note)
+        check(render(4, 0, note) == render(4, 1, note),
+              "Slice mapping/audio identical in both pitch modes");
+    auto silence = render(4, 1, 59);
+    for (float v : silence)
+        check(v == 0, "FIXED PITCH does not bypass Slice note range");
+}
+
 int main()
 {
     for (double rate : {22050., 44100., 48000., 96000.})
     {
         noteOffTests(rate);
+        noteOffTests(rate, 1);
+        pitchModeTests(rate);
         rastro::Sample sample;
         sample.rate = rate;
         for (auto &c : sample.data)

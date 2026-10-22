@@ -9,6 +9,66 @@ struct Entry
     const char *en;
 };
 inline const Entry entries[]{
+    {"pitchHelp",
+     "REPITCH: notas MIDI mudam altura e velocidade em relação à raiz. FIXED PITCH: todas as notas "
+     "tocam na altura e velocidade originais. Slice mantém a seleção de cortes por notas. Efeitos "
+     "continuam aplicados; não há time-stretch.",
+     "REPITCH: MIDI notes change pitch and speed relative to root. FIXED PITCH: all notes play at "
+     "original pitch and speed. Slice keeps note-based slice selection. Effects remain applied; no "
+     "time-stretch."},
+    {"deckHelp",
+     "Bobinas indicam vozes em reprodução, inclusive prévia; param antes das caudas do rack. "
+     "Ponteiro: pico real de saída em dBFS, sem calibração VU. Sem efeito tape adicionado.",
+     "Reels indicate playing voices, including audition; they stop before effect tails. Needle: "
+     "actual output peak in dBFS, not a calibrated VU meter. No tape effect is added."},
+    {"importRead",
+     "Não foi possível ler o arquivo. Verifique se ele foi exportado para uma pasta local.",
+     "Could not read the file. Export it to a local folder first."},
+    {"importCorrupt",
+     "O arquivo está vazio, incompleto ou corrompido. Exporte uma nova cópia de áudio.",
+     "The file is empty, incomplete or corrupt. Export a fresh audio copy."},
+    {"importFormat", "Formato não suportado. Use WAV, AIFF, MP3 ou M4A renderizado (AAC/ALAC).",
+     "Unsupported format. Use WAV, AIFF, MP3 or rendered M4A (AAC/ALAC)."},
+    {"importCodec",
+     "O contêiner M4A foi reconhecido, mas o codec não é compatível. Exporte como AAC ou Apple "
+     "Lossless (ALAC), mono/estéreo.",
+     "The M4A container was recognised, but its codec is incompatible. Export as AAC or Apple "
+     "Lossless (ALAC), mono/stereo."},
+    {"importMovie",
+     "QuickTime Editável não é importado. No Gravador, compartilhe/exporte uma versão de áudio "
+     "renderizada em .m4a (Comprimido/AAC ou Sem perdas/ALAC), em vez de Editável. Se sua versão "
+     "não oferecer essas opções, exporte áudio pelo QuickTime Player ou renderize a mixagem no seu "
+     "editor.",
+     "Editable QuickTime is not imported. In Voice Memos, share/export rendered .m4a audio "
+     "(Compressed/AAC or Lossless/ALAC) instead of Editable. If your version does not offer those "
+     "choices, export audio in QuickTime Player or render the mix in your editor."},
+    {"importEncoded", "Arquivo maior que 32 MB. Exporte ou recorte uma gravação menor.",
+     "File exceeds 32 MB. Export or trim a smaller recording."},
+    {"importDuration",
+     "A gravação excede o limite de 120 segundos/16 milhões de frames. Exporte um trecho menor.",
+     "Recording exceeds 120 seconds/16 million frames. Export a shorter section."},
+    {"importMemory",
+     "O limite de 256 MB de áudio desta instância foi atingido. Reabra a instância para liberar a "
+     "memória antes de importar.",
+     "This instance reached its 256 MB audio budget. Reopen the instance to release memory before "
+     "importing."},
+    {"importBackend",
+     "O decoder local de M4A não está disponível. No Linux, instale FFmpeg no caminho configurado "
+     "no build. No Mac, a leitura usa Core Audio do sistema.",
+     "The local M4A decoder is unavailable. On Linux install FFmpeg at the configured build path. "
+     "Mac decoding uses system Core Audio."},
+    {"importDecode",
+     "M4A AAC/ALAC reconhecido, mas não foi possível decodificar. O arquivo pode estar incompleto "
+     "ou usar um perfil incompatível com o decoder local. Exporte outra cópia renderizada.",
+     "AAC/ALAC M4A recognised, but decoding failed. The file may be incomplete or use a profile "
+     "incompatible with the local decoder. Export another rendered copy."},
+    {"importSuccess", "Áudio importado.", "Audio imported."},
+    {"ghostShort", "Eco filtrado", "Filtered echo"},
+    {"crumbleShort", "Fragmentos", "Fragments"},
+    {"bloomShort", "Cauda difusa", "Diffuse tail"},
+    {"wobbleShort", "Atraso modulado", "Modulated delay"},
+    {"dustShort", "Textura dinâmica", "Dynamic texture"},
+    {"crushShort", "Bits + taxa", "Bits + rate"},
     {"oneShot", "Disparo único", "One Shot"},
     {"reverse", "Reverso", "Reverse"},
     {"pingPong", "Ping-Pong", "Ping-Pong"},
@@ -80,8 +140,8 @@ inline const Entry entries[]{
     {"pt", "Português (BR)", "Português (BR)"},
     {"en", "English", "English"},
     {"load", "CARREGAR SOM", "LOAD SOUND"},
-    {"empty", "Arraste WAV, AIFF ou MP3 aqui · ou use CARREGAR SOM",
-     "Drop WAV, AIFF or MP3 here · or use LOAD SOUND"},
+    {"empty", "Arraste WAV, AIFF, MP3 ou M4A aqui · ou use CARREGAR SOM",
+     "Drop WAV, AIFF, MP3 or M4A here · or use LOAD SOUND"},
     {"root", "Nota raiz", "Root note"},
     {"start", "Início", "Start"},
     {"end", "Fim", "End"},
@@ -118,7 +178,7 @@ inline const Entry entries[]{
     {"bloom", "Cauda difusa · 4 linhas", "Diffuse tail · 4 delay lines"},
     {"rack", "03 / RACK · selecione ou arraste os títulos", "03 / RACK · select or drag headings"},
     {"perform", "02 / PLAY · TOQUE A TEXTURA", "02 / PLAY · PLAY THE TEXTURE"},
-    {"sample", "01 / SUA MATÉRIA-PRIMA", "01 / YOUR RAW MATERIAL"},
+    {"sample", "01 / SEU SAMPLE", "01 / YOUR SAMPLE"},
     {"error",
      "Não foi possível abrir o áudio. Use WAV/AIFF/MP3 válido, até 32 MB e 120 s. Limite de áudio "
      "carregado por sessão: 256 MB; reabra a instância para liberar.",

@@ -4,14 +4,30 @@ A native MIDI sample instrument and reorderable texture rack. First working prot
 
 ## RASTRO PLAY: sample, cortes e execução MIDI
 
-Esta revisão continua sendo **somente o instrumento sampler MIDI RASTRO PLAY**. O nome/binário e os identificadores permanecem RASTRO para preservar compatibilidade. Não foi criado um RASTRO FX nem uma entrada para áudio de outras faixas. Esta revisão é publicada na branch `prepare-mac-testing` (PR #1). Os artefatos anteriores do GitHub não incluem estas mudanças: baixe somente um build do commit atual da branch e confira `BUILD-INFO.txt`.
+Esta revisão continua sendo **somente o instrumento sampler MIDI RASTRO PLAY**. O nome/binário e os identificadores permanecem RASTRO para preservar compatibilidade. Não foi criado um RASTRO FX nem uma entrada para áudio de outras faixas. A Etapa 1, incluindo Cosmic Arcade, hardware, PITCH MODE e M4A, integra a branch `prepare-mac-testing` do [PR #1 em rascunho](https://github.com/gabcalisman/rastro/pull/1), sem merge em `main`. Para baixar, use o workflow do **commit atual** e confira `BUILD-INFO.txt`; o artefato antigo do build #3 (`4f27e91`) não contém estas mudanças.
 
 ### Carregar, recortar e ouvir
 
-1. Use **CARREGAR SOM** para abrir WAV, AIFF/AIF ou MP3, ou arraste **um arquivo** desses formatos para qualquer área da interface. Os dois caminhos importam em segundo plano. MP3 funciona offline: o decoder faz parte do executável; não requer FFmpeg, internet ou codec instalado no Mac.
+1. Use **CARREGAR SOM** para abrir WAV, AIFF/AIF, MP3 ou M4A renderizado (AAC/ALAC), ou arraste **um arquivo** desses formatos para qualquer área da interface. Os dois caminhos importam em segundo plano. No Mac, M4A usa CoreAudio; a validação desta rodada foi no Linux, onde M4A requer FFmpeg local. MP3 funciona offline: o decoder faz parte do executável; não requer FFmpeg, internet ou codec instalado no Mac.
 2. Arraste os **triângulos/linhas laranja** na waveform para mudar início e fim. Os sliders continuam disponíveis para ajuste/automação. Os limites não se cruzam ao arrastar. Novas notas usam a edição atual; vozes em andamento preservam os limites capturados para não saltar no meio do som.
 3. **Ouvir trecho** toca uma passagem para a frente do intervalo inteiro, no pitch original e através do rack, independentemente de Reverse/Slice. **Parar prévia** libera apenas essa voz; o MIDI permanece independente. Comece com volume de monitoração baixo.
 4. O estado do host preserva bytes originais do arquivo, trims, modo, cortes, parâmetros, rack, idioma e PLAY. O arquivo externo não é necessário para restaurar; MP3 é decodificado novamente pelo mesmo decoder local.
+
+### PITCH MODE — separado do modo de execução
+
+O seletor **PITCH MODE** fica na faixa de parâmetros do sample, separado de One Shot/Loop/Reverse/Ping-Pong/Slice:
+
+- **REPITCH** (padrão): uma nota MIDI acima/abaixo da raiz muda altura **e velocidade**. Uma oitava acima
+  dobra a frequência e a velocidade de leitura; uma abaixo reduz ambas à metade. É o comportamento anterior.
+- **FIXED PITCH**: toda nota dispara a mesma altura e velocidade originais do arquivo, com conversão normal
+  para o sample rate do host. Velocity, polifonia, trims, efeitos e note-off continuam funcionando.
+- **Slice** continua usando notas MIDI para escolher cortes, sempre na velocidade original, nos dois pitch modes.
+
+A escolha é automatizável e salva na sessão. Aplica-se às **novas vozes**; uma nota em andamento mantém
+sua velocidade capturada para não saltar ao mudar o seletor. Sessões antigas recebem REPITCH. MUTATE e
+reset visual não alteram essa escolha. A prévia continua no pitch original. O tooltip explica os dois modos.
+**Não há time-stretch com preservação de altura**: essa possibilidade está no roadmap e exige um projeto
+DSP próprio, orçamento realtime e migração antes de ser implementada. Multisample também permanece futuro.
 
 ### Modos e cortes por MIDI
 
@@ -47,21 +63,138 @@ O adaptador original `Source/Mp3Decoder.cpp` usa **minimp3**, revisão `ea99364f
 
 Limites: até 32 MB codificados e 120 s; MP3 mono/estéreo de 8–48 kHz, convertido para PCM estéreo. Não há compensação automática de delay/padding de encoder ou edição gapless dos metadados Xing/LAME; recorte eventual silêncio nas extremidades. O estado armazena o MP3 original e a restauração é determinística com esse decoder. Os fixtures são senóides sintéticas próprias com dedicação CC0 documentada. FFmpeg/libmp3lame foi usado somente para gerá-los, não como dependência de build/runtime.
 
+### Gravações do Gravador: M4A AAC / ALAC
+
+Suporte offline implementado para áudio renderizado. No **Linux x86_64**, os fixtures passaram em:
+**AAC-LC mono 44,1/48 kHz e estéreo 48 kHz; ALAC mono 16 bit/44,1 kHz e 24 bit/48 kHz;
+ALAC estéreo 16 bit/44,1 kHz**. WAV/AIFF PCM mono/estéreo e MP3 continuam passando.
+Esses exemplos são senóides originais, não gravações exportadas do aplicativo Apple.
+
+No **Mac**, o adaptador usa os codecs do CoreAudio do sistema por meio do JUCE, sem instalar FFmpeg;
+**a decodificação por esse caminho ainda precisa de teste no Mac**. O CI compila o adaptador, mas não executa a suíte opcional de importação/editor. HE-AAC, xHE-AAC, DRM e áudio espacial
+não foram validados. Não se promete suporte a toda variante do contêiner M4A.
+
+**QuickTime “Editável” (.mov/.qt) fica fora desta etapa:** seletor/drop mostram orientação para exportar
+áudio renderizado `.m4a` (Comprimido/AAC ou Sem perdas/ALAC); renomear a extensão não converte o áudio.
+Erros de leitura, corrupção, formato, codec, limites e decoder ausente têm mensagens distintas PT/EN.
+Veja [variantes, uso, limites, dependências, licenças e testes](docs/AUDIO-IMPORT.md).
+
 ### Preparação para um FX futuro
 
 `EngineTypes.h` define fonte/configuração; `Engine.h` cuida das vozes/modos MIDI; `EffectRack.h` processa um par de amostras sem depender de notas, GUI ou carregamento; `CharacterEffects.h` implementa os três DSPs novos. Um futuro RASTRO FX poderá reaproveitar o rack com seu próprio adaptador de host e barramentos. Hoje não existe target, categoria ou modo de áudio externo: o processador tem somente saída e `IS_SYNTH TRUE`.
 
-## Personalização visual e dança
+## Etapa 1 — cor, knobs, rack e Grooveiro
 
-Abra **VISUAL** no cabeçalho. Cada submenu muda somente uma escolha: tema (Retro/Futuro/Arcade/Orgânico), paleta, estilo de knobs/botões, corpo, olhos e acessório (antena/fones/lenço). As escolhas são independentes: por exemplo, tema Futuro com corpo Engrenagem e fones. O menu marca a opção atual; todas as escolhas ficam salvas no estado da sessão e não participam do processamento sonoro. Esta primeira versão usa peças vetoriais predefinidas, sem upload/desenho livre ou desbloqueios.
+Nove conjuntos distintos coordenam textos, fundos, superfícies, botões, bordas e controles:
+**After Hours**, **Solar Studio**, **Mint Condition**, **Sunrise**, **Sunset Drive**, **Poolside**,
+**Electric Soul**, **Burnt Velvet** e **Cosmic Arcade**. Há noite/neon, creme solar, verde claro, coral/laranja, roxo/rosa,
+teal/limão e ferrugem/dourado. As quatro escolhas legadas permanecem disponíveis nas sessões antigas.
+Cosmic Arcade combina roxo/magenta saturados, ciano, textura espacial estática discreta e cassete/deck luminoso original, sem copiar layouts de referência.
+O texto troca entre claro e escuro; menus JUCE também atualizam a cor, sem rótulos brancos presos em tema claro.
 
-O avatar tem braços/pernas e dá um gesto/pulinho por nota; a velocity recebida controla sua energia. O envelope de áudio, PLAY e as medições dos efeitos acrescentam movimento, textura e rastro. A atualização ocorre somente na interface: 24 Hz no modo completo, 12 Hz reduzido e 6 Hz para controles/estado no modo desligado (avatar estático). MIDI muito rápido pode agrupar várias notas entre quadros; não há detecção de beat do arquivo nem análise de transientes. A versão atual usa os eventos recebidos e o sinal medido, não uma coreografia gravada.
+O rack tem seis módulos de 124 pontos, trilhos coloridos, símbolos próprios e descrições auditadas no DSP:
+**GHOST — eco filtrado; CRUMBLE — fragmentos; BLOOM — cauda difusa; WOBBLE — atraso modulado;
+DUST — textura dinâmica; CRUSH — bits + taxa**. Não há anúncio de chorus, flanger, drive ou tape extra.
+Cada módulo mostra estado, controle principal direto e Mix; seleção abre os demais controles abaixo.
+Arraste o título para reordenar: posição visual e ordem real do DSP permanecem sincronizadas.
+Os símbolos identificam o algoritmo; a reação animada ao áudio fica no Grooveiro, sem relógios decorativos.
 
-A personalização foi validada por restauração de estado, renderização das combinações e comparação bit a bit do áudio com escolhas visuais diferentes. **Ainda não foi compilada ou executada no macOS/Logic nesta revisão local.**
+### Materiais e transporte do sampler
+
+As quatro famílias aplicam-se aos controles reais e às miniaturas: **Vintage / marfim canelado**,
+**Amplifier / metal escovado**, **Synth / borracha** e **Console / plástico de console**.
+Ponteiros de alto contraste, chanfros, ranhuras e acabamento discreto de painel mantêm nomes e valores livres.
+
+O ícone pequeno foi substituído por um deck de duas bobinas ao lado da waveform. A rotação é um indicador
+suave de vozes realmente em reprodução (MIDI e prévia), não um relógio independente nem simulação física
+exata de fita. As bobinas continuam após note-off em One Shot até o sample acabar; nos modos gated param
+após a liberação. Não seguem apenas o medidor, portanto não giram só por haver cauda de efeito. Se o host
+parar de fornecer blocos, a indicação para em até ~300 ms. Ao reabrir o painel, espera um bloco novo.
+
+O ponteiro analógico mostra **pico de saída em dBFS**, com suavização visual: **não é um VU RMS calibrado**.
+A faixa não acrescenta efeito tape nem altera timbre. Completo/reduzido usam 24/12 Hz; reduzido também
+reduz a velocidade visual das bobinas. Desligado congela as bobinas e mantém leitura operacional do nível
+em 6 Hz. Deck e mascote principal não avançam atrás do personalizador.
+
+### Onde mudar os knobs e cores
+
+1. Clique em **CORES / KNOBS / GROOVEIRO** no cabeçalho. O painel tem três abas explícitas.
+2. **CORES:** compare as nove miniaturas e a captura da interface real com a escolha aplicada. Fundo, superfícies, botões, bordas e
+   textos e controles mudam juntos. Fundo/destaque/controles podem seguir a paleta ou ser escolhidos separadamente. Chassi muda o arredondamento dos painéis/botões; nas paletas legadas, também influencia o fundo.
+3. **KNOBS:** clique em Vintage, Amplifier, Synth ou Console. A escolha afeta os knobs reais — agora
+   maiores, com os quatro macros numa faixa horizontal. Experimente o knob de prévia: ele é um slider
+   JUCE interativo, mas **não altera o áudio**. Os sliders de sample continuam lineares.
+4. **GROOVEIRO:** escolha corpo pelas miniaturas e combine as outras peças com a prévia ao lado.
+5. **Desfazer** volta uma ação visual (até 32 durante a abertura atual). **Voltar ao abrir** restaura
+   a aparência que existia quando abriu o painel e também pode ser desfeito. **Padrão** restaura apenas
+   o visual. Sample, som, PLAY, MIDI, rack, animação e tamanho compacto são preservados por essas ações.
+6. **VOLTAR** ou Escape fecha o painel, mantendo as escolhas. O foco volta ao botão de abertura.
+   Return abre pelo teclado; Tab percorre controles e as setas mudam a aba quando o foco está nela.
+   O histórico visual não é salvo; as escolhas visuais são salvas na sessão.
+
+**Tamanho:** padrão 1180×840, botão **Compacto** para 1000×700, mínimo 980×700. A preferência compacta
+é salva na sessão. A organização compacta também entra ao redimensionar para menos de 780 pontos de altura.
+Todas as funções continuam disponíveis, com seis módulos em uma faixa e detalhes do selecionado abaixo.
+
+### Monte seu Grooveiro
+
+O Grooveiro tem silhueta inteira mais alongada, olhar discreto, sorriso assimétrico, roupa com lapelas,
+botas plataforma e materiais cromados. Combine formas Orbit/Soul/Metro, olhos Soul/Mono/Digital,
+halo/fones de estúdio/lenço de seda, cabelo pompadour/sleek, aletas metálicas, jaqueta/colete,
+óculos aviador/visor, cabo/ribbon, capa plissada/placas e keytar/beat pads. Peças antigas foram
+redesenhadas com os mesmos IDs/valores; não se promete equivalência visual com o desenho anterior.
+Cor do Grooveiro pode seguir a paleta ou ser independente. Tudo é vetorial original, sem assets externos.
+São peças predefinidas: não há desenho livre, editor de posições, imagens do usuário ou desbloqueios.
+Os instrumentos desenhados são **acessórios visuais** e não acrescentam motores sonoros.
+
+Notas MIDI e velocity disparam gestos com antecipação, impacto e recuperação amortecidos; o nível de áudio modifica expressão/pose;
+WOBBLE inclina o corpo, DUST revela partículas, CRUSH introduz fragmentos visuais e BLOOM deixa um rastro.
+PLAY orienta diretamente a pose **quando há atividade real**: X muda balanço/direção, Y muda alongamento/postura/expressão. Rajadas de notas alimentam a energia e uma fase de gesto derivada dos eventos, sem simples alternância por paridade. A fase contínua do WOBBLE é bloqueada visualmente
+no repouso: não faz o Grooveiro dançar sozinho no silêncio. Após o decaimento suave, ele para.
+Não há análise automática de beat/transientes, coreografia gravada nem oscilador visual independente.
+
+O seletor de animação continua no cabeçalho: completo **24 Hz**, reduzido **12 Hz** com aproximadamente
+um quarto do deslocamento, desligado **6 Hz** para controles/estado e mascote estático. Somente a aba GROOVEIRO avança a prévia; o mascote principal fica suspenso atrás do painel. CORES e KNOBS não animam mascotes. A UI não recalcula layout nem pede repaint completo em cada tick. Desenho, caminhos e interpolação
+visual acontecem na thread da interface; a thread de áudio publica somente atividade das vozes e contador de blocos por operações atômicas limitadas, sem novos locks ou alocações. O desenho fica na UI.
+
+### Verificação da Etapa 1, PITCH MODE e M4A
+
+Linux x86_64: build Release **VST3/Standalone**, **CTest 5/5**, **pluginval nível 5/seed 42** e
+`git diff --check` aprovados. A suíte testa REPITCH/FIXED PITCH em quatro sample rates, Slice nos dois modos, migração/estado, telemetria das bobinas e pausa do host. A suíte visual também testa hit-tests em janela X11, foco/teclado,
+undo/reverter, dimensões de clique, sobreposições, compacto, combinações, restauração, resposta X/Y, controle principal dos seis módulos e drag da ordem real. A importação atualiza nome/waveform no silêncio, sem esperar uma nota MIDI.
+Foram produzidas capturas reais e render 2× simulado. O áudio permanece bit a bit idêntico entre
+personalizações nos testes. Esses resultados são do Linux; o resultado macOS deve ser conferido no workflow do commit atual. **Não houve teste no Logic.**
+
+**Medição anterior do refinamento de UI**, em janela JUCE/Xvfb: CPU de processo passou de aproximadamente 40,5% para 13,4% na
+performance e 47,6% para 5,0% na aba de cores. Inclui DSP e harness, não prevê o desempenho no Mac.
+Contadores verificaram zero layouts em cada intervalo e zero atualizações do mascote coberto.
+Veja [validação e comandos completos](docs/UI-VALIDATION.md), incluindo método, limites e checklist do Mac.
+
+**Capturas:** após os testes, execute:
+
+```sh
+python scripts/export_previews.py --build /workspace/work/build --out /workspace/output/RASTRO-Etapa1
+```
+
+Extraia o ZIP resultante e abra **ABRIR-PREVIAS.html** por duplo clique. É autocontido e offline,
+com PNGs originais, nove paletas, quatro famílias de materiais e performance MIDI. As capturas também estão no [índice do repositório](docs/previews/README.md), incluindo [Cosmic Arcade](docs/previews/cosmic.png) e [materiais dos knobs](docs/previews/knobs.png). Abra esses links no GitHub com acesso ao repositório privado; o botão de download de cada PNG permite salvá-lo. São capturas reais da interface JUCE no Linux, não mockups. A exibição das imagens no chat não foi confirmada; caminhos `/workspace/...` são locais, não links de download.
+
+### Compatibilidade e próximas etapas
+
+Todos os parâmetros antigos preservam ID e range, inclusive `controlStyle` 0–2. O `colourSet` mantém seu range 0–8; Cosmic Arcade usa um campo visual adicional, sem renormalizar automação anterior. O novo `knobDesign`
+usa 0 para seguir esse estilo legado e 1–4 para as quatro escolhas novas. Estados antigos recebem
+defaults explícitos para peças/campos adicionais, preservando as escolhas antigas e o áudio.
+As novas escolhas são salvas pelo APVTS e ficam fora de `Settings`/DSP. O desenho de uma peça antiga
+foi aprimorado; equivalência visual pixel a pixel com a versão anterior não é prometida.
+
+**Somente Etapa 1 implementada.** Multisamples, fontes A/B/Layer, novos efeitos, IR, analógico virtual e FM
+estão no [plano das próximas etapas](docs/ROADMAP.md), com os pontos de integração propostos. Nenhum
+motor/fonte/efeito novo foi criado nesta rodada. MIDI, note-off, importação offline, efeitos e ordem DSP
+mantêm o comportamento sonoro da base publicada; a importação acrescenta M4A renderizado.
 
 ## PLAY e caráter
 
-Esta evolução está **somente no workspace**, sem commit, push ou merge. Os artefatos do PR/GitHub Actions já publicados pertencem à versão anterior; não contêm estes recursos até que estas mudanças sejam revisadas e publicadas em outra etapa. Não houve compilação macOS nem teste no Logic desta evolução.
+Os recursos sonoros abaixo já pertencem à base `4f27e91` e foram preservados no redesenho da Etapa 1. O build macOS #3 valida apenas aquela base; consulte o workflow do commit atual para esta revisão. Não houve teste no Logic.
 
 - **PLAY:** arraste o pad. X multiplica a profundidade individual do WOBBLE; Y multiplica o nível do DUST e a intensidade do CRUSH. A fórmula é `valor individual × 2 × eixo`, limitada a 0–1: o centro (50%, 50%) preserva os valores do rack; a borda esquerda elimina a profundidade do WOBBLE e a borda inferior elimina a transformação DUST/CRUSH. Mix e bypass continuam independentes. Duplo clique, **Centralizar** ou Home volta ao centro. As setas permitem ajustes de 2%. Os dois eixos são parâmetros automatizáveis e têm MIDI Learn separado; os três mapeamentos de macros anteriores continuam disponíveis.
 - **WOBBLE:** atraso interpolado com oscilação lenta de 0,15–3 Hz e flutter mais rápido. Controles: intensidade, velocidade e mix. É DSP próprio de fita instável, não uma emulação calibrada de equipamento nem um algoritmo de terceiro. Mix parcial pode produzir coloração de fase; o atraso varia em torno de 8 ms e não é compensado como latência fixa do host.
@@ -83,7 +216,7 @@ Referências de categoria e interação: [página oficial](https://www.xlnaudio.
 
 ### Validar esta versão
 
-Verificação desta revisão local (Linux x86_64): build Release de **VST3 e Standalone** concluído; CTest **5/5**; testes portáveis com AddressSanitizer/UndefinedBehaviorSanitizer **4/4**; **pluginval nível 5, seed 42**, concluído com código de saída zero; `git diff --check` sem erros. LeakSanitizer ficou desligado (`ASAN_OPTIONS=detect_leaks=0`) por limitação de ptrace do ambiente. Os testes de UI geraram snapshots em quatro combinações visuais; a suíte também confirma estado visual persistente e áudio bit a bit idêntico com personalizações diferentes. Não houve teste de escuta nem execução macOS/Logic nesta revisão.
+Verificação da base sonora anterior (Linux x86_64): build Release de **VST3 e Standalone** concluído; CTest **5/5**; testes portáveis com AddressSanitizer/UndefinedBehaviorSanitizer **4/4**; **pluginval nível 5, seed 42**, concluído com código de saída zero; `git diff --check` sem erros. LeakSanitizer ficou desligado (`ASAN_OPTIONS=detect_leaks=0`) por limitação de ptrace do ambiente. Os testes de UI geraram snapshots em quatro combinações visuais; a suíte também confirma estado visual persistente e áudio bit a bit idêntico com personalizações diferentes. Não houve teste de escuta nem execução macOS/Logic nesta revisão.
 
 Comandos usados no diretório de build local já configurado:
 
@@ -98,17 +231,17 @@ git diff --check
 
 Esses caminhos são do ambiente Linux desta tarefa, não comandos para seu Mac; use a seção macOS abaixo no seu computador. O build sanitizado foi configurado com `RASTRO_CORE_ONLY=ON`, Debug e `-fsanitize=address,undefined -fno-omit-frame-pointer`.
 
-A compilação normal inclui quatro testes portáveis (`dsp`, `character`, `playback`, `mp3`); com `RASTRO_INTEGRATION_TESTS=ON` são cinco, incluindo `processor`. O workflow macOS foi ajustado localmente para também compilar `rastro_character_tests`, `rastro_playback_tests` e `rastro_mp3_tests`, e será executado ao atualizar o PR; confira o resultado do commit atual no GitHub Actions.
+A compilação normal inclui quatro testes portáveis (`dsp`, `character`, `playback`, `mp3`); com `RASTRO_INTEGRATION_TESTS=ON` são cinco, incluindo `processor`. O workflow macOS compila e executa os quatro portáveis; a suíte opcional de importação/editor deve ser executada separadamente no Mac. O resultado de cada execução está nos Checks do PR.
 
 - `character`: 720 ordens; diferença audível de WOBBLE/DUST/CRUSH; comparação seca com mix zero; DUST sem sample e após note-off; limites/valores finitos; PLAY/telemetria; quatro sample rates; proteção contra alocação no caminho DSP.
 - `playback`: cinco modos, cortes manuais por MIDI, trims e quatro sample rates. Compara One Shot com/sem note-off antecipado (áudio idêntico até o fim do trim), liberação dos quatro modos restantes, note-off de outra nota, Loop legado, all-off e parada de prévia. A suíte de processor também testa note-off MIDI com offset e teclado da interface nos cinco modos.
 - `mp3`: decoder offline mono/estéreo, sample rate, PCM, canais e entradas inválidas/truncadas.
-- `processor`: mantém WAV/AIFF, mono/estéreo, offset MIDI, tempo de host, restauração e renderização anteriores; acrescenta migração v1 para v2 numa instância já editada, estado dos seis módulos/XY/CC/animação, mutação apenas dos efeitos ativos, proteção de sample/raiz/trims/nível, desfazer exato após salvar/restaurar, PLAY com mouse/teclado/CC e avatar reativo/estático enquanto o áudio continua, velocity visual, personalização persistente e independência do áudio. Também verifica restauração idêntica de MP3, modo/cortes/trims persistentes, arrasto de marcadores, prévia e file drop assíncrono.
-- No Mac: recompilar AU/VST3/Standalone desta revisão, executar os testes, `auval`, verificar performance/interação do avatar, automação XY, MIDI real, instalação/assinatura, recall no Logic, audição comparativa dos efeitos e bounce. A aprovação da compilação macOS da versão anterior não valida estes arquivos locais.
+- `processor`: mantém WAV/AIFF, mono/estéreo, offset MIDI, tempo de host, restauração e renderização anteriores; acrescenta migração v1 para v2 numa instância já editada, estado dos seis módulos/XY/CC/animação, mutação apenas dos efeitos ativos, proteção de sample/raiz/trims/nível, desfazer exato após salvar/restaurar, PLAY com mouse/teclado/CC e avatar reativo/estático enquanto o áudio continua, velocity visual, personalização persistente e independência do áudio. Também verifica os seis fixtures AAC-LC/ALAC, importação assíncrona do seletor/drop, erros e restauração M4A; restauração idêntica de MP3, modo/cortes/trims persistentes, arrasto de marcadores, prévia e file drop assíncrono.
+- No Mac: baixar o build aprovado do commit atual ou recompilar AU/VST3/Standalone, executar a suíte de integração/importação, `auval`, verificar performance/interação do avatar, automação XY, MIDI real, instalação/assinatura, recall no Logic, audição comparativa dos efeitos e bounce. Um build aprovado não substitui esses testes.
 
 ## Play
 
-1. Load a WAV, AIFF or MP3 using **CARREGAR SOM / LOAD SOUND**, or drop one audio file onto the interface.
+1. Load a WAV, AIFF, MP3 or rendered M4A (AAC/ALAC) using **CARREGAR SOM / LOAD SOUND**, or drop one audio file onto the interface.
 2. Play MIDI notes or the onscreen keyboard. MIDI note 60 plays at the original pitch with the default root of 60. Root and trims apply to newly triggered voices.
 3. Select One Shot, Loop, Reverse, Ping-Pong or MIDI Slices in the playback menu. One Shot ignores ordinary note-off and plays to the trim end; Loop, Reverse, Ping-Pong and MIDI Slices release within about 30 ms (or earlier at a non-looping boundary). Effect tails can continue. Velocity controls amplitude and the adjustable low-pass response.
 4. Adjust the six effects. Drag a card's heading onto another card to insert it at that position. Select a card to edit its detailed controls. **Active / Bypassed** compares a module; **×** removes it; **+ Module** restores it. One instance of each type is available.
@@ -183,33 +316,11 @@ Look for **`AU VALIDATION SUCCEEDED`**, then open Logic Pro → Settings → Plu
 
 **These are instructions to run on your Mac, not a report of a successful Mac test.** This chat workspace is Linux. The separate GitHub Actions macOS workflow can build Mac bundles; check its actual run status for build evidence. Neither that workflow nor this workspace runs Logic Pro. Linux `.so` files and the Linux Standalone executable cannot be installed on a Mac.
 
-#### 1. Review and publish the source from Codex first
+#### 1. Review the existing draft PR
 
-The prototype was created in the Codex workspace on branch `work`. A GitHub connection does **not** automatically commit or push edits. At the repository inspection for this guide on October 21, 2026, the workspace still had uncommitted changes, local HEAD was `9546a84` (`Initial commit`), GitHub `main`'s README contained only `# rastro`, and GitHub `main` had no `CMakeLists.txt`. This is a dated observation, not a live repository status indicator.
+The source and tests are on **`prepare-mac-testing`**, linked to [draft PR #1](https://github.com/gabcalisman/rastro/pull/1) against `main`. Review its **Files changed** and **Checks** tabs. Use the successful **macOS build** run associated with the current commit, not an older run. You can download and test the plugin while the PR stays a draft; no merge or repository visibility change is needed.
 
-1. In this Codex task, open the **changes/diff view** (the label varies by Codex client). Review the README change **and the new files**: `CMakeLists.txt`, `Source/`, `tests/`, `.gitignore` and `.clang-format`. Newly created files must be included, not just the tracked README diff. There are no new product features in this Mac preparation update.
-2. If your client offers **Create PR**, use it to publish a new branch to `gabcalisman/rastro`, with `main` as the base. Open the resulting GitHub PR and check its **Files changed** tab includes the source and tests. Creating a PR publishes a branch; it does not update `main` until you merge it.
-3. If there is no publishing control, send Codex this explicit instruction after reviewing: **“Commit all RASTRO prototype source, tests, configuration and the updated README on a new branch, push it to gabcalisman/rastro, and open a draft pull request against main. Do not merge it.”** Codex will need working repository write access. Inspect the resulting PR before marking it ready and merging.
-4. After merging, check GitHub `main` contains `CMakeLists.txt` and `Source/Processor.cpp`. Only then follow the `main` clone instructions below. To test before merging, check out the PR's actual branch name on your Mac instead.
-
-If you prefer a terminal in this **existing Codex workspace**, the equivalent Git operations are:
-
-```sh
-cd /workspace/rastro
-git status --short --branch
-git diff -- README.md
-# Read the new files listed by status in Codex's file/diff view as well.
-git switch -c prepare-mac-testing
-git add README.md CMakeLists.txt Source tests .gitignore .clang-format
-git diff --cached --stat
-git diff --cached --check
-git diff --cached
-# Continue only after reviewing the staged contents:
-git commit -m "Add RASTRO prototype and Mac testing guide"
-git push -u origin prepare-mac-testing
-```
-
-Use an unused branch name if that name already exists. Git must already have your author identity and repository authentication configured; do not paste tokens into commands. After a successful push, open <https://github.com/gabcalisman/rastro/compare/main...prepare-mac-testing> to create the PR. Review it and merge when ready. The steps above are instructions; this documentation update does not itself commit, push or merge anything.
+A GitHub connection does not automatically save future Codex edits. For later updates, review `git status`, the diff and any new files; commit and push to this same branch when authorized. Do not create another PR for this test version. If you only want to install the binary, use the download instructions above and skip the compiler prerequisites.
 
 #### 2. Install the Mac prerequisites
 
@@ -244,21 +355,21 @@ You need a Mac with a macOS version supported by your installed Xcode and Logic 
 
 #### 3. Get the published project onto your Mac
 
-After the PR has been merged into `main`, run in your Mac Terminal:
+To build the current draft version without merging it, run in your Mac Terminal:
 
 ```sh
 mkdir -p "$HOME/Developer"
 cd "$HOME/Developer"
 git clone https://github.com/gabcalisman/rastro.git
 cd rastro
-git switch main
+git switch prepare-mac-testing
 git pull --ff-only
 test -f CMakeLists.txt && test -f Source/Processor.cpp && echo "Prototype source is present"
 ```
 
 This repository is private: authenticate with your GitHub account using an existing credential manager/GitHub CLI setup or use GitHub Desktop to clone it, then open that clone in Terminal. A normal GitHub account password is not a Git HTTPS password. Do not share authentication tokens in this chat.
 
-If you have already cloned it, open that folder and run `git status` before pulling; preserve any local edits. If testing an unmerged PR, replace `git switch main` with `git switch THE_ACTUAL_PR_BRANCH` after `git fetch origin`. Run the remaining commands from the folder containing `CMakeLists.txt`. If the final source check prints nothing, you have the old README-only revision: finish publishing or select the correct branch before building.
+If you have already cloned it, open that folder and run `git status` before pulling; preserve any local edits. Run `git fetch origin`, switch to `prepare-mac-testing`, then `git pull --ff-only`. Run the remaining commands from the folder containing `CMakeLists.txt`. If the final source check prints nothing, check that you selected the correct branch before building.
 
 #### 4. Configure and build the Mac plugins
 
@@ -406,10 +517,12 @@ The file chooser dispatches decoding and waveform precomputation to a processor-
 - Effect timing follows BPM but not bar phase. Delay time/size movement can produce intentional pitch smearing. BLOOM is a basic diffuse tail; effect bypass keeps internal buffers warm, so old tails may reappear when re-enabled. The declared host tail is 12 seconds; extreme feedback can ring longer.
 - File-chooser decoding runs on a worker; state restoration still runs on its host caller outside the callback. Session states embed base64 source audio and can be large.
 - CC learn uses the first incoming CC, on any channel. Host automation notification for learned CC is deferred to the editor/state thread; closed-editor recording of those CC gestures as host automation is not implemented. Hardware MIDI, physical audio output and DAW workflow require hands-on testing.
-- The minimum editor size is 900 × 860. The waveform cursor follows a single most-recent voice position; the avatar uses aggregate measurements. Animation can be reduced or disabled.
+- The minimum editor size is 980 × 700; standard is 1180 × 840, compact is 1000 × 700. The waveform cursor follows a single most-recent voice position; the avatar uses aggregate measurements. Animation can be reduced or disabled.
 - Video-derived audio and the separate RASTRO FX plugin are deliberately not implemented. Decoder, sampler, shared rack and host/editor layers remain separate for later reuse.
 
-## Verification in this cloud session
+## Historical verification of the initial prototype
+
+This section records the initial prototype checks. Current local Stage 1/M4A results are described above and in `docs/UI-VALIDATION.md` and `docs/AUDIO-IMPORT.md`.
 
 Built on Debian 13 x86_64 with GCC 14.2, CMake 3.31.6 and JUCE 8.0.6. Since system package installation was unavailable, Debian development packages were downloaded and extracted into workspace-local build tooling; no privileged installation was needed.
 

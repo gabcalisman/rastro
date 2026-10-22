@@ -28,9 +28,22 @@ class RastroAvatar : public juce::Component
     float level = 0, wobble = 0, dust = 0, crush = 0, tail = 0, note = 0, x = .5f, y = .5f;
     unsigned lastNote = 0;
     int mode = 2;
+    float swing = 0, swingVelocity = 0, lift = 0, liftVelocity = 0, gesturePhase = 0,
+          gestureAge = 1, directionTarget = 0;
+    std::array<float, 12> lastFrame{};
 
   public:
     explicit RastroAvatar(RastroProcessor &processor) : p(processor) {}
-    void update(int animationMode);
+    struct Motion
+    {
+        float x, y, swing, lift, activity;
+    };
+    void resume()
+    {
+        lastNote = p.engine.noteSerial.load();
+        note = swing = swingVelocity = lift = liftVelocity = 0;
+    }
+    Motion motion() const { return {x, y, swing, lift, std::min(1.f, level * 7 + note)}; }
+    bool update(int animationMode);
     void paint(juce::Graphics &) override;
 };

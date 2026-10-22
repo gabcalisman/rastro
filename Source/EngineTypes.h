@@ -22,7 +22,7 @@ struct Settings
     float playX = .5f, playY = .5f;
     std::array<bool, moduleCount> enabled{{true, true, true, true, true, true}};
     Order order = defaultOrder;
-    int mode = 0, sliceCount = 8;
+    int mode = 0, sliceCount = 8, pitchMode = 0; // 0 REPITCH, 1 FIXED PITCH
     std::array<float, 17> cuts{
         {0, .125f, .25f, .375f, .5f, .625f, .75f, .875f, 1, 1, 1, 1, 1, 1, 1, 1, 1}};
 };

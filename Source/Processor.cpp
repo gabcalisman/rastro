@@ -1,6 +1,7 @@
 #include "Processor.h"
 #include "Editor.h"
 #include "Mp3Decoder.h"
+#include "Strings.h"
 namespace
 {
 constexpr int orders[6][3] = {{0, 1, 2}, {0, 2, 1}, {1, 0, 2}, {1, 2, 0}, {2, 0, 1}, {2, 1, 0}};
@@ -58,6 +59,17 @@ juce::AudioProcessorValueTreeState::ParameterLayout RastroProcessor::layout()
         auto id = "slice" + juce::String(i);
         add(id.toRawUTF8(), 0, 1, std::min(1.f, i / 8.f));
     }
+    // Append visual parameters only: no range/ID changes to existing host automation.
+    add("knobDesign", 0, 4, 0, 1);
+    add("uiCompact", 0, 1, 0, 1);
+    for (auto id : {"visualBackground", "visualAccent", "visualControls", "avatarColour"})
+        add(id, 0, 4, 0, 1);
+    for (auto id : {"avatarHair", "avatarHorns", "avatarClothes", "avatarGlasses", "avatarTail",
+                    "avatarWings", "avatarInstrument"})
+        add(id, 0, 2, 0, 1);
+    add("colourSet", 0, 8, 0, 1);
+    add("pitchMode", 0, 1, 0, 1);
+    add("cosmicArcade", 0, 1, 0, 1);
     return l;
 }
 RastroProcessor::RastroProcessor()
@@ -99,6 +111,7 @@ rastro::Settings RastroProcessor::settings() const
     p.dust = {value("dLevel"), value("dCharacter"), value("dMix")};
     p.crush = {value("kAmount"), value("kMix")};
     p.mode = (int)value("playMode");
+    p.pitchMode = (int)value("pitchMode");
     p.sliceCount = (int)value("sliceCount");
     // Static ID table avoids temporary Strings in the callback.
     const char *cuts[]{"slice1",  "slice2",  "slice3",  "slice4",  "slice5",
@@ -239,52 +252,103 @@ void RastroProcessor::processBlock(juce::AudioBuffer<float> &b, juce::MidiBuffer
     engine.endBlock();
     midi.clear();
 }
-void RastroProcessor::loadFileAsync(juce::File f, std::function<void(bool)> complete)
+void RastroProcessor::importFileAsync(juce::File file,
+                                      std::function<void(rastro::ImportError)> complete)
 {
     loader.addJob(
-        [this, f, complete = std::move(complete)]
+        [this, file, complete = std::move(complete)]
         {
-            bool ok = loadFile(f);
-            juce::MessageManager::callAsync([complete, ok] { complete(ok); });
+            auto result = importFile(file);
+            importError = result;
+            juce::MessageManager::callAsync([complete, result] { complete(result); });
         });
 }
-bool RastroProcessor::loadFile(const juce::File &f)
+void RastroProcessor::loadFileAsync(juce::File file, std::function<void(bool)> complete)
 {
-    juce::MemoryBlock data;
-    if (f.getSize() > 32 * 1024 * 1024 || !f.loadFileAsData(data))
-        return false;
-    return loadData(data.getData(), data.getSize(), f.getFileName());
+    importFileAsync(file, [complete = std::move(complete)](rastro::ImportError result)
+                    { complete(result == rastro::ImportError::none); });
+}
+bool RastroProcessor::loadFile(const juce::File &file)
+{
+    auto result = importFile(file);
+    importError = result;
+    return result == rastro::ImportError::none;
 }
 bool RastroProcessor::loadData(const void *data, size_t size, juce::String name)
 {
-    if (data == nullptr || size == 0 || size > 32 * 1024 * 1024)
-        return false;
+    auto result = importData(data, size, std::move(name));
+    importError = result;
+    return result == rastro::ImportError::none;
+}
+rastro::ImportError RastroProcessor::importFile(const juce::File &file)
+{
+    using E = rastro::ImportError;
+    if (rastro::editableRecording(file))
+        return E::editableMovie;
+    if (!file.existsAsFile())
+        return E::unreadable;
+    if (file.getSize() > 32 * 1024 * 1024)
+        return E::encodedLimit;
+    juce::MemoryBlock bytes;
+    if (!file.loadFileAsData(bytes))
+        return E::unreadable;
+    return importData(bytes.getData(), bytes.getSize(), file.getFileName());
+}
+rastro::ImportError RastroProcessor::importData(const void *data, size_t size, juce::String name)
+{
+    using E = rastro::ImportError;
+    if (name.endsWithIgnoreCase(".mov") || name.endsWithIgnoreCase(".qt"))
+        return E::editableMovie;
+    if (!data || size == 0)
+        return E::corrupt;
+    if (size > 32 * 1024 * 1024)
+        return E::encodedLimit;
     std::unique_ptr<rastro::Sample> sample;
-    std::unique_ptr<juce::AudioFormatReader> reader;
-    if (!name.endsWithIgnoreCase(".mp3"))
-        reader.reset(
-            formats.createReaderFor(std::make_unique<juce::MemoryInputStream>(data, size, false)));
-    if (reader)
+    auto *bytes = static_cast<const uint8_t *>(data);
+    bool mp4 =
+        name.endsWithIgnoreCase(".m4a") || (size >= 12 && std::memcmp(bytes + 4, "ftyp", 4) == 0);
+    if (mp4)
     {
-        if (reader->lengthInSamples < 2 || reader->lengthInSamples > reader->sampleRate * 120 ||
-            reader->lengthInSamples > 16000000)
-            return false;
-        juce::AudioBuffer<float> buffer(2, (int)reader->lengthInSamples);
-        if (!reader->read(&buffer, 0, buffer.getNumSamples(), 0, true, true))
-            return false;
-        sample = std::make_unique<rastro::Sample>();
-        sample->rate = reader->sampleRate;
-        for (int c = 0; c < 2; ++c)
-        {
-            auto *ptr = buffer.getReadPointer(reader->numChannels == 1 ? 0 : c);
-            sample->data[c].assign(ptr, ptr + buffer.getNumSamples());
-        }
+        E error;
+        sample = rastro::decodeM4a(data, size, formats, error);
+        if (!sample)
+            return error;
     }
     else
-        sample = rastro::decodeMp3(data, size);
-    if (!sample)
-        return false;
-    const size_t bytes = size_t(sample->size()) * 2 * sizeof(float);
+    {
+        std::unique_ptr<juce::AudioFormatReader> reader;
+        if (!name.endsWithIgnoreCase(".mp3"))
+            reader.reset(formats.createReaderFor(
+                std::make_unique<juce::MemoryInputStream>(data, size, false)));
+        if (reader)
+        {
+            if (!std::isfinite(reader->sampleRate) || reader->sampleRate < 8000 ||
+                reader->sampleRate > 384000 || reader->numChannels < 1 ||
+                reader->lengthInSamples < 2)
+                return E::corrupt;
+            if (reader->lengthInSamples > reader->sampleRate * 120 ||
+                reader->lengthInSamples > 16000000)
+                return E::durationLimit;
+            juce::AudioBuffer<float> buffer(2, (int)reader->lengthInSamples);
+            if (!reader->read(&buffer, 0, buffer.getNumSamples(), 0, true, true))
+                return E::corrupt;
+            sample = std::make_unique<rastro::Sample>();
+            sample->rate = reader->sampleRate;
+            for (int c = 0; c < 2; ++c)
+            {
+                auto *ptr = buffer.getReadPointer(reader->numChannels == 1 ? 0 : c);
+                sample->data[c].assign(ptr, ptr + buffer.getNumSamples());
+            }
+        }
+        else
+            sample = rastro::decodeMp3(data, size);
+        if (!sample)
+            return (name.endsWithIgnoreCase(".wav") || name.endsWithIgnoreCase(".aiff") ||
+                    name.endsWithIgnoreCase(".aif") || name.endsWithIgnoreCase(".mp3"))
+                       ? E::corrupt
+                       : E::unsupportedFormat;
+    }
+    const size_t decodedBytes = size_t(sample->size()) * 2 * sizeof(float);
     for (auto &channel : sample->data)
         for (auto &f : channel)
             f = std::isfinite(f) ? juce::jlimit(-4.f, 4.f, f) : 0;
@@ -297,15 +361,31 @@ bool RastroProcessor::loadData(const void *data, size_t size, juce::String name)
     }
     juce::MemoryBlock encoded(data, size);
     juce::ScopedLock lock(stateLock);
-    if (ownedBytes + bytes > 256 * 1024 * 1024)
-        return false;
+    if (ownedBytes + decodedBytes > 256 * 1024 * 1024)
+        return E::memoryLimit;
     auto *ptr = sample.get();
     owned.push_back(std::move(sample));
-    ownedBytes += bytes;
+    ownedBytes += decodedBytes;
     sampleBytes.swapWith(encoded);
     loadedName = name;
     source.store(ptr, std::memory_order_release);
-    return true;
+    return E::none;
+}
+juce::String RastroProcessor::importMessage(rastro::ImportError error) const
+{
+    using E = rastro::ImportError;
+    const char *key = error == E::unreadable           ? "importRead"
+                      : error == E::corrupt            ? "importCorrupt"
+                      : error == E::unsupportedFormat  ? "importFormat"
+                      : error == E::incompatibleCodec  ? "importCodec"
+                      : error == E::editableMovie      ? "importMovie"
+                      : error == E::encodedLimit       ? "importEncoded"
+                      : error == E::durationLimit      ? "importDuration"
+                      : error == E::memoryLimit        ? "importMemory"
+                      : error == E::decoderUnavailable ? "importBackend"
+                      : error == E::decodeFailed       ? "importDecode"
+                                                       : "importSuccess";
+    return text::get(key, language);
 }
 juce::String RastroProcessor::sampleName()
 {

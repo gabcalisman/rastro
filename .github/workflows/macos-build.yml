@@ -86,6 +86,19 @@ jobs:
           mkdir -p "$component_dir"
           ditto "$BUILD_DIR/Rastro_artefacts/Release/AU/RASTRO.component" "$component_dir/RASTRO.component"
           ditto "$BUILD_DIR/RastroCapture_artefacts/Release/AU/RASTRO Capture.component" "$component_dir/RASTRO Capture.component"
+          /usr/libexec/PlistBuddy -c 'Print :AudioComponents' "$component_dir/RASTRO.component/Contents/Info.plist"
+          /usr/libexec/PlistBuddy -c 'Print :AudioComponents' "$component_dir/RASTRO Capture.component/Contents/Info.plist"
+          # pluginval may have started the registrar before these AUs were installed.
+          # Refresh only this disposable runner's process, then allow discovery to finish.
+          killall -9 AudioComponentRegistrar 2>/dev/null || true
+          for attempt in {1..10}; do
+            auval -a > au-components.log 2>&1
+            if grep -E 'aumu[[:space:]]+Rstr[[:space:]]+GbCa' au-components.log && grep -E 'aufx[[:space:]]+Rcpt[[:space:]]+GbCa' au-components.log; then
+              break
+            fi
+            sleep 2
+          done
+          cat au-components.log
           auval -v aumu Rstr GbCa 2>&1 | tee auval-play.log
           auval -v aufx Rcpt GbCa 2>&1 | tee auval-capture.log
 
@@ -121,7 +134,7 @@ jobs:
             done
           } > "$package/BUILD-INFO.txt"
           mkdir -p dist/report
-          cp "$package/BUILD-INFO.txt" native-tests.log pluginval-play.log pluginval-capture.log auval-play.log auval-capture.log dist/report/
+          cp "$package/BUILD-INFO.txt" native-tests.log pluginval-play.log pluginval-capture.log auval-play.log auval-capture.log au-components.log dist/report/
           ditto -c -k --sequesterRsrc --keepParent "$package" "dist/$PACKAGE_NAME.zip"
           (cd dist && shasum -a 256 "$PACKAGE_NAME.zip" > "$PACKAGE_NAME.zip.sha256")
           cp "dist/$PACKAGE_NAME.zip.sha256" dist/report/

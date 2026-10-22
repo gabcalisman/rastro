@@ -1,5 +1,6 @@
 #pragma once
 #include "CaptureBridge.h"
+#include "CaptureLink.h"
 #include "Engine.h"
 #include "PatchSearch.h"
 #include "RecordingImport.h"
@@ -46,6 +47,9 @@ class RastroProcessor : public juce::AudioProcessor, private juce::MidiKeyboardS
     std::function<void()> standaloneAudioSettings;
     std::function<bool()> standaloneInputAvailable;
     void beginCapture(std::function<void(bool)> complete);
+    void pollCaptureLinks(
+        std::function<void(std::vector<juce::File>, std::vector<rastro::CaptureLink>)>);
+    void remoteCapture(juce::String id, bool start, std::function<void(bool)>);
     void listCaptures(std::function<void(std::vector<juce::File>)> complete);
     void processBlock(juce::AudioBuffer<float> &, juce::MidiBuffer &) override;
     bool acceptsMidi() const override { return true; }
@@ -90,6 +94,7 @@ class RastroProcessor : public juce::AudioProcessor, private juce::MidiKeyboardS
 
   private:
     bool restoreState(const void *, int);
+    std::atomic<bool> bridgePollPending{false};
     bool directInput = false;
     std::atomic<bool> shuttingDown{false};
     float monitorGain = 0;

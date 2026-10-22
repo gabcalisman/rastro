@@ -6,7 +6,7 @@ class RastroApplication : public juce::JUCEApplication
     struct Window : juce::StandaloneFilterWindow
     {
         explicit Window(juce::PropertySet *settings)
-            : StandaloneFilterWindow("RASTRO PLAY", juce::Colour(0xff141829), settings, false)
+            : StandaloneFilterWindow("RASTRO Play", juce::Colour(0xff141829), settings, false)
         {
         }
         void closeButtonPressed() override { juce::JUCEApplicationBase::quit(); }

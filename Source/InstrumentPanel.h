@@ -1,4 +1,5 @@
 #pragma once
+#include "EnvelopeView.h"
 #include "PatchPanel.h"
 #include "Performance.h"
 #include "Visuals.h"
@@ -7,6 +8,8 @@ class InstrumentPanel : public juce::Component
     RastroProcessor &p;
     juce::TextButton close, synthTab, patchTab;
     PatchPanel patches;
+    EnvelopeView envelope;
+    juce::Label amplitudeTitle, filterTitle;
     bool patchVisible = false;
     juce::Viewport viewport;
     juce::Component content;
@@ -36,6 +39,13 @@ class InstrumentPanel : public juce::Component
   public:
     explicit InstrumentPanel(RastroProcessor &);
     std::function<void()> onClose;
+    void showPage(bool patch)
+    {
+        if (patch)
+            patchTab.onClick();
+        else
+            synthTab.onClick();
+    }
     void update();
     bool keyPressed(const juce::KeyPress &) override;
     void resized() override;

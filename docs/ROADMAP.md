@@ -11,11 +11,12 @@ gravador complementar. Não há RASTRO FX, multisample ou motores independentes 
 - `EffectRack.h` / `CharacterEffects.h`: seis módulos, ordem real, bypass/mix suavizados e relógios.
 - `Processor.*`: APVTS, MIDI com offsets, host BPM/PPQ, migração, loader e estado com áudio embutido.
 - `CaptureRecorder.h`: buffer limitado/pré-alocado, sem locks/allocs no callback. `CaptureBridge.h`:
-  codificação WAV/arquivo compartilhado no worker. `CaptureProcessor.cpp`: insert de passagem gravador.
+  codificação WAV/arquivo compartilhado no worker. `CaptureLink.h`: IPC local
+  com heartbeat/ack entre workers, controle start/stop pelo PLAY, sem I/O na thread de áudio/interface. `CaptureProcessor.cpp`: insert de passagem gravador.
 - `PatchSearch.h`: worker limitado que renderiza o motor real e compara descritores; mutex apenas entre
   worker/interface. `PatchPanel.*`: aplicar/audição/A-B/variação/desfazer e arquivo completo `.rastro`.
 - `Editor`, `SampleView`, `Performance`, `DanceMotion`, `Hardware`, `Customizer`, `InstrumentPanel`:
-  interface/desenho; telemetria atômica do áudio, animação suspensa quando coberta/invisível.
+  `CharacterArtwork.h` e `EnvelopeView.h`: interface/desenho, personagem vetorial e gráfico ADSR; telemetria atômica do áudio, animação suspensa quando coberta/invisível.
 
 Defaults de migração preservam o caminho antigo: synth/região LOOP novos desligados; relógios legados;
 PLAY Y sem CRUMBLE. IDs/ranges não são redefinidos. Novos controles têm IDs adicionais.
@@ -26,6 +27,8 @@ Validar instalação/auval/Logic, captura em instrumento + insert, exportações
 Apple silicon, áudio/MIDI físicos, Retina, recall/bounce/automação, escuta/latência e sessões longas.
 No Windows falta decoder M4A; o build declara a limitação, sem fingir importar AAC/ALAC.
 O patch search inicial avalia somente 0,4 s/16 kHz, sem estimar raiz e sem gerar uma fonte independente.
+A captura pelo PLAY ainda exige o insert na faixa/aux de áudio no Logic; o instrumento não recebeu
+um barramento novo. Esta rodada publica somente Mac; Windows permanece manual.
 Os números de CPU em Xvfb não substituem medições em DAW.
 
 ## Multisample e duas fontes — futuro

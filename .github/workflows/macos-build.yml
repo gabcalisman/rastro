@@ -44,11 +44,22 @@ jobs:
           cmake --build "$BUILD_DIR" --config Release
           --target Rastro_AU Rastro_VST3 Rastro_Standalone RastroCapture_AU RastroCapture_VST3
           rastro_tests rastro_character_tests rastro_playback_tests rastro_mp3_tests rastro_synth_tests
-          rastro_capture_tests rastro_timing_tests rastro_patch_tests rastro_recording_tests
+          rastro_capture_tests rastro_timing_tests rastro_patch_tests rastro_recording_tests rastro_capture_bridge_tests
           --parallel 3
 
-      - name: Run portable DSP tests
-        run: ctest --test-dir "$BUILD_DIR" -C Release --output-on-failure
+      - name: Run native DSP, codec and capture tests
+        run: ctest --test-dir "$BUILD_DIR" -C Release --output-on-failure | tee native-tests.log
+
+      - name: Validate both VST3s with pluginval 1.0.3
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --location --retry 3 https://github.com/Tracktion/pluginval/releases/download/v1.0.3/pluginval_macOS.zip -o "$RUNNER_TEMP/pluginval.zip"
+          ditto -x -k "$RUNNER_TEMP/pluginval.zip" "$RUNNER_TEMP/pluginval"
+          validator="$RUNNER_TEMP/pluginval/pluginval.app/Contents/MacOS/pluginval"
+          test -x "$validator"
+          "$validator" --strictness-level 5 --random-seed 42 --validate "$PWD/$BUILD_DIR/Rastro_artefacts/Release/VST3/RASTRO.vst3" 2>&1 | tee pluginval-play.log
+          "$validator" --strictness-level 5 --random-seed 42 --validate "$PWD/$BUILD_DIR/RastroCapture_artefacts/Release/VST3/RASTRO Capture.vst3" 2>&1 | tee pluginval-capture.log
 
       - name: Verify architectures and ad-hoc sign bundles
         shell: bash
@@ -86,7 +97,7 @@ jobs:
             echo "Runner architecture: $(uname -m)"
             echo "Bundle architectures: arm64 + x86_64 (verified with lipo)"
             echo "Minimum deployment target: macOS 12.0; Logic has its own OS requirements."
-            echo "Checks: three PLAY formats + Capture AU/VST3 built; nine native suites (including CoreAudio M4A) passed; signatures verified."
+            echo "Checks: PLAY AU/VST3/Standalone + Capture AU/VST3 built; ten native suites including CoreAudio M4A/capture IPC passed; both VST3s passed pluginval 1.0.3 level 5 seed 42; signatures verified."
             echo "Ad-hoc signed for testing; NOT Developer ID signed or notarized."
             echo "AU validation, arm64 execution, hardware audio/MIDI and Logic Pro playback NOT tested."
             sw_vers
@@ -95,8 +106,11 @@ jobs:
               echo "$binary: $(lipo -archs "$binary")"
             done
           } > "$package/BUILD-INFO.txt"
+          mkdir -p dist/report
+          cp "$package/BUILD-INFO.txt" native-tests.log pluginval-play.log pluginval-capture.log dist/report/
           ditto -c -k --sequesterRsrc --keepParent "$package" "dist/$PACKAGE_NAME.zip"
           (cd dist && shasum -a 256 "$PACKAGE_NAME.zip" > "$PACKAGE_NAME.zip.sha256")
+          cp "dist/$PACKAGE_NAME.zip.sha256" dist/report/
           {
             echo "### Download RASTRO"
             echo "Artifact: **$PACKAGE_NAME** (contains a bundle-preserving ZIP and its SHA-256)."
@@ -114,3 +128,11 @@ jobs:
           if-no-files-found: error
           retention-days: 14
           compression-level: 0
+
+      - name: Upload small verification report
+        uses: actions/upload-artifact@v4
+        with:
+          name: RASTRO-macOS-build-report
+          path: dist/report/
+          if-no-files-found: error
+          retention-days: 14

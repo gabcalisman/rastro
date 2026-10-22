@@ -5,8 +5,8 @@
 #include "InstrumentPanel.h"
 #include "Performance.h"
 #include "Processor.h"
-#include "SampleView.h"
 #include "RastroStrings.h"
+#include "SampleView.h"
 class RastroEditor : public juce::AudioProcessorEditor,
                      private juce::Timer,
                      public juce::FileDragAndDropTarget
@@ -53,7 +53,11 @@ class RastroEditor : public juce::AudioProcessorEditor,
     Style style;
     std::unique_ptr<VisualCustomizer> customizer;
     std::unique_ptr<InstrumentPanel> instrument;
-    juce::TextButton openInstrument, openCapture;
+    juce::TextButton openInstrument, openPatches, openCapture;
+    struct CaptureShade : juce::Component
+    {
+        void paint(juce::Graphics &g) override { g.fillAll(juce::Colours::black.withAlpha(.48f)); }
+    } captureShade;
     std::unique_ptr<CapturePanel> capturePanel;
     juce::TooltipWindow tips{this, 700};
     juce::TextButton load, mutate, undo, reset, add, about, center, preview, customize, compact;
@@ -108,6 +112,7 @@ class RastroEditor : public juce::AudioProcessorEditor,
   private:
     UiMetrics measurements;
     bool windowWasShowing = false;
+    double lastCapturePoll = 0;
 
   public:
     explicit RastroEditor(RastroProcessor &);

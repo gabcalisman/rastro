@@ -5,14 +5,14 @@ Clique nos PNGs para abrir/baixar o original. O Codex no navegador não exibiu a
 anteriores; estes links são um caminho de acesso verificável, não confirmação de exibição no chat.
 
 **No pacote do build:** abra `Previews/ABRIR-PREVIAS.html` por duplo clique, offline, ou qualquer PNG.
-São 36 capturas da árvore JUCE no **Linux x86_64**, não mockups, Mac/Logic ou prova de teste de escuta.
+São 54 capturas atuais e duas referências históricas da árvore JUCE no **Linux x86_64**, não mockups, Mac/Logic ou prova de teste de escuta.
 HiDPI é render 2× simulado. O sample visual.wav e a atividade musical são sintéticos dos testes.
 
 ## Cosmic Arcade
 
 ![Cosmic Arcade](cosmic.png)
 
-## Instrumento padrão
+## Instrumento padrão — 1100×760
 
 ![Instrumento padrão](instrumento.png)
 
@@ -32,9 +32,11 @@ HiDPI é render 2× simulado. O sample visual.wav e a atividade musical são sin
 
 ![PERSONAGEM](personagem.png)
 
-## SYNTH
+## SYNTH / ADSR
 
-![SYNTH](synth.png)
+![SYNTH / ADSR](synth.png)
+
+[ADSR no compacto](adsr-compact.png)
 
 ## PATCHES
 
@@ -47,6 +49,40 @@ HiDPI é render 2× simulado. O sample visual.wav e a atividade musical são sin
 ## Receber captura
 
 ![Receber captura](captura.png)
+
+## Captura completa com sinal sintético
+
+![Gravando pelo PLAY](capture-recording.png)
+
+![WAV pronto e selecionado](capture-ready.png)
+
+![Tomada carregada na waveform](capture-loaded.png)
+
+![Mesmo painel usado pelo insert Capture](capture-insert.png)
+
+Essas telas usam a ponte local real e entrada sintética dos testes. Não são provas de roteamento no Logic.
+
+## Redesign do personagem — antes e depois
+
+Referências do commit anterior `234af84`, preservadas para comparação:
+
+![Interface anterior](before-interface.png)
+
+![Personagem anterior](before-character.png)
+
+Novo desenho vetorial com rosto, roupa e membros volumétricos:
+
+![Personagem atual escuro](character-dark-0.png)
+
+![Personagem atual claro](character-light-1.png)
+
+[Escuro 1](character-dark-1.png) · [Escuro 2](character-dark-2.png) · [Claro 0](character-light-0.png) · [Claro 2](character-light-2.png)
+
+Leitura pequena, 160×144 pixels:
+
+![Pequeno escuro](character-small-1-0.png)
+
+![Pequeno claro](character-small-2-1.png)
 
 ## Apresentações e dança
 

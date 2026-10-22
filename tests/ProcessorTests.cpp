@@ -614,6 +614,8 @@ void pumpUi(int ms = 25) { juce::MessageManager::getInstance()->runDispatchLoopU
 void clickUi(juce::Component &root, const juce::String &id)
 {
     auto *button = dynamic_cast<juce::Button *>(findComponent(root, id));
+    if (!button || !button->isShowing() || !button->isEnabled())
+        std::cerr << "Unavailable UI button: " << id << "\n";
     check(button && button->isShowing() && button->isEnabled(),
           "visible enabled button for interaction");
     auto point = button->getLocalBounds().toFloat().getCentre();
@@ -834,7 +836,9 @@ void visualStageTests()
     editor->synchroniseUi();
     checkUiLayout(*editor);
     auto *macro = findComponent(*editor, "parameter_presence");
-    check(macro && macro->getHeight() > 120, "large actual macro control");
+    check(editor->getWidth() == 1100 && editor->getHeight() == 760,
+          "initial window fits the requested normal DAW size");
+    check(macro && macro->getHeight() >= 90, "large actual macro control");
     p.set("colourSet", 1);
     p.set("avatarAccessory", 1);
     p.set("avatarInstrument", 1);
@@ -1004,6 +1008,11 @@ void visualStageTests()
               after.previewAvatar == metrics.previewAvatar,
           "knobs sheet has zero background avatar/layout steps");
     clickUi(*editor, "visualTab2");
+    if (auto *label =
+            dynamic_cast<juce::Label *>(findComponent(*editor, "avatarPresentationLabel")))
+        check(label->getText() == (p.language == 0 ? juce::String::fromUTF8("Apresentação")
+                                                   : juce::String("Presentation")),
+              "presentation label preserves PT UTF-8 and English");
     checkUiLayout(*editor);
     for (auto id : {"avatarHair", "avatarHorns", "avatarClothes", "avatarGlasses", "avatarTail",
                     "avatarWings", "avatarInstrument", "avatarColour"})
@@ -1105,6 +1114,11 @@ void visualStageTests()
     editor->synchroniseUi();
     clickUi(*editor, "customize");
     clickUi(*editor, "visualTab2");
+    if (auto *label =
+            dynamic_cast<juce::Label *>(findComponent(*editor, "avatarPresentationLabel")))
+        check(label->getText() == (p.language == 0 ? juce::String::fromUTF8("Apresentação")
+                                                   : juce::String("Presentation")),
+              "presentation label preserves PT UTF-8 and English");
     editor->synchroniseUi();
     checkUiLayout(*editor);
     saveUi(*editor, "rastro-final-english.png");
@@ -1141,6 +1155,25 @@ void visualStageTests()
         saveUi(
             dancer,
             ("rastro-character-presentation-" + juce::String(presentation) + ".png").toRawUTF8());
+    }
+    for (int palette : {1, 2})
+    {
+        p.set("colourSet", float(palette));
+        for (int presentation = 0; presentation < 3; ++presentation)
+        {
+            p.set("avatarPresentation", float(presentation));
+            p.set("avatarHalo", presentation == 2 ? 1.f : 0.f);
+            dancer.setSize(380, 300);
+            dancer.update(2);
+            saveUi(dancer, ("rastro-character-" + juce::String(palette == 1 ? "dark" : "light") +
+                            "-" + juce::String(presentation) + ".png")
+                               .toRawUTF8());
+            dancer.setSize(160, 144);
+            dancer.update(2);
+            saveUi(dancer, ("rastro-character-small-" + juce::String(palette) + "-" +
+                            juce::String(presentation) + ".png")
+                               .toRawUTF8());
+        }
     }
     editor->setSize(1680, 1100);
     editor->synchroniseUi();
@@ -1281,7 +1314,76 @@ void captureIntegrationTests()
     editor->synchroniseUi();
     checkUiLayout(*editor);
     saveUi(*editor, "rastro-capture-receiver.png");
-    clickUi(*editor, "closeCapture");
+    rastro::CaptureRecorder remote;
+    remote.prepare(44100);
+    rastro::CaptureLinkServer insert(remote);
+    for (int i = 0; i < 500 && !findComponent(*editor, "recordCapture")->isEnabled(); ++i)
+        pumpUi(10);
+    check(findComponent(*editor, "recordCapture")->isEnabled(),
+          "PLAY discovers real companion IPC endpoint automatically");
+    clickUi(*editor, "recordCapture");
+    for (int i = 0; i < 500 && remote.state != rastro::CaptureRecorder::recording; ++i)
+        pumpUi(10);
+    check(remote.state == rastro::CaptureRecorder::recording,
+          "PLAY starts companion recording through real IPC");
+    std::array<float, 256> signal;
+    for (int i = 0; i < 256; ++i)
+        signal[i] = .35f * std::sin(i * .07f);
+    const float *remoteInput[]{signal.data(), signal.data()};
+    for (int i = 0; i < 8; ++i)
+    {
+        inAudio = true;
+        remote.process(remoteInput, 2, 256);
+        inAudio = false;
+    }
+    for (int i = 0; i < 500 && !findComponent(*editor, "stopCapture")->isEnabled(); ++i)
+        pumpUi(10);
+    editor->synchroniseUi();
+    saveUi(*editor, "rastro-capture-recording.png");
+    {
+        CapturePanel actualInsertPanel(remote, true);
+        actualInsertPanel.setLookAndFeel(&editor->getLookAndFeel());
+        actualInsertPanel.hostInsertMode();
+        actualInsertPanel.setInsertIdentifier(insert.identifier());
+        actualInsertPanel.setSize(640, 390);
+        actualInsertPanel.update(visuals::palette(restored), 0, true);
+        saveUi(actualInsertPanel, "rastro-capture-insert.png");
+        actualInsertPanel.setLookAndFeel(nullptr);
+    }
+    clickUi(*editor, "stopCapture");
+    for (int i = 0; i < 700 && remote.outcome != rastro::CaptureRecorder::success; ++i)
+        pumpUi(10);
+    check(remote.outcome == rastro::CaptureRecorder::success, "remote stop finalizes valid WAV");
+    for (int i = 0; i < 100; ++i)
+    {
+        pumpUi(10);
+        editor->synchroniseUi();
+    }
+    check(findComponent(*editor, "receiveCapture")->isEnabled(),
+          "finalized capture selected automatically in PLAY list");
+    saveUi(*editor, "rastro-capture-ready.png");
+    clickUi(*editor, "receiveCapture");
+    for (int i = 0; i < 500 && restored.source.load()->size() != 2048; ++i)
+        pumpUi(10);
+    check(restored.source.load()->size() == 2048 && restored.source.load()->rate == 44100,
+          "USAR GRAVAÇÃO loads actual remote PCM at source rate");
+    restored.prepareToPlay(48000, 512);
+    restored.engine.clearVoices();
+    check(process(restored, 2, 0) > 0, "remote captured sample plays by MIDI");
+    juce::MemoryBlock remoteState;
+    restored.getStateInformation(remoteState);
+    RastroProcessor recalled;
+    recalled.setStateInformation(remoteState.getData(), int(remoteState.getSize()));
+    check(recalled.source.load() && recalled.source.load()->data == restored.source.load()->data,
+          "remote capture embeds in session exactly");
+    for (auto &link : rastro::readCaptureLinks())
+        if (link.id == insert.identifier())
+            link.file.deleteFile();
+    insert.stop();
+    editor->synchroniseUi();
+    check(!findComponent(*editor, "capturePanel")->isVisible(),
+          "successful receive returns to the waveform automatically");
+    saveUi(*editor, "rastro-capture-loaded.png");
     std::cout << "PASS capture integration: synthetic stereo input, no automatic monitoring, "
                  "waveform/MIDI/preview, PCM/session recall, real shared-file handoff and hosted "
                  "bus compatibility\n";
@@ -1341,7 +1443,7 @@ void instrumentStateTests()
     auto tree = p.params.copyState();
     tree.setProperty("stateVersion", 2, nullptr);
     for (auto id : {"synthEnable", "triggerMode", "regionLoop", "loopRegionSet", "voiceMode",
-                    "glide", "lfoDepth", "xyCrumble", "avatarPresentation"})
+                    "glide", "lfoDepth", "xyCrumble", "avatarPresentation", "avatarHalo"})
         tree.removeChild(tree.getChildWithProperty("id", id), nullptr);
     juce::MemoryBlock old;
     juce::AudioProcessor::copyXmlToBinary(*tree.createXml(), old);
@@ -1350,6 +1452,8 @@ void instrumentStateTests()
               restored.value("regionLoop") == 0 && restored.value("voiceMode") == 0 &&
               restored.value("xyCrumble") == 0,
           "old sessions get neutral synth/loop and original XY mapping");
+    check(p.value("avatarHalo") == 0 && restored.value("avatarHalo") == 1,
+          "new characters have optional halo off; legacy halo choice migrates explicitly");
     auto editor = std::unique_ptr<RastroEditor>(new RastroEditor(p));
     editor->addToDesktop(juce::ComponentPeer::windowIsTemporary);
     editor->setVisible(true);
@@ -1360,6 +1464,45 @@ void instrumentStateTests()
     clickUi(*editor, "openInstrument");
     editor->synchroniseUi();
     checkUiLayout(*editor);
+    auto *graph = dynamic_cast<EnvelopeView *>(findComponent(*editor, "amplitudeEnvelope"));
+    auto *attack = dynamic_cast<juce::Slider *>(findComponent(*editor, "ampAttack"));
+    auto *sustain = dynamic_cast<juce::Slider *>(findComponent(*editor, "ampSustain"));
+    check(graph && attack && sustain, "ADSR has dedicated real controls and graph");
+    auto points = graph->points();
+    auto beforeGraph = graph->createComponentSnapshot(graph->getLocalBounds());
+    auto beforeSettings = p.settings();
+    attack->setValue(.7, juce::sendNotificationSync);
+    sustain->setValue(.25, juce::sendNotificationSync);
+    editor->synchroniseUi();
+    check(p.value("ampAttack") > .69f && p.value("ampSustain") == .25f,
+          "ADSR knobs change real automatable parameters");
+    check(graph->points()[1].x > points[1].x && graph->points()[2].y > points[2].y &&
+              imageDiffers(beforeGraph, graph->createComponentSnapshot(graph->getLocalBounds())),
+          "graph responds to actual attack and sustain values");
+    auto energyFor = [&](rastro::Settings settings)
+    {
+        rastro::Engine engine;
+        engine.prepare(48000);
+        settings.enabled.fill(false);
+        settings.regionLoop = true;
+        settings.triggerMode = 2;
+        engine.noteOn(60, 1, p.source.load(), settings);
+        double energy = 0;
+        for (int i = 0; i < 4800; ++i)
+        {
+            float l, r;
+            engine.frame(l, r, p.source.load(), settings);
+            energy += l * l;
+        }
+        return energy;
+    };
+    check(energyFor(p.settings()) < energyFor(beforeSettings) * .3,
+          "ADSR edited from the UI measurably changes real audio");
+    p.set("ampAttack", .03f);
+    p.set("ampDecay", .25f);
+    p.set("ampSustain", .65f);
+    p.set("ampRelease", .4f);
+    editor->synchroniseUi();
     saveUi(*editor, "rastro-instrument-panel.png");
     auto *viewport = dynamic_cast<juce::Viewport *>(findComponent(*editor, "instrumentViewport"));
     check(viewport, "synth has scroll viewport");
@@ -1374,6 +1517,8 @@ void instrumentStateTests()
     {
         editor->setSize(size.x, size.y);
         checkUiLayout(*editor);
+        if (size.y == 700)
+            saveUi(*editor, "rastro-adsr-compact.png");
     }
     clickUi(*editor, "closeInstrument");
     editor->synchroniseUi();

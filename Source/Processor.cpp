@@ -104,6 +104,7 @@ juce::AudioProcessorValueTreeState::ParameterLayout RastroProcessor::layout()
     add("glide", 0, 2, 0);
     add("bendRange", 0, 12, 2);
     add("triggerMode", 0, 2, 0, 1);
+    add("avatarHalo", 0, 1, 0, 1);
     return l;
 }
 RastroProcessor::RastroProcessor(bool directCaptureForTests)
@@ -656,7 +657,7 @@ void RastroProcessor::getStateInformation(juce::MemoryBlock &dest)
     applyCC();
     juce::ScopedLock lock(stateLock);
     auto tree = params.copyState();
-    tree.setProperty("stateVersion", 3, nullptr);
+    tree.setProperty("stateVersion", 4, nullptr);
     auto previous = tree.getChildWithName("MutationUndo");
     if (previous.isValid())
         tree.removeChild(previous, nullptr);
@@ -710,6 +711,11 @@ bool RastroProcessor::restoreState(const void *data, int n)
                 juce::ValueTree node("PARAM");
                 node.setProperty("id", id, nullptr);
                 float v = ranged->convertFrom0to1(ranged->getDefaultValue());
+                if (id == "avatarHalo")
+                {
+                    auto accessory = tree.getChildWithProperty("id", "avatarAccessory");
+                    v = !accessory.isValid() || int(accessory["value"]) == 0 ? 1.f : 0.f;
+                }
                 if (id == "xyCrumble" || id == "gTiming" || id == "cTiming" || id == "wTiming" ||
                     id == "lfoTiming")
                     v = 0;
@@ -762,8 +768,13 @@ void RastroProcessor::beginCapture(std::function<void(bool)> complete)
             if (!shuttingDown && capture.claim())
             {
                 juce::MemoryBlock bytes;
-                ok = rastro::encodeCapture(capture, bytes) &&
+                auto result = rastro::finishCapture(capture, bytes);
+                ok = result == rastro::CaptureRecorder::success &&
                      loadData(bytes.getData(), bytes.getSize(), "Capture.wav");
+                capture.outcome = ok ? rastro::CaptureRecorder::success
+                                  : result == rastro::CaptureRecorder::success
+                                      ? rastro::CaptureRecorder::encodeError
+                                      : result;
                 capture.release();
             }
             juce::MessageManager::callAsync(
@@ -820,6 +831,40 @@ void RastroProcessor::patchFileAsync(juce::File file, bool save, std::function<v
                 if (file.loadFileAsData(data))
                     ok = restoreState(data.getData(), int(data.getSize()));
             }
+            juce::MessageManager::callAsync(
+                [complete, ok]
+                {
+                    if (complete)
+                        complete(ok);
+                });
+        });
+}
+
+void RastroProcessor::pollCaptureLinks(
+    std::function<void(std::vector<juce::File>, std::vector<rastro::CaptureLink>)> complete)
+{
+    if (bridgePollPending.exchange(true))
+        return;
+    loader.addJob(
+        [this, complete = std::move(complete)]
+        {
+            auto files = rastro::captureFiles();
+            auto links = rastro::readCaptureLinks();
+            bridgePollPending = false;
+            juce::MessageManager::callAsync(
+                [complete, files = std::move(files), links = std::move(links)]() mutable
+                {
+                    if (complete)
+                        complete(std::move(files), std::move(links));
+                });
+        });
+}
+void RastroProcessor::remoteCapture(juce::String id, bool start, std::function<void(bool)> complete)
+{
+    loader.addJob(
+        [id, start, complete = std::move(complete)]
+        {
+            bool ok = rastro::requestCapture(id, start);
             juce::MessageManager::callAsync(
                 [complete, ok]
                 {

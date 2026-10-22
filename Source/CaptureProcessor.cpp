@@ -1,12 +1,12 @@
+#include "CaptureLink.h"
 #include "CapturePanel.h"
 #include <juce_audio_utils/juce_audio_utils.h>
 class CaptureProcessor : public juce::AudioProcessor
 {
-    juce::ThreadPool worker{1};
-    std::atomic<bool> closing{false};
 
   public:
     rastro::CaptureRecorder capture;
+    rastro::CaptureLinkServer link{capture};
     std::atomic<int> language{0};
     CaptureProcessor()
         : AudioProcessor(BusesProperties()
@@ -16,10 +16,9 @@ class CaptureProcessor : public juce::AudioProcessor
     }
     ~CaptureProcessor() override
     {
-        closing = true;
         capture.stop();
         capture.finishStop();
-        worker.removeAllJobs(true, -1);
+        link.stop();
     }
     const juce::String getName() const override { return "RASTRO Capture"; }
     bool acceptsMidi() const override { return false; }
@@ -65,34 +64,6 @@ class CaptureProcessor : public juce::AudioProcessor
             capture.route = juce::jlimit(0, 2, xml->getIntAttribute("route"));
         }
     }
-    void record(std::function<void(juce::File)> complete)
-    {
-        if (!capture.start())
-            return;
-        worker.addJob(
-            [this, complete]
-            {
-                while (!closing && capture.state != rastro::CaptureRecorder::ready)
-                {
-                    capture.finishStop();
-                    juce::Thread::sleep(5);
-                }
-                juce::File file;
-                if (!closing && capture.claim())
-                {
-                    juce::MemoryBlock bytes;
-                    if (rastro::encodeCapture(capture, bytes))
-                        file = rastro::publishCapture(bytes);
-                    capture.release();
-                }
-                juce::MessageManager::callAsync(
-                    [complete, file]
-                    {
-                        if (complete)
-                            complete(file);
-                    });
-            });
-    }
     bool hasEditor() const override { return true; }
     juce::AudioProcessorEditor *createEditor() override;
 };
@@ -107,25 +78,14 @@ class CaptureEditor : public juce::AudioProcessorEditor, private juce::Timer
     {
         addAndMakeVisible(panel);
         panel.hostInsertMode();
-        panel.onRecord = [this]
-        {
-            p.record(
-                [safe = juce::Component::SafePointer<CapturePanel>(&panel)](juce::File file)
-                {
-                    if (safe)
-                        safe->message(
-                            file.existsAsFile()
-                                ? juce::String::fromUTF8("PLAY: CAPTURAR → Atualizar capturas / "
-                                                         "Refresh takes → USAR / USE")
-                                : "Erro ao salvar captura / Capture save failed");
-                });
-        };
+        panel.onRecord = [this] { p.capture.start(); };
+        panel.setInsertIdentifier(p.link.identifier());
         panel.onClose = [this]
         {
             if (auto *window = findParentComponentOfClass<juce::DocumentWindow>())
                 window->setVisible(false);
         };
-        setSize(650, 570);
+        setSize(640, 390);
         startTimerHz(12);
         timerCallback();
     }

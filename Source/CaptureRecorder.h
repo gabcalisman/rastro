@@ -15,7 +15,7 @@ class CaptureRecorder
     int writePosition = 0;
     std::atomic<int> limit{0};
     std::atomic<double> currentRate{48000};
-    double takeRate = 48000;
+    std::atomic<double> takeRate{48000};
     std::atomic<bool> stopRequested{false};
 
   public:
@@ -29,10 +29,25 @@ class CaptureRecorder
         starting
     };
     std::atomic<int> state{idle}, frames{0}, inputChannels{0}, route{0};
+    enum Outcome
+    {
+        none,
+        success,
+        empty,
+        noSignal,
+        encodeError,
+        saveError,
+        notReady
+    };
+    std::atomic<int> outcome{none};
+    std::atomic<unsigned> blockSerial{0};
+    std::atomic<float> takePeak{0};
     std::atomic<float> peak{0}, gain{1};
     std::atomic<bool> monitor{false};
     void prepare(double sr)
     {
+        if (!pcm[0].empty() && currentRate.load() == sr)
+            return;
         stop();
         finishStop();
         // Allocate once outside the audio callback. Device/sample-rate changes never resize a take.
@@ -45,10 +60,15 @@ class CaptureRecorder
     bool start()
     {
         if (pcm[0].empty())
+        {
+            outcome = notReady;
             return false;
+        }
         int expected = idle;
         if (!state.compare_exchange_strong(expected, starting))
             return false;
+        outcome = none;
+        takePeak = 0;
         writePosition = 0;
         frames = 0;
         takeRate = currentRate.load();
@@ -66,6 +86,7 @@ class CaptureRecorder
     }
     void process(const float *const *input, int channels, int count)
     {
+        blockSerial.fetch_add(1, std::memory_order_relaxed);
         inputChannels.store(channels, std::memory_order_relaxed);
         float level = 0;
         int r = std::clamp(route.load(std::memory_order_relaxed), 0, 2);
@@ -83,6 +104,7 @@ class CaptureRecorder
         int expected = recording;
         if (!state.compare_exchange_strong(expected, writing, std::memory_order_acq_rel))
             return;
+        float recordedPeak = takePeak.load(std::memory_order_relaxed);
         if (channels > 0 && input[0])
             for (int i = 0; i < count && writePosition < limit.load(std::memory_order_relaxed);
                  ++i, ++writePosition)
@@ -92,7 +114,9 @@ class CaptureRecorder
                     source = std::min(channels - 1, source);
                     float value = input[source] ? input[source][i] * scale : 0;
                     pcm[c][writePosition] = std::isfinite(value) ? std::clamp(value, -1.f, 1.f) : 0;
+                    recordedPeak = std::max(recordedPeak, std::abs(pcm[c][writePosition]));
                 }
+        takePeak.store(recordedPeak, std::memory_order_relaxed);
         frames.store(writePosition, std::memory_order_release);
         bool done = stopRequested.load(std::memory_order_acquire) || writePosition >= limit.load();
         state.store(done ? ready : recording, std::memory_order_release);
@@ -105,9 +129,9 @@ class CaptureRecorder
     void release() { state.store(idle, std::memory_order_release); }
     double sampleRate() const
     {
-        return takeRate;
+        return takeRate.load();
     } // only read after claim, or on the message thread while not starting
-    double seconds() const { return frames.load() / currentRate.load(); }
+    double seconds() const { return frames.load() / takeRate.load(); }
     double maxSeconds() const { return limit.load() / currentRate.load(); }
     const float *channel(int c) const { return pcm[c].data(); } // immutable while exporting
 };

@@ -4,9 +4,9 @@
 
 Debian 13 **Linux x86_64**, GCC 14.2, CMake 3.31.6, JUCE 8.0.6, Release/Ninja.
 Build: VST3 e Standalone PLAY + VST3 Capture, sem SDK Apple ou Windows local.
-**CTest 10/10** passou. **pluginval 1.0.3 nível 5, seed 42** passou para os dois VST3.
-`git diff --check` sem erros. Os resultados CI de Mac/Windows são separados e devem ser conferidos
-no workflow do commit publicado; não decorrem desses resultados Linux.
+**CTest 11/11** passou. **pluginval 1.0.3 nível 5, seed 42** passou para os dois VST3.
+`git diff --check` sem erros. Os resultados CI de Mac são separados e devem ser conferidos
+no workflow do commit publicado; não decorrem desses resultados Linux. Windows não foi executado nesta rodada.
 
 | Suíte | Evidência principal |
 | --- | --- |
@@ -19,13 +19,16 @@ no workflow do commit publicado; não decorrem desses resultados Linux.
 | timing | FREE independente de BPM, SYNC audível/quatro divisões/PPQ, LOOP em cinco modos com One Shot/Gate, reflexão Ping-Pong e redução da emenda. |
 | patches | Renderização real/ranking/diversidade, fiel/transformado, pausa/cancelamento e fonte silenciosa. |
 | processor | Integração MIDI/estado/migração/importação/GUI, captura sintética, arquivo compartilhado, patches e transporte/XY. |
+| capture_bridge | IPC por arquivos entre workers, start/stop/ack, vazio/silêncio, prepare na mesma taxa, WAV PCM24/44,1 kHz, descoberta, erro real de escrita e desconexão. |
 | recordings | Seis M4A AAC-LC/ALAC: PCM finito, duração/taxa, conteúdo, repetição determinística e truncamento rejeitado. |
 
-Integração adicional: captura sintética estéreo sem monitoramento automático, monitor -20 dB,
+Integração adicional: botões reais GRAVAR NO INSERT/PARAR no PLAY comandam o servidor por arquivo,
+automaticamente selecionam a tomada e USAR GRAVAÇÃO retorna à waveform. Captura sintética estéreo sem monitoramento automático, monitor -20 dB,
 waveform/prévia/MIDI e recall do WAV embutido; instrumento hosted permanece sem entrada. Save/load `.rastro`
 assíncrono preserva sample exato; arquivo inválido é rejeitado. Painel PATCHES executa a busca real,
 aplica valores, toca nota MIDI, compara A/B e desfaz variação exatamente. Teste SYNTH rola até o último
-controle no compacto. Note-off/CC com offsets reais de amostra são processados sob trap de alocação.
+controle no compacto. Quatro knobs ADSR alteram APVTS, pontos/imagem do gráfico e energia
+da renderização; sustain em %. UTF-8 de Apresentação e migração da auréola legada têm regressões explícitas. Note-off/CC com offsets reais de amostra são processados sob trap de alocação.
 
 Transporte: One Shot com LOOP continua após note-off, mas para suavemente quando o host muda de playing
 para stopped. BPM de host não sobrescreve manual; ausência usa manual e mostra o estado. Cinco posições
@@ -33,7 +36,9 @@ XY (cantos + centro quantizado 64/127) produzem valores e áudio equivalentes po
 
 ## Compatibilidade
 
-IDs/ranges anteriores mantidos. Migração exercita estado antigo em instância previamente editada:
+IDs/ranges e ordem dos parâmetros anteriores mantidos. avatarHalo foi acrescentado no fim;
+estados antigos com acessório halo mantêm a auréola, novos estados começam sem ela. O redesign visual
+não altera Engine/EffectRack/DanceMotion. Migração exercita estado antigo em instância previamente editada:
 synth/LOOP novos neutros, relógios legados e PLAY Y antigo sem CRUMBLE. Estado, cortes, codecs, idioma,
 aparência, CC, ordem e histórico RANDOM mantidos. Aparências diferentes renderizam o mesmo áudio bit a bit.
 
@@ -60,19 +65,22 @@ núcleo, inclui DSP/harness, sem placa de som):
 
 | Fase | CPU observada | Layouts / repaints completos do sincronizador |
 | --- | ---: | --- |
-| Inicialização/repouso off | 10,7% | 4 / 2, durante configuração inicial |
-| Performance | 13,9% | 0 / 0 |
-| CORES | 7,1% | 0 / 0 |
-| PERSONAGEM | 21,8% | 0 / 0 |
+| Inicialização/repouso off | 10,6% | 4 / 2, durante configuração inicial |
+| Performance | 13,2% | 0 / 0 |
+| CORES | 5,9% | 0 / 0 |
+| PERSONAGEM | 23,0% | 0 / 0 |
+| CAPTURAR | 7,2% | 0 / 0 |
 
 CORES: 50 ticks, **zero** atualizações de ambos os personagens e deck cobertos.
-PERSONAGEM: 49 ticks, zero do personagem principal/deck, 49 da prévia. Não significa zero desenho:
+PERSONAGEM: 49 ticks, zero do personagem principal/deck, 49 da prévia.
+CAPTURAR: 49 ticks, zero do personagem principal/prévia/deck. Janela 1100×760. Não significa zero desenho:
 controles visíveis atualizam regiões quando necessário. Passagem curta/software render, com ruído;
 não prevê CPU/latência em Mac/Windows/DAW. Uma medição antiga tinha 40,5% em performance; o escopo DSP
 agora é maior, portanto não tratar os números como benchmark controlado entre versões.
 
-[Capturas reais verificadas](previews/README.md): 36 PNGs, padrão/compacto, Cosmic Arcade, paletas,
-quatro materiais, três apresentações, oito quadros de dança, SYNTH, PATCHES e captura. Sem mockups.
+[Capturas reais verificadas](previews/README.md): 54 PNGs atuais + duas referências do commit 234af84, padrão/compacto, Cosmic Arcade, paletas,
+quatro materiais, três apresentações, oito quadros de dança, ADSR padrão/compacto, PATCHES e captura gravando/pronta/carregada/insert.
+Personagem inclui três apresentações em fundo claro/escuro, 380×300 e 160×144. Sem mockups.
 HiDPI é render 2× simulado, não Retina físico. Os PNGs foram abertos/inspecionados aqui, incluindo
 acentos, área de knobs, rack e painéis. Não houve confirmação de exibição no chat do navegador.
 Acesso: índice no GitHub privado ou `Previews/ABRIR-PREVIAS.html` no ZIP do build.
@@ -91,27 +99,29 @@ DISPLAY=:99 XDG_CONFIG_HOME=/workspace/work/runtime/config XDG_CACHE_HOME=/works
   --validate /workspace/work/build/Rastro_artefacts/Release/VST3/RASTRO.vst3
 # Mesmo comando para RastroCapture_artefacts/Release/VST3/RASTRO Capture.vst3
 DISPLAY=:99 python /workspace/work/run-ui-benchmark.py /workspace/work/build/rastro_ui_benchmark
-python scripts/export_previews.py --build /workspace/work/build --out /workspace/output/RASTRO-PLAY
+python scripts/export_previews.py --build /workspace/work/build --before /workspace/work --out docs/previews
 git diff --check
 ```
 
 O helper X11 pertence ao ambiente, mantém atoms que o window manager normalmente fornece. Não é
 requisito do produto. Em desktop Linux normal use `ctest`/`pluginval` diretamente.
 
-## Correções encontradas na primeira execução CI
+## Captura: causa demonstrada e fronteira do host
 
-No Mac, o caminho de include do teste de codecs expôs uma colisão, em filesystem sem distinção de
-maiúsculas, de `Strings.h` com o header Apple `strings.h`. O header do produto foi renomeado para
-`RastroStrings.h`, sem mudar traduções/IDs. No Windows, a compilação requer lambdas C++17 conformes;
-`/Zc:lambda` é explícito, junto com `/utf-8` para o texto PT/EN. São correções de portabilidade,
-sem mudança do DSP. Os workflows precisam passar novamente no commit que contém essas correções.
+Parar sem frames retornava false do encoder e gerava o genérico erro de salvar. Os testes reproduzem
+isso, distinguem fluxo silencioso e falha real de disco. prepare repetido na mesma taxa não para a tomada.
+A descoberta/controle funciona entre processos distintos via arquivos locais; scans, XML e WAV ocorrem
+somente nos workers. PLAY hospedado preserva o barramento sem entrada; a captura depende do insert.
+No Mac, gravações novas usam ~/Library/Application Support/RASTRO/Captures, e a pasta legada continua legível.
+Não havia prints do Logic anexados neste workspace. A análise parte do código e dos sintomas descritos.
 
 ## CI e testes ainda necessários
 
-macOS: runner Intel, universal arm64+x86_64, PLAY AU/VST3/Standalone + Capture AU/VST3; nove suítes
-nativas incluindo decoder CoreAudio, verificação lipo, assinatura ad-hoc e ZIP/checksum.
-Windows: runner x64, PLAY VST3/Standalone + Capture VST3; oito suítes portáveis, PE AMD64, runtime estático
-e ZIP/checksum. M4A indisponível no Windows. Resultados reais estão no run correspondente.
+O workflow Mac configura runner Intel, universal arm64+x86_64, PLAY AU/VST3/Standalone + Capture AU/VST3;
+dez suítes nativas incluindo decoder CoreAudio/IPC, pluginval 1.0.3 nível 5 seed 42 nos dois VST3,
+verificação lipo, assinatura ad-hoc e ZIP/checksum. Um artefato pequeno separado contém logs/BUILD-INFO.
+Isso descreve os checks exigidos; o resultado real deve ser consultado no run do commit atual e no PR.
+O workflow Windows foi mantido para execução manual futura e não é disparado por este PR.
 
 **Nenhum teste no Logic Pro foi realizado.** Faltam auval, instalação/segurança, execução Apple silicon,
 Finder/seletor nativos, exportações reais do Gravador, Retina, áudio/MIDI físicos, captura mic/guitarra,

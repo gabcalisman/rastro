@@ -27,6 +27,17 @@ class UiBenchmark : private juce::Timer
                 if (auto *b =
                         dynamic_cast<juce::TextButton *>(sheet->findChildWithID("visualTab2")))
                     b->onClick();
+        if (phase == 4)
+        {
+            if (auto *sheet = editor->findChildWithID("visualCustomizer"))
+                if (auto *b =
+                        dynamic_cast<juce::TextButton *>(sheet->findChildWithID("closeCustomizer")))
+                    b->onClick();
+            for (auto *c : editor->getChildren())
+                if (auto *b = dynamic_cast<juce::TextButton *>(c);
+                    b && b->getComponentID() == "openCapture")
+                    b->onClick();
+        }
 #ifdef RASTRO_UI_METRICS
         initial = editor->uiMetrics();
 #endif
@@ -56,7 +67,7 @@ class UiBenchmark : private juce::Timer
                   << " deck_updates=" << m.deckUpdates - initial.deckUpdates
                   << " full_repaints=" << m.fullRepaints - initial.fullRepaints << std::endl;
 #endif
-        if (++phase == 4)
+        if (++phase == 5)
         {
             stopTimer();
             juce::MessageManager::getInstance()->stopDispatchLoop();
@@ -73,7 +84,7 @@ class UiBenchmark : private juce::Timer
         p.set("loop", 1);
         editor = new RastroEditor(p);
         window.setContentOwned(editor, true);
-        window.centreWithSize(1180, 840);
+        window.centreWithSize(1100, 760);
         window.setVisible(true);
         begin();
         startTimerHz(25);

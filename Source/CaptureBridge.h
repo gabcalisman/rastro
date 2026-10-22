@@ -19,16 +19,18 @@ inline bool encodeCapture(CaptureRecorder &capture, juce::MemoryBlock &bytes)
 inline juce::File captureDirectory()
 {
     auto base = juce::File::getSpecialLocation(juce::File::userApplicationDataDirectory);
-#if JUCE_LINUX
+#if JUCE_MAC
+    base = base.getChildFile("Application Support");
+#elif JUCE_LINUX
     auto xdg = juce::SystemStats::getEnvironmentVariable("XDG_CONFIG_HOME", {});
     if (xdg.isNotEmpty() && juce::File::isAbsolutePath(xdg))
         base = juce::File(xdg);
 #endif
     return base.getChildFile("RASTRO").getChildFile("Captures");
 }
-inline juce::File publishCapture(const juce::MemoryBlock &bytes)
+inline juce::File publishCapture(const juce::MemoryBlock &bytes,
+                                 juce::File dir = captureDirectory())
 {
-    auto dir = captureDirectory();
     if (!dir.createDirectory())
         return {};
     auto name =
@@ -40,17 +42,31 @@ inline juce::File publishCapture(const juce::MemoryBlock &bytes)
         return {};
     return file;
 }
+inline int finishCapture(CaptureRecorder &capture, juce::MemoryBlock &bytes)
+{
+    if (capture.frames < 2)
+        return CaptureRecorder::empty;
+    if (capture.takePeak <= 1e-7f)
+        return CaptureRecorder::noSignal;
+    return encodeCapture(capture, bytes) ? CaptureRecorder::success : CaptureRecorder::encodeError;
+}
 inline std::vector<juce::File> captureFiles()
 {
     std::vector<juce::File> files;
     // Bounded scan, off the UI thread. Files are never auto-deleted.
-    for (const auto &entry :
-         juce::RangedDirectoryIterator(captureDirectory(), false, "*.wav", juce::File::findFiles))
-    {
-        if (files.size() >= 1000)
-            break;
-        files.push_back(entry.getFile());
-    }
+    std::vector<juce::File> directories{captureDirectory()};
+#if JUCE_MAC
+    directories.push_back(juce::File::getSpecialLocation(juce::File::userApplicationDataDirectory)
+                              .getChildFile("RASTRO/Captures"));
+#endif
+    for (auto &directory : directories)
+        for (const auto &entry :
+             juce::RangedDirectoryIterator(directory, false, "*.wav", juce::File::findFiles))
+        {
+            if (files.size() >= 1000)
+                break;
+            files.push_back(entry.getFile());
+        }
     std::sort(files.begin(), files.end(),
               [](auto &a, auto &b) { return a.getFileName() > b.getFileName(); });
     if (files.size() > 64)

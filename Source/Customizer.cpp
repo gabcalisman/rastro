@@ -225,13 +225,15 @@ VisualCustomizer::VisualCustomizer(RastroProcessor &processor) : p(processor), a
     const char *ids[]{"visualTheme",  "visualBackground", "visualAccent",     "visualControls",
                       "avatarColour", "avatarBody",       "avatarEyes",       "avatarAccessory",
                       "avatarHair",   "avatarHorns",      "avatarClothes",    "avatarGlasses",
-                      "avatarTail",   "avatarWings",      "avatarInstrument", "avatarPresentation"};
-    for (int i = 0; i < 16; ++i)
+                      "avatarTail",   "avatarWings",      "avatarInstrument", "avatarPresentation",
+                      "avatarHalo"};
+    for (int i = 0; i < int(std::size(ids)); ++i)
     {
         auto f = std::make_unique<Field>();
         f->id = ids[i];
         f->area = i < 4 ? 0 : 2;
         f->combo.setComponentID(f->id);
+        f->label.setComponentID(f->id + "Label");
         f->combo.setWantsKeyboardFocus(true);
         f->label.setFont(juce::Font(juce::FontOptions(13)));
         addChildComponent(f->combo);
@@ -294,11 +296,12 @@ void VisualCustomizer::localize()
                                   "Cauda",
                                   "Ombreiras",
                                   "Instrumento",
-                                  "Apresentação"};
+                                  utf("Apresentação"),
+                                  utf("Auréola")};
     const juce::String labelsEn[]{
-        "Chassis", "Background", "Accent",     "Controls",    "Character colour", "Body",
-        "Eyes",    "Accessory",  "Hair",       "Metal",       "Clothes",          "Glasses",
-        "Tail",    "Shoulders",  "Instrument", "Presentation"};
+        "Chassis",    "Background",   "Accent", "Controls", "Character colour", "Body", "Eyes",
+        "Accessory",  "Hair",         "Metal",  "Clothes",  "Glasses",          "Tail", "Shoulders",
+        "Instrument", "Presentation", "Halo"};
     const juce::StringArray choices[]{
         {"Retro", "Futuro", "Arcade", pt ? juce::String::fromUTF8("Orgânico") : "Organic"},
         {pt ? "Da paleta" : "Follow palette", "Midnight", "Lagoon", "Afterparty", "Ember"},
@@ -310,7 +313,8 @@ void VisualCustomizer::localize()
          "Magenta", pt ? juce::String::fromUTF8("Âmbar") : "Amber"},
         {"Orbit", "Soul", "Metro"},
         {"Soul", "Mono", "Digital"},
-        {"Halo", pt ? "Fones de estúdio" : "Studio phones", pt ? "Lenço de seda" : "Silk scarf"},
+        {pt ? "Nenhum" : "None", pt ? juce::String::fromUTF8("Fones de estúdio") : "Studio phones",
+         pt ? juce::String::fromUTF8("Lenço de seda") : "Silk scarf"},
         {pt ? "Nenhum" : "None", "Pompadour", "Sleek"},
         {pt ? "Nenhum" : "None", "Chrome fins", "Orbit fins"},
         {"Flight suit", "Soul jacket", "Studio vest"},
@@ -319,7 +323,8 @@ void VisualCustomizer::localize()
         {pt ? "Nenhuma" : "None", "Pleated cape", "Chrome plates"},
         {pt ? "Nenhum" : "None", pt ? "Keytar" : "Keytar", "Beat pads"},
         {pt ? utf("Andrógina") : "Androgynous", pt ? "Masculina" : "Masculine",
-         pt ? "Feminina" : "Feminine"}};
+         pt ? "Feminina" : "Feminine"},
+        {pt ? "Desligada" : "Off", pt ? "Ligada" : "On"}};
     for (size_t i = 0; i < fields.size(); ++i)
     {
         auto &f = *fields[i];

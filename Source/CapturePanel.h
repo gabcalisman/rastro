@@ -1,37 +1,39 @@
 #pragma once
-#include "CaptureBridge.h"
+#include "CaptureLink.h"
 #include "RastroStrings.h"
 #include "Visuals.h"
 class CapturePanel : public juce::Component
 {
     rastro::CaptureRecorder &rec;
-    bool direct;
+    bool direct, insert = false;
     juce::TextButton close, settings, record, stop, preview, refresh, receive;
     juce::ToggleButton monitor;
     juce::Slider gain;
-    juce::ComboBox route, takes;
-    juce::Label status;
+    juce::ComboBox route, takes, sources;
+    juce::Label status, context;
     std::vector<juce::File> files;
+    juce::File pendingSelection;
+    std::vector<rastro::CaptureLink> links;
     visuals::Palette pal;
-    int language = -1, previousState = -1;
+    juce::String insertId, lastRemote;
+    int language = -1, previousState = -1, previousOutcome = -1;
     float lastPeak = -1;
+    unsigned lastBlock = 0;
+    double lastAudio = 0;
+    rastro::CaptureLink selectedLink() const;
 
   public:
     explicit CapturePanel(rastro::CaptureRecorder &, bool directInput);
     std::function<void()> onClose, onSettings, onRecord, onPreview, onRefresh;
     std::function<void(juce::File)> onReceive;
-    void hostInsertMode()
-    {
-        monitor.setVisible(false);
-        settings.setVisible(false);
-        close.setVisible(false);
-        refresh.setVisible(false);
-        takes.setVisible(false);
-        receive.setVisible(false);
-        preview.setVisible(false);
-    }
+    std::function<void(juce::String, bool)> onRemoteCommand;
+    void hostInsertMode();
+    void closeAfterLoad() { close.onClick(); }
+    void setInsertIdentifier(juce::String id) { insertId = id; }
     void setFiles(std::vector<juce::File>);
+    void setLinks(std::vector<rastro::CaptureLink>);
     void message(juce::String text) { status.setText(text, juce::dontSendNotification); }
+    static juce::String outcomeText(int, bool pt);
     void update(const visuals::Palette &, int lang, bool inputAvailable);
     void resized() override;
     void paint(juce::Graphics &) override;

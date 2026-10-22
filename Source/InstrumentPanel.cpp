@@ -1,5 +1,6 @@
 #include "InstrumentPanel.h"
-InstrumentPanel::InstrumentPanel(RastroProcessor &processor) : p(processor), patches(processor)
+InstrumentPanel::InstrumentPanel(RastroProcessor &processor)
+    : p(processor), patches(processor), envelope(processor)
 {
     addAndMakeVisible(synthTab);
     addAndMakeVisible(patchTab);
@@ -38,6 +39,11 @@ InstrumentPanel::InstrumentPanel(RastroProcessor &processor) : p(processor), pat
     viewport.setViewedComponent(&content, false);
     viewport.setScrollBarsShown(true, false);
     viewport.setComponentID("instrumentViewport");
+    content.addAndMakeVisible(envelope);
+    content.addAndMakeVisible(amplitudeTitle);
+    content.addAndMakeVisible(filterTitle);
+    amplitudeTitle.setFont(juce::Font(juce::FontOptions(15, juce::Font::bold)));
+    filterTitle.setFont(juce::Font(juce::FontOptions(14, juce::Font::bold)));
     content.addAndMakeVisible(enableLoop);
     enableLoop.setComponentID("instrumentLoop");
     loopAttach = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment>(
@@ -71,6 +77,8 @@ InstrumentPanel::InstrumentPanel(RastroProcessor &processor) : p(processor), pat
             f->slider.setSkewFactorFromMidPoint(.25);
         f->slider.textFromValueFunction = [key = f->id](double v)
         {
+            if (key == "ampSustain")
+                return juce::String(v * 100, 0) + " %";
             return juce::String(v, key == "filterCutoff" ? 0 : 2) +
                    (key == "filterCutoff" || key == "lfoRate"                        ? " Hz"
                     : key.startsWith("amp") && key != "ampSustain" || key == "glide" ? " s"
@@ -78,6 +86,14 @@ InstrumentPanel::InstrumentPanel(RastroProcessor &processor) : p(processor), pat
                     : key == "loopCrossfade"                                         ? " ms"
                                                                                      : "");
         };
+        if (f->id == "ampSustain")
+            f->slider.valueFromTextFunction = [](const juce::String &t)
+            { return t.getDoubleValue() * .01; };
+        if (f->id.startsWith("amp"))
+        {
+            f->slider.setSliderStyle(juce::Slider::RotaryHorizontalVerticalDrag);
+            f->slider.setTextBoxStyle(juce::Slider::TextBoxBelow, false, 100, 24);
+        }
         f->slider.updateText();
         sliders.push_back(std::move(f));
     }
@@ -105,7 +121,14 @@ void InstrumentPanel::update()
 {
     if (patchVisible)
         patches.update();
+    envelope.update();
     auto pal = visuals::palette(p);
+    amplitudeTitle.setColour(juce::Label::textColourId, pal.text);
+    filterTitle.setColour(juce::Label::textColourId, pal.text);
+    auto enabledText = p.value("synthEnable") > .5f
+                           ? (p.language == 0 ? "SYNTH ATIVO" : "SYNTH ON")
+                           : (p.language == 0 ? "ATIVAR SYNTH" : "ENABLE SYNTH");
+    enable.setButtonText(enabledText);
     for (auto &f : sliders)
     {
         f->label.setColour(juce::Label::textColourId, pal.text);
@@ -138,7 +161,14 @@ void InstrumentPanel::update()
     close.setButtonText(p.language == 0 ? "VOLTAR" : "BACK");
     loopRegion.setButtonText(text::get("loopRegionSet", p.language));
     loopRegion.setTooltip(text::get("regionLoopHelp", p.language));
-    enable.setButtonText(text::get("synthEnable", p.language));
+    amplitudeTitle.setText(
+        p.language == 0 ? juce::String::fromUTF8("AMPLITUDE · ATTACK / DECAY / SUSTAIN / RELEASE")
+                        : juce::String::fromUTF8("AMPLITUDE · ATTACK / DECAY / SUSTAIN / RELEASE"),
+        juce::dontSendNotification);
+    filterTitle.setText(p.language == 0
+                            ? juce::String::fromUTF8("FILTRO · MODULAÇÃO · REGIÃO DO LOOP")
+                            : juce::String::fromUTF8("FILTER · MODULATION · LOOP REGION"),
+                        juce::dontSendNotification);
     enable.setTooltip(text::get("synthHelp", p.language));
     for (auto &f : sliders)
     {
@@ -184,26 +214,50 @@ void InstrumentPanel::resized()
     patchTab.setBounds(390, 14, 120, 30);
     patches.setBounds(16, 60, getWidth() - 32, getHeight() - 72);
     viewport.setBounds(16, 60, getWidth() - 32, getHeight() - 94);
-    int columns = getWidth() < 1050 ? 3 : 4, width = (getWidth() - 68) / columns;
-    enable.setBounds(8, 0, width, 30);
-    enableLoop.setBounds(8 + width, 0, 110, 30);
-    loopRegion.setBounds(8 + width + 120, 0, std::max(180, width * 2 - 130), 30);
-    int menuTop = 44;
-    for (size_t i = 0; i < menus.size(); ++i)
-    {
-        int x = 8 + int(i) % columns * width, y = menuTop + int(i) / columns * 60;
-        menus[i]->label.setBounds(x, y, width - 16, 20);
-        menus[i]->menu.setBounds(x, y + 22, width - 16, 30);
-    }
-    int top = menuTop + ((int(menus.size()) + columns - 1) / columns) * 60 + 12;
-    for (size_t i = 0; i < sliders.size(); ++i)
-    {
-        int x = 8 + int(i) % columns * width, y = top + int(i) / columns * 65;
-        sliders[i]->label.setBounds(x, y, width - 16, 20);
-        sliders[i]->slider.setBounds(x, y + 22, width - 16, 32);
-    }
-    content.setSize(getWidth() - 52,
-                    top + ((int(sliders.size()) + columns - 1) / columns) * 65 + 8);
+    int available = getWidth() - 70, columns = available < 980 ? 3 : 4, width = available / columns;
+    enable.setBounds(8, 0, 210, 30);
+    enableLoop.setBounds(232, 0, 100, 30);
+    loopRegion.setBounds(344, 0, available - 344, 30);
+    int selectedMenu = 0;
+    for (auto &f : menus)
+        if (f->id == "voiceMode" || f->id == "triggerMode")
+        {
+            int x = 8 + selectedMenu++ * (available / 2);
+            f->label.setBounds(x, 40, available / 2 - 16, 18);
+            f->menu.setBounds(x, 60, available / 2 - 16, 30);
+        }
+    amplitudeTitle.setBounds(8, 106, available, 24);
+    int ampWidth = int(available * .55f) / 4;
+    int amp = 0;
+    for (auto &f : sliders)
+        if (f->id.startsWith("amp"))
+        {
+            int x = 8 + amp++ * ampWidth;
+            f->label.setBounds(x, 138, ampWidth - 10, 20);
+            f->slider.setBounds(x, 160, ampWidth - 10, 116);
+        }
+    envelope.setBounds(16 + ampWidth * 4, 138, available - ampWidth * 4 - 16, 138);
+    filterTitle.setBounds(8, 294, available, 24);
+    int row = 0;
+    for (auto &f : sliders)
+        if (!f->id.startsWith("amp"))
+        {
+            int x = 8 + row % columns * width, y = 328 + row / columns * 65;
+            f->label.setBounds(x, y, width - 16, 20);
+            f->slider.setBounds(x, y + 22, width - 16, 32);
+            ++row;
+        }
+    int menuTop = 328 + ((row + columns - 1) / columns) * 65 + 12;
+    row = 0;
+    for (auto &f : menus)
+        if (f->id != "voiceMode" && f->id != "triggerMode")
+        {
+            int x = 8 + row % columns * width, y = menuTop + row / columns * 60;
+            f->label.setBounds(x, y, width - 16, 20);
+            f->menu.setBounds(x, y + 22, width - 16, 30);
+            ++row;
+        }
+    content.setSize(getWidth() - 52, menuTop + ((row + columns - 1) / columns) * 60 + 10);
 }
 void InstrumentPanel::paint(juce::Graphics &g)
 {
@@ -214,7 +268,7 @@ void InstrumentPanel::paint(juce::Graphics &g)
     g.drawRoundedRectangle(getLocalBounds().toFloat().reduced(1), 14, 1.5f);
     g.setColour(pal.text);
     g.setFont(juce::Font(juce::FontOptions(23, juce::Font::bold)));
-    g.drawText("SAMPLE SYNTH", 24, 14, 230, 32, juce::Justification::left);
+    g.drawText("SYNTH / ADSR", 24, 14, 230, 32, juce::Justification::left);
     g.setFont(juce::Font(juce::FontOptions(12)));
     g.setColour(pal.muted);
     if (!patchVisible)

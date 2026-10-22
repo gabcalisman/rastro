@@ -1,4 +1,4 @@
-# RASTRO PLAY · by Gab Calisman
+# RASTRO Play · by Gab Calisman
 
 Instrumento MIDI baseado em samples, C++17 / JUCE 8.0.6 / CMake. Um sample, até 16 vozes e seis efeitos reordenáveis. Interface PT-BR/EN, paletas coordenadas, materiais de hardware, waveform estéreo e personagem vetorial reativo. O binário e os identificadores continuam **RASTRO** para preservar sessões.
 
@@ -25,11 +25,7 @@ auval -v aufx Rcpt GbCa
 
 Compilar e passar testes no runner não comprova execução no Logic, áudio físico, instalação/Gatekeeper, Retina ou execução nativa em Apple silicon. O CI executa os testes no runner **Intel**, embora compile as duas arquiteturas.
 
-## Baixar e instalar no Windows
-
-Abra o check **Windows build** verde do mesmo commit e baixe **RASTRO-Windows-x64** em Artifacts. Extraia os dois níveis de ZIP. Feche a DAW e copie as pastas inteiras de `VST3/` para `C:\Program Files\Common Files\VST3\` (pode pedir permissão de administrador). Reabra e faça o rescan. RASTRO é um instrumento MIDI; RASTRO Capture é um insert de áudio opcional. O Standalone roda como `Standalone/RASTRO.exe`, fora do ZIP, sem instalador de runtime adicional. Veja [passos completos](docs/INSTALL-WINDOWS.txt).
-
-Windows x64, runtime MSVC estático, executáveis não assinados. **M4A ainda não é decodificado no Windows**: use WAV/AIFF/MP3. Não há AU para Windows. Os testes CI não usam DAW nem dispositivo físico.
+Esta rodada gera **somente o pacote Mac**. O workflow Windows fica manual e não foi executado para esta revisão.
 
 ## Tocar, editar e transformar
 
@@ -58,7 +54,7 @@ GHOST, CRUMBLE e WOBBLE oferecem **FREE / SYNC** no seletor de tempo. FREE usa m
 
 ### Synth, note-off e LOOP
 
-Abra **SYNTH / PATCHES**. SYNTH oferece ADSR de amplitude, filtro low-pass ressonante de dois polos, envelope e LFO para cutoff ou pitch, Poly (16), Mono, Legato, glide, sustain CC64, pitch bend e mod wheel CC1. Mod wheel amplia o LFO. O filtro/modulações adicionais são ativados por **SYNTH**. Gate/Hold usa ADSR mesmo com esse switch desligado. Glide funciona em Mono/Legato.
+Abra **SYNTH / ADSR** diretamente no cabeçalho. Os quatro knobs **Attack, Decay, Sustain e Release** e o gráfico de amplitude ficam no topo; Sustain é mostrado em %. O gráfico usa os parâmetros reais (o trecho de sustain desenhado representa 400 ms apenas para visualização; a duração real depende do MIDI). SYNTH oferece ADSR de amplitude, filtro low-pass ressonante de dois polos, envelope e LFO para cutoff ou pitch, Poly (16), Mono, Legato, glide, sustain CC64, pitch bend e mod wheel CC1. Mod wheel amplia o LFO. O filtro/modulações adicionais são ativados por **SYNTH**. Gate/Hold usa ADSR mesmo com esse switch desligado. Glide funciona em Mono/Legato.
 
 | Disparo | Comportamento ao soltar |
 | --- | --- |
@@ -74,32 +70,50 @@ All Notes Off/All Sound Off, proteção de overflow e parada do host liberam as 
 
 ### Gerar patches a partir da fonte
 
-1. Importe/capture um sample e selecione seu trim. Abra **SYNTH / PATCHES → PATCHES**.
+1. Importe/capture um sample e selecione seu trim. Abra **PATCHES** diretamente no cabeçalho (ou a aba PATCHES do SYNTH).
 2. Escolha **Mais fiel / Transformado** e clique **Gerar patches**. O worker renderiza 48 candidatos com o próprio motor, analisando até 0,4 s a 16 kHz. Compara envelope e bandas espectrais; retorna até seis opções distintas com distância `Δ` (menor significa descritores mais próximos).
 3. Clique numa opção para aplicar e ouvir uma nota MIDI curta. Edite no SYNTH. **A/B** compara parâmetros anteriores com o patch escolhido. **Variar patch / Desfazer variação** é separado do RANDOM do rack.
 4. **Salvar patch** grava `.rastro` com áudio embutido e estado completo do instrumento, incluindo rack/aparência; **Abrir patch** restaura esse estado. O arquivo externo original não é necessário. Limite de arquivo: 64 MiB, mantendo os limites de importação/memória abaixo.
 
 Busca aproximada, não IA, transcrição, identificação de raiz ou synth independente da fonte. O rack atual continua durante a audição; a comparação do worker usa o synth sem efeitos. A busca avalia o trim para a frente na raiz; outros modos de reprodução permanecem preservados na instância. Fonte só no canal direito também é reconhecida. Pausa/cancelamento preservam o patch atual; cancelamento não cria falso resultado. Trabalho limitado, com descanso proporcional ao tempo de cálculo (~50% de um núcleo, não um teto rígido), fora do callback. Se trocar a fonte, gere novamente.
 
-## Capturar áudio diretamente
+## Capturar no Standalone e controlar o insert pelo PLAY
 
-**Standalone:** abra CAPTURAR → DISPOSITIVO, selecione entrada/saída, conceda acesso ao microfone no macOS, confira canais/ganho/medidor e clique REC/STOP. Monitoramento começa **desligado**; quando ativado é atenuado em 20 dB. Prefira fones para evitar realimentação. Limite de 30 s ou 2.097.152 frames, o que vier primeiro. A captura é convertida em WAV PCM24 no worker e vira o sample editável/tocável por MIDI. Espere a waveform aparecer antes de salvar a sessão.
+**Standalone:** CAPTURAR → DISPOSITIVO / ENTRADA. Selecione entrada/saída e canais, conceda acesso ao microfone no macOS e confira o medidor. GRAVAR/ PARAR finaliza WAV PCM24 e carrega o sample editável/tocável por MIDI. O monitor começa desligado; ligado, é atenuado em 20 dB. Use fones. Limite: 30 s ou 2.097.152 frames. Espere a waveform aparecer antes de salvar a sessão.
 
-**Logic/host:** o instrumento preserva seu barramento de saída sem adicionar entrada incompatível. O componente opcional **RASTRO Capture** recebe áudio como insert, mantém o sinal de passagem e publica a tomada local ao parar. Insira-o em **Audio FX** numa faixa de áudio/aux com sinal; no PLAY abra CAPTURAR → atualizar lista → receber tomada. Não exige exportar para outro aplicativo. Esse fluxo foi validado com entrada sintética e arquivo compartilhado no Linux; **a ligação no Logic ainda precisa de teste real**.
+**Logic / instrumento AU:** nesta implementação o PLAY preserva o barramento original de instrumento, sem entrada direta de áudio. O wrapper AU do JUCE 8.0.6 não permite acrescentar um barramento de entrada dinamicamente a este synth. Isso não significa que todo instrumento AU seja incapaz de receber áudio: seria necessário outro desenho inicial de barramentos e validação de migração/roteamento. Nesta revisão o fluxo usa o insert **RASTRO Capture**, claramente identificado na interface.
 
-Tomadas ficam em `~/Library/Application Support/RASTRO/Captures` no Mac, `%APPDATA%\RASTRO\Captures` no Windows ou `$XDG_CONFIG_HOME/RASTRO/Captures` (`~/.config` como fallback) no Linux. Não são apagadas automaticamente. O PLAY embute a tomada recebida/capturada ao salvar projeto/patch; o insert de captura guarda configurações, não uma cópia de todas as tomadas. Nenhum áudio sai da máquina.
+1. Instale também `RASTRO Capture.component`. No Logic, crie/selecione uma **faixa de áudio** com a entrada da interface, ou um aux que receba a fonte.
+2. Insira **Audio FX → Gab Calisman → RASTRO Capture** nessa faixa/aux. O insert mantém passagem de áudio; não é instrumento MIDI nem RASTRO FX.
+3. Para fonte ao vivo, ative **monitoração de entrada (I)** ou arme a faixa (**R**) conforme o roteamento do Logic. Para uma região existente, inicie a reprodução. Confira sinal **antes** do insert. O plugin não pode forçar o Logic a renderizar uma faixa suspensa.
+4. Abra o PLAY na faixa de Instrumento de Software → **CAPTURAR**. O insert aparece automaticamente; selecione o ID mostrado no próprio Capture quando houver mais de um. Esse é um link local, sem internet, entre instâncias do mesmo usuário.
+5. Clique **GRAVAR NO INSERT** no PLAY; confira tempo/sinal/estado. Clique **PARAR**. Comandos, confirmação e gravação rodam em workers; nada é desenhado, bloqueado ou alocado no callback de áudio.
+6. A lista atualiza automaticamente com o WAV finalizado. **USAR GRAVAÇÃO** carrega o arquivo e volta à waveform; toque pelo MIDI, ajuste trims e salve o projeto. **ATUALIZAR** continua disponível para atualização manual.
+7. Se não houver conexão, confirme que o insert está carregado e tem acesso à pasta compartilhada. A detecção não garante que o host está enviando áudio: o painel distingue conexão e **áudio em fluxo**.
+
+**Diagnóstico dos sintomas de 0,0 s / −100 dBFS:** no código anterior, parar sem frames fazia o encoder retornar false e a UI mostrava incorretamente “Erro ao salvar”. Reproduzimos essa condição com testes. Agora:
+
+- **Gravação vazia:** nenhum frame recebido; confira atividade/render da faixa no host.
+- **Sem sinal capturado:** frames chegaram, mas eram silenciosos; confira entrada, canal, ganho e monitoração da faixa.
+- **Falha de WAV/escrita:** erro de codificação/carga ou de pasta/permissão/espaço; é separado dos casos anteriores. O sample anterior é preservado.
+
+Preparações repetidas do host na **mesma taxa** não encerram mais a tomada. O tempo usa a taxa original capturada. No Mac, a pasta nova é **`~/Library/Application Support/RASTRO/Captures`**; as tomadas antigas de `~/Library/RASTRO/Captures` continuam sendo lidas, sem mover/apagar arquivos. O diretório de comandos/estado é `~/Library/Application Support/RASTRO/Capture Links`; só metadados/comandos temporários são limpos ao fechar o insert. Tomadas WAV não são apagadas automaticamente.
+
+No Linux, usa `$XDG_CONFIG_HOME/RASTRO` ou `~/.config/RASTRO`. Os dois componentes precisam ter acesso ao mesmo diretório local; sandbox/permissões diferentes ainda precisam ser conferidos no Mac. PLAY embute a tomada carregada ao salvar projeto/patch. O insert guarda configurações, não uma cópia de todas as tomadas.
+
+**Validação disponível:** comando real por arquivo → buffer com sinal sintético → WAV PCM24 válido → descoberta/seleção na UI → carregamento → MIDI → recall exato, no Linux; teste nativo sem GUI desse protocolo e dos erros também incluído no CI Mac. **Ainda não foi validado o roteamento/captura em um Logic real.** Os prints mencionados no pedido não estavam disponíveis neste workspace; não foram inspecionados.
 
 ## Aparência, hardware e personagem
 
-**CORES / KNOBS / PERSONAGEM** abre três áreas com prévias reais/aplicadas, desfazer até 32 ações e voltar à aparência de abertura. Nove paletas coordenam fundo, superfícies, bordas, botões, knobs e texto: After Hours, Solar Studio, Mint Condition, Sunrise, Sunset Drive, Poolside, Electric Soul, Burnt Velvet e **Cosmic Arcade** (magenta/roxo/ciano, espaço discreto e cassete luminoso). As escolhas legadas continuam válidas.
+**CORES / KNOBS / PERSONAGEM** abre três áreas com prévias reais/aplicadas, desfazer até 32 ações e voltar à aparência de abertura. Nove paletas coordenam fundo, superfícies, bordas, botões, knobs e texto: After Hours, Solar Studio, Mint Condition, Sunrise, Sunset Drive, Poolside, Electric Soul, Burnt Velvet e **Cosmic Arcade** (magenta/roxo/ciano, espaço discreto e cassete luminoso). As escolhas legadas continuam válidas; os novos parâmetros visuais são acrescentados ao fim da lista, sem reordenar os IDs existentes.
 
 Quatro famílias afetam os knobs reais: marfim canelado, metal escovado, borracha e plástico de console, com ponteiros legíveis. O deck gira quando há vozes/prévia reais, não apenas cauda de efeito. O medidor mostra pico em dBFS; não é VU RMS calibrado.
 
-Personagem original vetorial com apresentações andrógina/masculina/feminina e peças livremente combináveis. Pés, braços, quadris, ombros e cabeça usam molas, antecipação, impacto e recuperação. Notas/velocity, áudio, BPM/PPQ, PLAY e atividade medida dos seis efeitos comandam dança/luzes/cenário. Variações de controles produzem acentos quando há atividade musical; repouso volta a uma pose estável. Não há dança aleatória contínua no silêncio.
+Personagem vetorial redesenhado: cabeça orgânica com face rebaixada e aletas, casaco estruturado, mangas volumétricas, calças flare e plataformas com acabamento em camadas/gradientes. Apresentações andrógina/masculina/feminina e peças livremente combináveis. A auréola é independente e opcional (desligada em instâncias novas; a escolha antiga é migrada). Pés, braços, quadris, ombros e cabeça usam molas, antecipação, impacto e recuperação. Notas/velocity, áudio, BPM/PPQ, PLAY e atividade medida dos seis efeitos comandam dança/luzes/cenário. Variações de controles produzem acentos quando há atividade musical; repouso volta a uma pose estável. Não há dança aleatória contínua no silêncio.
 
 Completo: 24 Hz; reduzido: 12 Hz e amplitude menor; desligado: 6 Hz só para leitura/estado. Interfaces cobertas/invisíveis suspendem o personagem/deck; só a aba PERSONAGEM anima sua prévia. Animação, Paths e desenho ficam na interface; áudio publica apenas telemetria atômica limitada. Aparência não entra no DSP.
 
-Janela padrão 1180×840, compacto 1000×700, mínimo 980×700, redimensionável até 1680×1100. SYNTH usa rolagem para manter controles acessíveis. O render 2× é teste simulado de HiDPI, não prova de execução Retina.
+Logo **RASTRO Play** integrado, com tipografia de sistema e assinatura próxima. Reels com proporção fixa restaurada pelo histórico (176×140 no padrão), sem esticar o painel para acomodá-los. Janela padrão **1100×760**, compacto 1000×700, mínimo 980×700, redimensionável até 1680×1100. SYNTH usa rolagem para manter controles acessíveis. O render 2× é teste simulado de HiDPI, não prova de execução Retina.
 
 **[Abrir capturas reais no GitHub](docs/previews/README.md)**. PNGs também acompanham o pacote Mac em `Previews/`. São imagens da interface JUCE no Linux; não mockups nem capturas do Logic. Links locais de workspace não são downloads no Codex do navegador.
 
@@ -134,7 +148,7 @@ cmake --build build-mac --config Release --parallel 2
 ctest --test-dir build-mac -C Release --output-on-failure
 ```
 
-São **nove suítes** no Mac por padrão (oito portáveis + importação CoreAudio). Para incluir a décima, de processador/editor, configure `-DRASTRO_INTEGRATION_TESTS=ON`, compile e execute numa sessão gráfica autenticada. O CI não inclui essa suíte GUI.
+São **dez suítes** no Mac por padrão (oito portáveis + importação CoreAudio + captura/IPC/WAV). Para incluir a décima primeira, de processador/editor, configure `-DRASTRO_INTEGRATION_TESTS=ON`, compile e execute numa sessão gráfica autenticada. O CI não inclui essa suíte GUI.
 
 5. Os produtos esperados são:
 
@@ -183,7 +197,7 @@ pluginval --strictness-level 5 --random-seed 42 \
   --validate "build/RastroCapture_artefacts/Release/VST3/RASTRO Capture.vst3"
 ```
 
-[Validação, cobertura e medições desta revisão](docs/UI-VALIDATION.md). Os workflows verificam binários, testes e ZIP/checksum antes de fazer upload; `BUILD-INFO.txt` identifica source commit e checkout testado. Artefatos de um commit anterior não comprovam esta revisão. Mac: universal em Intel, nove testes; Windows: x64, oito testes. Resultados efetivos ficam no run correspondente, não são presumidos pelo conteúdo deste README.
+[Validação, cobertura e medições desta revisão](docs/UI-VALIDATION.md). Os workflows verificam binários, testes e ZIP/checksum antes de fazer upload; `BUILD-INFO.txt` identifica source commit e checkout testado. Artefatos de um commit anterior não comprovam esta revisão. Mac: universal em Intel, dez suítes nativas e pluginval 1.0.3 nível 5/seed 42 nos dois VST3. Windows manual, não executado nesta rodada. Resultados efetivos ficam no run correspondente, não são presumidos pelo conteúdo deste README.
 
 Compatibilidade: IDs/ranges anteriores preservados; synth/LOOP/modos de tempo novos recebem defaults neutros/legados ao restaurar sessão sem esses campos, inclusive PLAY Y sem CRUMBLE nas sessões antigas. Os novos presets usam tempos FREE/SYNC explícitos. MIDI Learn aceita CC de qualquer canal; notificação de automação desses gestos ao host é diferida para interface/estado, com a limitação anterior de gravação de automação com editor fechado.
 

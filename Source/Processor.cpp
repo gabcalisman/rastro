@@ -1,7 +1,7 @@
 #include "Processor.h"
 #include "Editor.h"
 #include "Mp3Decoder.h"
-#include "Strings.h"
+#include "RastroStrings.h"
 namespace
 {
 constexpr int orders[6][3] = {{0, 1, 2}, {0, 2, 1}, {1, 0, 2}, {1, 2, 0}, {2, 0, 1}, {2, 1, 0}};

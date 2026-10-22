@@ -1,7 +1,7 @@
 #pragma once
 #include "DanceMotion.h"
 #include "Processor.h"
-#include "Strings.h"
+#include "RastroStrings.h"
 // All animation, Paths and painting remain on JUCE's message thread.
 class PlayPad : public juce::Component, public juce::SettableTooltipClient
 {

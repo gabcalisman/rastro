@@ -6,7 +6,7 @@
 #include "Performance.h"
 #include "Processor.h"
 #include "SampleView.h"
-#include "Strings.h"
+#include "RastroStrings.h"
 class RastroEditor : public juce::AudioProcessorEditor,
                      private juce::Timer,
                      public juce::FileDragAndDropTarget

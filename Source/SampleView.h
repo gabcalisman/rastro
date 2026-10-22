@@ -1,6 +1,6 @@
 #pragma once
 #include "Processor.h"
-#include "Strings.h"
+#include "RastroStrings.h"
 class SampleView : public juce::Component, public juce::SettableTooltipClient
 {
     RastroProcessor &p;

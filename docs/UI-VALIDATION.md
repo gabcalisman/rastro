@@ -98,6 +98,14 @@ git diff --check
 O helper X11 pertence ao ambiente, mantém atoms que o window manager normalmente fornece. Não é
 requisito do produto. Em desktop Linux normal use `ctest`/`pluginval` diretamente.
 
+## Correções encontradas na primeira execução CI
+
+No Mac, o caminho de include do teste de codecs expôs uma colisão, em filesystem sem distinção de
+maiúsculas, de `Strings.h` com o header Apple `strings.h`. O header do produto foi renomeado para
+`RastroStrings.h`, sem mudar traduções/IDs. No Windows, a compilação requer lambdas C++17 conformes;
+`/Zc:lambda` é explícito, junto com `/utf-8` para o texto PT/EN. São correções de portabilidade,
+sem mudança do DSP. Os workflows precisam passar novamente no commit que contém essas correções.
+
 ## CI e testes ainda necessários
 
 macOS: runner Intel, universal arm64+x86_64, PLAY AU/VST3/Standalone + Capture AU/VST3; nove suítes

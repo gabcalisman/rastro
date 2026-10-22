@@ -1,6 +1,10 @@
 cmake_minimum_required(VERSION 3.22)
 project(Rastro VERSION 0.1.0 LANGUAGES C CXX)
 set(CMAKE_CXX_STANDARD 17)
+if(MSVC)
+ # Conforming nested lambda captures and consistent PT/EN source encoding.
+ add_compile_options(/Zc:lambda /utf-8)
+endif()
 option(RASTRO_CORE_ONLY "Build only portable DSP tests" OFF)
 enable_testing()
 add_executable(rastro_tests tests/EngineTests.cpp)

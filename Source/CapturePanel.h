@@ -1,6 +1,6 @@
 #pragma once
 #include "CaptureBridge.h"
-#include "Strings.h"
+#include "RastroStrings.h"
 #include "Visuals.h"
 class CapturePanel : public juce::Component
 {

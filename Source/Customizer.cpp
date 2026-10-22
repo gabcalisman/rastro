@@ -89,7 +89,7 @@ void VisualCustomizer::Choice::paintButton(juce::Graphics &g, bool over, bool)
     auto pal = visuals::palette(ui.p);
     bool selected = kind == 0   ? (index == 8 ? ui.p.value("cosmicArcade") > .5f
                                               : ui.p.value("cosmicArcade") < .5f &&
-                                                    (int)ui.p.value("colourSet") == index + 1)
+                                                  (int)ui.p.value("colourSet") == index + 1)
                     : kind == 1 ? visuals::knobStyle(ui.p) == index
                                 : (int)ui.p.value("avatarBody") == index;
     auto box = getLocalBounds().toFloat().reduced(3);
@@ -222,11 +222,11 @@ VisualCustomizer::VisualCustomizer(RastroProcessor &processor) : p(processor), a
     previewKnob.setTextValueSuffix("%");
     previewKnob.setWantsKeyboardFocus(true);
     previewLabel.setJustificationType(juce::Justification::centred);
-    const char *ids[]{"visualTheme",  "visualBackground", "visualAccent",    "visualControls",
-                      "avatarColour", "avatarBody",       "avatarEyes",      "avatarAccessory",
-                      "avatarHair",   "avatarHorns",      "avatarClothes",   "avatarGlasses",
-                      "avatarTail",   "avatarWings",      "avatarInstrument"};
-    for (int i = 0; i < 15; ++i)
+    const char *ids[]{"visualTheme",  "visualBackground", "visualAccent",     "visualControls",
+                      "avatarColour", "avatarBody",       "avatarEyes",       "avatarAccessory",
+                      "avatarHair",   "avatarHorns",      "avatarClothes",    "avatarGlasses",
+                      "avatarTail",   "avatarWings",      "avatarInstrument", "avatarPresentation"};
+    for (int i = 0; i < 16; ++i)
     {
         auto f = std::make_unique<Field>();
         f->id = ids[i];
@@ -268,8 +268,8 @@ void VisualCustomizer::localize()
     reset.setButtonText(pt ? utf("Padrão") : "Defaults");
     undo.setButtonText(pt ? "Desfazer" : "Undo");
     revert.setButtonText(pt ? "Voltar ao abrir" : "Revert to opening");
-    const char *namesPt[]{"CORES", "KNOBS", "GROOVEIRO"},
-        *namesEn[]{"COLOURS", "KNOBS", "GROOVEIRO"};
+    const char *namesPt[]{"CORES", "KNOBS", "PERSONAGEM"},
+        *namesEn[]{"COLOURS", "KNOBS", "CHARACTER"};
     for (int i = 0; i < 3; ++i)
         tabs[i].setButtonText(pt ? namesPt[i] : namesEn[i]);
     const juce::StringArray bodyNames = pt ? juce::StringArray{"Orbit", "Soul", "Metro"}
@@ -283,7 +283,7 @@ void VisualCustomizer::localize()
                                   "Fundo",
                                   "Destaque",
                                   "Controles",
-                                  "Cor do Grooveiro",
+                                  "Cor do personagem",
                                   "Corpo",
                                   "Olhos",
                                   juce::String::fromUTF8("Acessório"),
@@ -293,11 +293,12 @@ void VisualCustomizer::localize()
                                   juce::String::fromUTF8("Óculos"),
                                   "Cauda",
                                   "Ombreiras",
-                                  "Instrumento"};
+                                  "Instrumento",
+                                  "Apresentação"};
     const juce::String labelsEn[]{
-        "Chassis", "Background", "Accent",    "Controls",  "Grooveiro colour",
-        "Body",    "Eyes",       "Accessory", "Hair",      "Metal",
-        "Clothes", "Glasses",    "Tail",      "Shoulders", "Instrument"};
+        "Chassis", "Background", "Accent",     "Controls",    "Character colour", "Body",
+        "Eyes",    "Accessory",  "Hair",       "Metal",       "Clothes",          "Glasses",
+        "Tail",    "Shoulders",  "Instrument", "Presentation"};
     const juce::StringArray choices[]{
         {"Retro", "Futuro", "Arcade", pt ? juce::String::fromUTF8("Orgânico") : "Organic"},
         {pt ? "Da paleta" : "Follow palette", "Midnight", "Lagoon", "Afterparty", "Ember"},
@@ -316,7 +317,9 @@ void VisualCustomizer::localize()
         {pt ? "Nenhum" : "None", "Aviator", pt ? "Visor" : "Visor"},
         {pt ? "Nenhuma" : "None", "Audio cable", "Ribbon"},
         {pt ? "Nenhuma" : "None", "Pleated cape", "Chrome plates"},
-        {pt ? "Nenhum" : "None", pt ? "Keytar" : "Keytar", "Beat pads"}};
+        {pt ? "Nenhum" : "None", pt ? "Keytar" : "Keytar", "Beat pads"},
+        {pt ? utf("Andrógina") : "Androgynous", pt ? "Masculina" : "Masculine",
+         pt ? "Feminina" : "Feminine"}};
     for (size_t i = 0; i < fields.size(); ++i)
     {
         auto &f = *fields[i];

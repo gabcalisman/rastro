@@ -42,7 +42,9 @@ jobs:
       - name: Build all Mac formats and DSP tests
         run: >-
           cmake --build "$BUILD_DIR" --config Release
-          --target Rastro_AU Rastro_VST3 Rastro_Standalone rastro_tests rastro_character_tests rastro_playback_tests rastro_mp3_tests
+          --target Rastro_AU Rastro_VST3 Rastro_Standalone RastroCapture_AU RastroCapture_VST3
+          rastro_tests rastro_character_tests rastro_playback_tests rastro_mp3_tests rastro_synth_tests
+          rastro_capture_tests rastro_timing_tests rastro_patch_tests rastro_recording_tests
           --parallel 3
 
       - name: Run portable DSP tests
@@ -53,8 +55,8 @@ jobs:
         run: |
           set -euo pipefail
           root="$BUILD_DIR/Rastro_artefacts/Release"
-          for bundle in "$root/AU/RASTRO.component" "$root/VST3/RASTRO.vst3" "$root/Standalone/RASTRO.app"; do
-            executable="$bundle/Contents/MacOS/RASTRO"
+          for bundle in "$root/AU/RASTRO.component" "$root/VST3/RASTRO.vst3" "$root/Standalone/RASTRO.app" "$BUILD_DIR/RastroCapture_artefacts/Release/AU/RASTRO Capture.component" "$BUILD_DIR/RastroCapture_artefacts/Release/VST3/RASTRO Capture.vst3"; do
+            executable="$bundle/Contents/MacOS/$(basename "$bundle" | sed 's/\.[^.]*$//')"
             test -f "$executable"
             lipo -archs "$executable"
             lipo "$executable" -verify_arch arm64 x86_64
@@ -72,7 +74,11 @@ jobs:
           ditto "$root/AU/RASTRO.component" "$package/AU/RASTRO.component"
           ditto "$root/VST3/RASTRO.vst3" "$package/VST3/RASTRO.vst3"
           ditto "$root/Standalone/RASTRO.app" "$package/Standalone/RASTRO.app"
+          ditto "$BUILD_DIR/RastroCapture_artefacts/Release/AU/RASTRO Capture.component" "$package/AU/RASTRO Capture.component"
+          ditto "$BUILD_DIR/RastroCapture_artefacts/Release/VST3/RASTRO Capture.vst3" "$package/VST3/RASTRO Capture.vst3"
           cp README.md "$package/README.md"
+          cp docs/INSTALL-MAC.txt "$package/INSTALL-MAC.txt"
+          ditto docs/previews "$package/Previews"
           {
             echo "RASTRO by Gab Calisman"
             echo "Source commit: $SOURCE_COMMIT"
@@ -80,12 +86,12 @@ jobs:
             echo "Runner architecture: $(uname -m)"
             echo "Bundle architectures: arm64 + x86_64 (verified with lipo)"
             echo "Minimum deployment target: macOS 12.0; Logic has its own OS requirements."
-            echo "Checks: all three formats built; native DSP tests passed; signatures verified."
+            echo "Checks: three PLAY formats + Capture AU/VST3 built; nine native suites (including CoreAudio M4A) passed; signatures verified."
             echo "Ad-hoc signed for testing; NOT Developer ID signed or notarized."
             echo "AU validation, arm64 execution, hardware audio/MIDI and Logic Pro playback NOT tested."
             sw_vers
             xcodebuild -version
-            for binary in "$package"/*/RASTRO.*/Contents/MacOS/RASTRO; do
+            for binary in "$package"/*/*.*/Contents/MacOS/*; do
               echo "$binary: $(lipo -archs "$binary")"
             done
           } > "$package/BUILD-INFO.txt"
@@ -94,7 +100,7 @@ jobs:
           {
             echo "### Download RASTRO"
             echo "Artifact: **$PACKAGE_NAME** (contains a bundle-preserving ZIP and its SHA-256)."
-            echo "Built AU, VST3 and Standalone for **arm64 + x86_64**, deployment target macOS 12.0."
+            echo "Built PLAY AU, VST3 and Standalone + Capture AU/VST3 for **arm64 + x86_64**, deployment target macOS 12.0."
             echo "Ad-hoc signed, not notarized. No AU validation or Logic Pro playback test was performed."
           } >> "$GITHUB_STEP_SUMMARY"
 

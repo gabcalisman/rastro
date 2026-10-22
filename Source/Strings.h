@@ -9,6 +9,135 @@ struct Entry
     const char *en;
 };
 inline const Entry entries[]{
+    {"timingHelp",
+     "FREE usa ms/Hz; SYNC usa 1/4, 1/8, colcheia pontuada ou tercina no BPM do host (ou tempo "
+     "MANUAL se ausente). CRUMBLE e o LFO principal do WOBBLE seguem o transporte quando há PPQ; "
+     "flutter fica livre. * preserva o modo legado. Faixa de tempo 30–300 BPM.",
+     "FREE uses ms/Hz; SYNC uses quarter, eighth, dotted eighth or triplet at host BPM (or MANUAL "
+     "tempo if absent). CRUMBLE and WOBBLE's main LFO follow transport when PPQ exists; flutter "
+     "remains free. * preserves legacy behavior. Tempo range 30–300 BPM."},
+    {"gFreeMs", "Eco · tempo (ms)", "Echo · time (ms)"},
+    {"cFreeHz", "Fragmentos · Hz", "Fragments · Hz"},
+    {"wFreeHz", "Wobble · Hz", "Wobble · Hz"},
+    {"gDivision", "Eco · divisão", "Echo · division"},
+    {"cDivision", "Fragmentos · divisão", "Fragments · division"},
+    {"wDivision", "Wobble · divisão", "Wobble · division"},
+    {"lfoTiming", "LFO · SYNC / FREE", "LFO · SYNC / FREE"},
+    {"lfoDivision", "LFO · divisão SYNC", "LFO · SYNC division"},
+    {"lfoTimingHelp",
+     "FREE usa Hz. SYNC segue BPM e PPQ do host, com fallback manual. Legado conserva o seletor de "
+     "relógio anterior.",
+     "FREE uses Hz. SYNC follows host BPM/PPQ with manual fallback. Legacy preserves the previous "
+     "clock selector."},
+    {"lfoDivisionHelp", "Semínima, colcheia, colcheia pontuada ou tercina. Ative SYNC para usar.",
+     "Quarter, eighth, dotted eighth or triplet. Enable SYNC to use."},
+    {"xyHelp",
+     "X multiplica a intensidade do WOBBLE; Y transforma CRUMBLE, DUST e CRUSH ativos. Centro "
+     "mantém valores individuais. Não liga módulos em bypass. Sessões antigas mantêm o mapa antigo "
+     "de Y (sem CRUMBLE).",
+     "X scales WOBBLE depth; Y transforms active CRUMBLE, DUST and CRUSH. Centre preserves "
+     "individual values. Never enables bypassed modules. Old sessions retain legacy Y mapping "
+     "(without CRUMBLE)."},
+    {"xyOff", "BYPASS / MIX 0", "BYPASS / MIX 0"},
+    {"clean", "LIMPO", "CLEAN"},
+    {"degraded", "DEGRADADO", "DEGRADED"},
+    {"stable", "ESTÁVEL", "STABLE"},
+    {"ready", "PRONTO", "READY"},
+    {"randomHelp",
+     "Nova variação aleatória dos efeitos ativos; preserva sample, raiz, trims e modo. Desfazer "
+     "variação recupera o anterior.",
+     "New random variation of active effects; preserves sample, root, trims and playback mode. "
+     "Undo variation restores the previous sound."},
+    {"regionLoopHelp",
+     "LOOP independente não troca o modo. Vale para novas notas. Região própria ou seleção; em "
+     "Slice é limitada ao corte. One Shot repete após soltar; Gate/Hold libera pelo ADSR. Loop "
+     "legado mantém seu note-off. Parada do host/All Sound Off encerra.",
+     "Independent LOOP does not change mode. Applies to new notes. Own region or selection; Slice "
+     "clips to its slice. One Shot repeats after key-up; Gate/Hold releases via ADSR. Legacy Loop "
+     "keeps its note-off. Host stop/All Sound Off ends voices."},
+    {"loopRegionSet", "Usar região própria do LOOP", "Use own LOOP region"},
+    {"loopStart", "Loop · início (0–1)", "Loop · start (0–1)"},
+    {"loopEnd", "Loop · fim (0–1)", "Loop · end (0–1)"},
+    {"loopCrossfade", "Loop · crossfade", "Loop · crossfade"},
+    {"loopStartHelp",
+     "Posição normalizada do arquivo; habilite região própria. Também editável na waveform em "
+     "LOOP.",
+     "Normalized file position; enable own region. Also editable in waveform LOOP view."},
+    {"loopEndHelp",
+     "Fim da região; nunca amplia o trim/corte realmente tocado. Sem interseção, usa o corte "
+     "inteiro.",
+     "Region end; never enlarges the played trim/slice. With no intersection uses the whole "
+     "slice."},
+    {"loopCrossfadeHelp",
+     "0–50 ms, limitado a 25% da região, no LOOP independente. Avanço/reverso usam crossfade "
+     "linear com sobreposição; Ping-Pong usa reflexão interpolada contínua.",
+     "0–50 ms, capped at 25% of region, for independent LOOP. Forward/reverse use linear overlap "
+     "crossfade; Ping-Pong uses continuous interpolated reflection."},
+    {"synthEnable", "Ativar SAMPLE SYNTH (novas vozes)", "Enable SAMPLE SYNTH (new voices)"},
+    {"synthHelp",
+     "ADSR e filtro ressonante por voz. Desligado preserva o som legado; Gate/Hold sempre usa "
+     "ADSR. Vale para novas notas.",
+     "Per-voice ADSR and resonant filter. Off preserves legacy audio; Gate/Hold always uses ADSR. "
+     "Applies to new notes."},
+    {"ampAttack", "Ataque", "Attack"},
+    {"ampDecay", "Decaimento", "Decay"},
+    {"ampSustain", "Sustain", "Sustain"},
+    {"ampRelease", "Release", "Release"},
+    {"filterCutoff", "Cutoff · low-pass", "Cutoff · low-pass"},
+    {"filterResonance", "Ressonância", "Resonance"},
+    {"envAmount", "Envelope · intensidade", "Envelope · amount"},
+    {"envTarget", "Envelope →", "Envelope →"},
+    {"lfoRate", "LFO · velocidade", "LFO · rate"},
+    {"lfoDepth", "LFO · intensidade", "LFO · depth"},
+    {"lfoTarget", "LFO →", "LFO →"},
+    {"lfoSync", "LFO · relógio", "LFO · clock"},
+    {"voiceMode", "Vozes", "Voices"},
+    {"triggerMode", "Disparo / Gate", "Trigger / Gate"},
+    {"glide", "Glide", "Glide"},
+    {"bendRange", "Bend · semitons", "Bend · semitones"},
+    {"ampAttackHelp", "Tempo de subida da amplitude por voz, em segundos.",
+     "Per-voice amplitude attack time in seconds."},
+    {"ampDecayHelp", "Tempo de 1 até o nível sustain.", "Time from 1 down to sustain level."},
+    {"ampSustainHelp", "Nível mantido enquanto o gate está aberto e existe áudio na região.",
+     "Held level while gate is open and audio remains in the region."},
+    {"ampReleaseHelp",
+     "Gate/Hold: note-off inicia esta liberação; pedal CC64 adia o release. One Shot ignora "
+     "note-off.",
+     "Gate/Hold: note-off starts release; CC64 pedal defers release. One Shot ignores note-off."},
+    {"filterCutoffHelp", "Low-pass ressonante original de dois polos por voz; ative SAMPLE SYNTH.",
+     "Original per-voice two-pole resonant low-pass; enable SAMPLE SYNTH."},
+    {"filterResonanceHelp", "Realce na frequência de corte; limitado abaixo da auto-oscilação.",
+     "Emphasis at cutoff; bounded below self-oscillation."},
+    {"envAmountHelp",
+     "Cutoff: até ±4 oitavas. Pitch: até ±12 semitons. Envelope de amplitude segue independente.",
+     "Cutoff: up to ±4 octaves. Pitch: up to ±12 semitones. Amplitude envelope remains "
+     "independent."},
+    {"envTargetHelp", "Destino do envelope adicional: cutoff ou pitch.",
+     "Additional envelope target: cutoff or pitch."},
+    {"lfoRateHelp", "0,05–12 Hz quando livre. Sincronizado usa BPM do host ou tempo manual.",
+     "0.05–12 Hz when free. Sync uses host BPM or manual tempo."},
+    {"lfoDepthHelp",
+     "Cutoff: até ±2 oitavas; pitch: até ±2 semitons. Mod wheel CC1 acrescenta intensidade, com "
+     "limite.",
+     "Cutoff: up to ±2 octaves; pitch: up to ±2 semitones. Mod wheel CC1 adds bounded depth."},
+    {"lfoTargetHelp", "LFO senoidal em cutoff ou pitch; não é um novo efeito do rack.",
+     "Sine LFO on cutoff or pitch; this is not a new rack effect."},
+    {"lfoSyncHelp", "Livre ou uma oscilação por semínima, colcheia ou mínima.",
+     "Free or one cycle per quarter, eighth or half note."},
+    {"voiceModeHelp",
+     "Poly: até 16 vozes. Mono: reinicia o envelope. Legato: mantém envelope/posição com notas "
+     "sobrepostas. Última tecla tem prioridade.",
+     "Poly: up to 16 voices. Mono retriggers envelope. Legato retains envelope/position for "
+     "overlapping notes. Last-note priority."},
+    {"triggerModeHelp",
+     "Legado mantém note-off por modo. One Shot ignora note-off. Gate/Hold inicia o release ao "
+     "soltar; sem loop, a borda do áudio ainda encerra a voz.",
+     "Legacy preserves mode-specific note-off. One Shot ignores note-off. Gate/Hold releases on "
+     "key-up; without looping the audio boundary still ends the voice."},
+    {"glideHelp", "Portamento em Mono/Legato, em segundos; Poly ignora este controle.",
+     "Portamento in Mono/Legato, in seconds; ignored in Poly."},
+    {"bendRangeHelp", "Alcance do pitch bend MIDI nos dois pitch modes; zero desliga bend.",
+     "MIDI pitch-bend range in both pitch modes; zero disables bend."},
     {"pitchHelp",
      "REPITCH: notas MIDI mudam altura e velocidade em relação à raiz. FIXED PITCH: todas as notas "
      "tocam na altura e velocidade originais. Slice mantém a seleção de cortes por notas. Efeitos "
@@ -119,8 +248,8 @@ inline const Entry entries[]{
     {"wobble", "Afinação em movimento", "Moving pitch"},
     {"dust", "Textura que segue o som", "Sound-following texture"},
     {"crush", "Grão digital suavizado", "Smoothed digital grain"},
-    {"playAxes", "X / movimento    ·    Y / transformação",
-     "X / movement    ·    Y / transformation"},
+    {"playAxes", "X: ESTÁVEL → WOBBLE · Y: LIMPO → DEGRADADO",
+     "X: STABLE → WOBBLE · Y: CLEAN → DEGRADED"},
     {"playHelp",
      "Arraste para tocar a textura. Duplo clique ou Home centraliza; setas ajustam. X: WOBBLE. Y: "
      "DUST + CRUSH. Os controles do rack continuam valendo.",
@@ -164,7 +293,7 @@ inline const Entry entries[]{
     {"bTone", "Tonalidade", "Tone"},
     {"bDecay", "Cauda", "Decay"},
     {"bMix", "Mistura", "Mix"},
-    {"mutate", "MUTAR", "MUTATE"},
+    {"mutate", "ALEATÓRIO", "RANDOM"},
     {"reset", "Restaurar efeitos", "Reset effects"},
     {"add", "+ Módulo", "+ Module"},
     {"about", "Sobre", "About"},
@@ -207,7 +336,9 @@ inline const Entry entries[]{
      "Adjust; double-click resets. Host automation available."},
     {"bypassHelp", "Compare o sinal com e sem este módulo.",
      "Compare the signal with and without this module."},
-    {"mutateHelp", "Varia parâmetros com limites seguros; preserva amostra e volume.",
+    {"mutateHelp",
+     "Varia efeitos ativos aleatoriamente. Preserva sample, raiz, trims e modo. Desfazer variação "
+     "recupera o som anterior.",
      "Varies parameters within safe limits; preserves sample and level."},
     {"range", "Fim menor que início: intervalo mínimo de uma amostra.",
      "End before start: minimum one-sample range."},

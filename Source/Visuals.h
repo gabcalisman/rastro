@@ -4,10 +4,11 @@ namespace visuals
 {
 inline const juce::Colour text{0xfff2efff}, muted{0xffb5aecb}, panel{0xff201e32}, edge{0xff49425f};
 inline constexpr const char *visualIds[]{
-    "visualTheme",     "visualPalette", "controlStyle",     "avatarBody",    "avatarEyes",
-    "avatarAccessory", "knobDesign",    "visualBackground", "visualAccent",  "visualControls",
-    "avatarColour",    "avatarHair",    "avatarHorns",      "avatarClothes", "avatarGlasses",
-    "avatarTail",      "avatarWings",   "avatarInstrument", "colourSet",     "cosmicArcade"};
+    "visualTheme",       "visualPalette", "controlStyle",     "avatarBody",    "avatarEyes",
+    "avatarAccessory",   "knobDesign",    "visualBackground", "visualAccent",  "visualControls",
+    "avatarColour",      "avatarHair",    "avatarHorns",      "avatarClothes", "avatarGlasses",
+    "avatarTail",        "avatarWings",   "avatarInstrument", "colourSet",     "cosmicArcade",
+    "avatarPresentation"};
 inline juce::Colour accent(int palette)
 {
     constexpr juce::uint32 colours[]{0xffa794ff, 0xff64e4d2, 0xffff8cc7, 0xffffc179};

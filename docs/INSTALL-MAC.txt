@@ -1,0 +1,36 @@
+RASTRO PLAY - macOS universal test build (macOS 12+)
+1. Download the artifact while signed into GitHub with access to the private repository.
+2. Extract it, then extract the INNER RASTRO-macOS-universal.zip in Finder.
+   Read BUILD-INFO.txt to confirm the source commit and verified architectures arm64 + x86_64.
+3. Quit Logic and other hosts. In Finder use Go > Go to Folder and enter:
+   ~/Library/Audio/Plug-Ins/Components/
+   Create the folder if necessary. Copy the WHOLE AU/RASTRO.component into it.
+   Optionally copy AU/RASTRO Capture.component too (recorder-only companion).
+   Move old test bundles out first; avoid duplicate user/system installations.
+4. For other VST3 hosts, copy the whole VST3 bundles into:
+   ~/Library/Audio/Plug-Ins/VST3/
+   Logic uses AU, not VST3. Standalone/RASTRO.app can be copied to ~/Applications/.
+5. Reopen Logic > Settings > Plug-in Manager, find manufacturer Gab Calisman and rescan RASTRO.
+   In an empty project create a Software Instrument track:
+   AU Instruments > Gab Calisman > RASTRO > Stereo.
+6. IMPORTAR loads rendered WAV/AIFF/MP3/M4A. M4A uses local CoreAudio: six synthetic AAC-LC/ALAC
+   variants are checked by CI. QuickTime Editable is excluded; export rendered .m4a from Voice Memos.
+7. Try the on-screen keyboard, then MIDI. PITCH MODE changes repitch versus fixed speed.
+   One Shot ignores note-off; Gate/Hold uses ADSR release. LOOP repeats without BPM stretching.
+8. Save the project, quit/reopen and verify the embedded sample and parameters. Test bounce too.
+9. Optional direct capture: open Standalone, select input device, grant microphone permission,
+   keep monitoring OFF initially, check input level, REC, STOP, then preview/play the sample.
+   In Logic, put RASTRO Capture in Audio FX on an AUDIO track/aux carrying the source, REC/STOP.
+   In PLAY open CAPTURAR, refresh the local take list and receive it. No external export is needed.
+   This companion routing still needs verification in Logic; CI does not test it in a DAW.
+10. Open Previews/README.md (or its PNGs) to inspect actual Linux JUCE captures, not Mac screenshots.
+
+These bundles are ad-hoc signed, not Developer ID signed or notarized. Use standard macOS privacy/
+security review for a trusted test build; do not disable Gatekeeper. If validation fails, report the
+macOS/Logic version, Mac chip, error and BUILD-INFO commit instead of force-enabling the plugin.
+
+Optional Terminal check after installation:
+  auval -v aumu Rstr GbCa
+Optional recorder check:
+  auval -v aufx Rcpt GbCa
+No auval, Logic playback, Apple silicon execution, Retina or physical audio/MIDI test is claimed by CI.

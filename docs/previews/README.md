@@ -1,26 +1,24 @@
-# Capturas reais — hardware, PITCH MODE e Cosmic Arcade
+# RASTRO PLAY — capturas reais da interface
 
-Interface JUCE implementada, renderizada pela suíte em Linux x86_64. Sem mockups ou geração por IA.
-O sample visual.wav é sintético. Não demonstra execução no Mac/Logic nem teste de escuta.
+Abra esta página no GitHub na branch `prepare-mac-testing`, com acesso ao repositório privado.
+Clique nos PNGs para abrir/baixar o original. O Codex no navegador não exibiu as imagens nas tentativas
+anteriores; estes links são um caminho de acesso verificável, não confirmação de exibição no chat.
 
-O usuário confirmou que as imagens enviadas pelo chat não aparecem no Codex no navegador.
-Abra esta página no GitHub, na branch `prepare-mac-testing` do PR #1, com acesso ao repositório privado.
-Clique em uma imagem para abrir o PNG original e use o botão de download do GitHub para salvá-lo.
-Isso oferece outro caminho de acesso; não confirma que o chat passou a exibir imagens.
-O script `scripts/export_previews.py` também cria um pacote offline com 22 PNGs e HTML autocontido
-a partir das capturas geradas pelos testes. Esse pacote de imagens não é um instalador Mac.
+**No pacote do build:** abra `Previews/ABRIR-PREVIAS.html` por duplo clique, offline, ou qualquer PNG.
+São 36 capturas da árvore JUCE no **Linux x86_64**, não mockups, Mac/Logic ou prova de teste de escuta.
+HiDPI é render 2× simulado. O sample visual.wav e a atividade musical são sintéticos dos testes.
 
-## Instrumento · After Hours
+## Cosmic Arcade
 
-![Instrumento · After Hours](instrumento.png)
+![Cosmic Arcade](cosmic.png)
+
+## Instrumento padrão
+
+![Instrumento padrão](instrumento.png)
 
 ## Compacto
 
 ![Compacto](compacto.png)
-
-## Notas MIDI e PLAY
-
-![Notas MIDI e PLAY](performance.png)
 
 ## CORES
 
@@ -30,62 +28,54 @@ a partir das capturas geradas pelos testes. Esse pacote de imagens não é um in
 
 ![KNOBS](knobs.png)
 
-## GROOVEIRO
+## PERSONAGEM
 
-![GROOVEIRO](grooveiro.png)
+![PERSONAGEM](personagem.png)
 
-## Cosmic Arcade
+## SYNTH
 
-![Cosmic Arcade](cosmic.png)
+![SYNTH](synth.png)
 
-## Cosmic Arcade no personalizador
+## PATCHES
 
-![Cosmic Arcade no personalizador](cosmic-personalizador.png)
+![PATCHES](patches.png)
 
-## Marfim canelado
+## PATCHES compacto
 
-![Marfim canelado](hardware-1.png)
+![PATCHES compacto](patches-compacto.png)
 
-## Metal escovado
+## Receber captura
 
-![Metal escovado](hardware-2.png)
+![Receber captura](captura.png)
 
-## Borracha
+## Apresentações e dança
 
-![Borracha](hardware-3.png)
+Peças livremente combináveis; estes exemplos não limitam acessórios por apresentação.
 
-## Plástico de console
+![Apresentação 0](character-presentation-0.png)
 
-![Plástico de console](hardware-4.png)
+![Apresentação 1](character-presentation-1.png)
 
-## After Hours
+![Apresentação 2](character-presentation-2.png)
 
-![After Hours](paleta-1.png)
+O HTML offline permite alternar oito quadros capturados da dança com áudio MIDI real processado pelo motor do teste.
 
-## Solar Studio
+[Quadro 0](character-dance-0.png) · [Quadro 1](character-dance-1.png) · [Quadro 2](character-dance-2.png) · [Quadro 3](character-dance-3.png) · [Quadro 4](character-dance-4.png) · [Quadro 5](character-dance-5.png) · [Quadro 6](character-dance-6.png) · [Quadro 7](character-dance-7.png)
 
-![Solar Studio](paleta-2.png)
+## Paletas e materiais
 
-## Mint Condition
+- [After Hours](paleta-1.png)
+- [Solar Studio](paleta-2.png)
+- [Mint Condition](paleta-3.png)
+- [Sunrise](paleta-4.png)
+- [Sunset Drive](paleta-5.png)
+- [Poolside](paleta-6.png)
+- [Electric Soul](paleta-7.png)
+- [Burnt Velvet](paleta-8.png)
 
-![Mint Condition](paleta-3.png)
+- [Marfim canelado](hardware-1.png)
+- [Metal escovado](hardware-2.png)
+- [Borracha](hardware-3.png)
+- [Plástico](hardware-4.png)
 
-## Sunrise
-
-![Sunrise](paleta-4.png)
-
-## Sunset Drive
-
-![Sunset Drive](paleta-5.png)
-
-## Poolside
-
-![Poolside](paleta-6.png)
-
-## Electric Soul
-
-![Electric Soul](paleta-7.png)
-
-## Burnt Velvet
-
-![Burnt Velvet](paleta-8.png)
+[Render HiDPI 2×](hidpi.png) · [Checksums SHA-256](SHA256SUMS.txt)

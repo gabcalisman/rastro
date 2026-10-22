@@ -19,8 +19,77 @@ void check(bool b, const char *message)
     if (!b)
         throw std::runtime_error(message);
 }
+void xyCorners()
+{
+    rastro::Sample sample;
+    sample.rate = 48000;
+    for (auto &c : sample.data)
+    {
+        c.resize(48000);
+        for (int i = 0; i < 48000; ++i)
+            c[i] = .3f * std::sin(i * .09f) + .15f * std::sin(i * .17f);
+    }
+    auto render = [&](float x, float y, int only)
+    {
+        rastro::Engine e;
+        e.prepare(48000);
+        rastro::Settings p;
+        p.enabled.fill(false);
+        p.xyCrumble = true;
+        if (only == 6)
+        {
+            p.enabled[1] = p.enabled[3] = p.enabled[4] = p.enabled[5] = true;
+        }
+        else if (only >= 0)
+            p.enabled[only] = true;
+        p.loop = 1;
+        p.playX = x;
+        p.playY = y;
+        p.crumble = {.5f, .7f, .45f};
+        p.dust = {.5f, .5f, 1};
+        p.crush = {.5f, 1};
+        p.wobble = {.4f, .5f, 1};
+        e.noteOn(60, 1, &sample, p);
+        std::vector<float> out(24000);
+        for (auto &v : out)
+        {
+            float r;
+            e.frame(v, r, &sample, p);
+        }
+        return out;
+    };
+    auto difference = [](const auto &a, const auto &b)
+    {
+        double sum = 0;
+        for (size_t i = 0; i < a.size(); ++i)
+            sum += std::abs(a[i] - b[i]);
+        return sum;
+    };
+    auto dry = render(0, 0, -1);
+    check(render(0, 0, 6) == dry, "XY clean/stable corner really removes its four destinations");
+    for (int m : {1, 4, 5})
+    {
+        check(render(.2f, 0, m) == dry, "Y zero is dry for each degradation module");
+        auto centre = render(.5f, .5f, m), top = render(.5f, 1, m);
+        check(difference(dry, centre) > 1 && difference(centre, top) > .1,
+              "Y centre/top make audible distinct degradation");
+        check(render(0, 1, m) == render(1, 1, m), "X never changes degradation-only audio");
+    }
+    check(render(1, 0, 3) == render(1, 1, 3), "Y never changes WOBBLE-only audio");
+    check(difference(render(0, 0, 3), render(1, 0, 3)) > 1, "X makes audible WOBBLE movement");
+    for (auto point : {std::array<float, 2>{0, 0}, {1, 0}, {0, 1}, {1, 1}, {.5f, .5f}})
+    {
+        auto audio = render(point[0], point[1], 6);
+        for (float value : audio)
+            check(std::isfinite(value) && std::abs(value) <= 1,
+                  "all XY corners and centre remain bounded");
+    }
+    std::cout << "PASS XY: four corners/centre, actual CRUMBLE/DUST/CRUSH and WOBBLE audio, "
+                 "independent axes, no bypass changes\n";
+}
 int main()
 {
+    xyCorners();
     for (int rank = 0; rank < 720; ++rank)
     {
         auto p = rastro::decodeOrder(rank);

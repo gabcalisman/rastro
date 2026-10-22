@@ -18,17 +18,23 @@ shots = [
     ('compact', 'Instrumento — compacto 1000×700'),
     ('colours', 'Personalizador — CORES'),
     ('knobs', 'Personalizador — KNOBS e prévia interativa'),
-    ('grooveiro', 'Personalizador — GROOVEIRO'),
+    ('character', 'Personalizador — PERSONAGEM'),
     ('english', 'Personalizador — inglês'),
     ('hidpi', 'Instrumento — renderização 2× (simulada)'),
     ('performance', 'Performance — notas MIDI e PLAY · Sunset Drive'),
     ('cosmic', 'Cosmic Arcade — instrumento e cassete luminoso'),
     ('cosmic-customizer', 'Cosmic Arcade — paleta aplicada no personalizador'),
 ]
+shots += [('synth', 'SYNTH — ADSR, filtro, modulação e LOOP'), ('patches', 'PATCHES — busca real e comparação A/B'), ('patches-compact', 'PATCHES — compacto'), ('capture', 'CAPTURAR — receber tomada do insert')]
+shots += [(f'character-presentation-{i}', f'Personagem — apresentação {i}') for i in range(3)]
+shots += [(f'character-dance-{i}', f'Dança real — quadro {i}') for i in range(8)]
 palette_names = ['After Hours', 'Solar Studio', 'Mint Condition', 'Sunrise', 'Sunset Drive', 'Poolside', 'Electric Soul', 'Burnt Velvet']
 shots += [(f'palette-{i}', f'Paleta — {name}') for i,name in enumerate(palette_names,1)]
 shots += [(f'hardware-{i}', f'Hardware — {name}') for i,name in enumerate(['Marfim canelado', 'Metal escovado', 'Borracha', 'Plástico de console'],1)]
 def source_name(key):
+    special={'synth':'rastro-instrument-panel.png','patches':'rastro-patch-panel.png','patches-compact':'rastro-patch-compact.png','capture':'rastro-capture-receiver.png'}
+    if key in special: return special[key]
+    if key.startswith('character-'): return f'rastro-{key}.png'
     return f'rastro-{key}.png' if key.startswith(('palette-', 'hardware-')) else f'rastro-final-{key}.png'
 args.out.mkdir(parents=True, exist_ok=True)
 figures, checksums = [], []
@@ -51,19 +57,19 @@ page = '''<!doctype html><html lang="pt-BR"><meta charset="utf-8">
 main{max-width:1200px;margin:auto;padding:24px}a{color:#a794ff}nav{display:flex;gap:16px;flex-wrap:wrap}
 figure{margin:36px 0;padding:16px;background:#201e32;border-radius:12px}h2{font-size:20px}p{color:#c7c0db}
 img{width:100%;height:auto;display:block}small{display:block;margin:20px 0}</style>
-<main><h1>RASTRO PLAY — Etapa 1 local</h1>
+<main><h1>RASTRO PLAY — capturas reais</h1>
 <p>Imagens produzidas pela interface JUCE implementada. Não são mockups ou imagens geradas por IA.
-O arquivo visual.wav é um fixture sintético dos testes. Esta revisão não foi publicada nem testada no Logic.</p>
+O arquivo visual.wav é um fixture sintético dos testes. Capturas no Linux; não demonstram teste no Logic.</p>
 <nav>''' + ''.join(f'<a href="#{key}">{html.escape(title.split("—")[-1].strip())}</a>' for key, title in shots) + '</nav>'
 page += ''.join(figures) + '<small>HTML autocontido: abre offline por duplo clique. PNGs originais e checksums acompanham o ZIP.</small></main></html>'
 (args.out / 'ABRIR-PREVIAS.html').write_text(page, encoding='utf-8')
 (args.out / 'SHA256SUMS.txt').write_text('\n'.join(checksums) + '\n', encoding='utf-8')
 (args.out / 'LEIA-ME.txt').write_text('Extraia o ZIP e abra ABRIR-PREVIAS.html por duplo clique. Não exige internet.\n'
                                       'As capturas são reais, feitas no Linux. Não demonstram execução no macOS/Logic.\n', encoding='utf-8')
-archive = args.out.parent / 'RASTRO-Etapa1-previas.zip'
+archive = args.out.parent / 'RASTRO-PLAY-previas.zip'
 with zipfile.ZipFile(archive, 'w', zipfile.ZIP_DEFLATED) as bundle:
     for filename in ['ABRIR-PREVIAS.html', 'SHA256SUMS.txt', 'LEIA-ME.txt'] + [source_name(k) for k, _ in shots]:
-        bundle.write(args.out / filename, f'RASTRO-Etapa1/{filename}')
+        bundle.write(args.out / filename, f'RASTRO-PLAY/{filename}')
 args.out.chmod(0o755)
 for exported in args.out.iterdir():
     if exported.is_file():

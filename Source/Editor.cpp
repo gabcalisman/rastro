@@ -91,6 +91,12 @@ RastroEditor::Knob::Knob(RastroProcessor &p, juce::String key, bool rotary) : p(
             return juce::String(.15 + v * 2.85, 2) + " Hz";
         if (key == "root" || key == "tempo")
             return juce::String(juce::roundToInt(v));
+        if (key.endsWith("FreeMs"))
+            return juce::String(v, 0) + " ms";
+        if (key.endsWith("FreeHz"))
+            return juce::String(v, 2) + " Hz";
+        if (key.endsWith("Division"))
+            return juce::String(rastro::divisionNames[juce::jlimit(0, 3, int(v))]);
         return juce::String(juce::roundToInt(v * 100)) + "%";
     };
     slider.updateText();
@@ -123,6 +129,37 @@ RastroEditor::Card::Card(RastroEditor &e, int m) : ui(e), module(m)
         ui.p.set(onIds[module], 1 - ui.p.value(onIds[module]));
         ui.selectModule(module);
     };
+    if (int slot = rastro::timingSlot(module); slot >= 0)
+    {
+        addAndMakeVisible(timing);
+        timing.setComponentID("effectTiming_" + juce::String(module));
+        timing.onClick = [this, slot]
+        {
+            juce::PopupMenu menu;
+            menu.addItem(1, juce::String::fromUTF8("FREE · ms / Hz"));
+            for (int i = 0; i < 4; ++i)
+                menu.addItem(2 + i, juce::String(juce::String::fromUTF8("SYNC · ")) +
+                                        rastro::divisionNames[i]);
+            menu.addSeparator();
+            menu.addItem(9, ui.p.language == 0 ? juce::String::fromUTF8("Legado (preservar sessão)")
+                                               : "Legacy (preserve session)");
+            menu.showMenuAsync(juce::PopupMenu::Options().withTargetComponent(timing),
+                               [safe = juce::Component::SafePointer<Card>(this), slot](int result)
+                               {
+                                   if (!safe || result <= 0)
+                                       return;
+                                   if (result == 9)
+                                       safe->ui.p.set(rastro::timingIds[slot], 0);
+                                   else
+                                   {
+                                       safe->ui.p.set(rastro::timingIds[slot], result == 1 ? 1 : 2);
+                                       if (result >= 2)
+                                           safe->ui.p.set(rastro::divisionIds[slot], result - 2);
+                                   }
+                                   safe->ui.synchroniseUi();
+                               });
+        };
+    }
     mix = std::make_unique<Knob>(ui.p, mixIds[m], false);
     addAndMakeVisible(*mix);
     mix->label.setVisible(false);
@@ -160,15 +197,29 @@ void RastroEditor::Card::paint(juce::Graphics &g)
                             "wobbleShort", "dustShort",    "crushShort"};
     g.setFont(juce::Font(juce::FontOptions(11)));
     g.setColour(pal.muted);
-    g.drawText(ui.tr(shortKeys[module]), 10, 25, getWidth() - 18, 16, juce::Justification::left);
+    float amount = ui.p.value(controlIds[module][0]);
+    bool xyZero = module == 3 ? ui.p.value("playX") < .001f
+                              : (module == 4 || module == 5 ||
+                                 (module == 1 && ui.p.value("xyCrumble") > .5f)) &&
+                                    ui.p.value("playY") < .001f;
+    bool zero = ui.p.value(mixIds[module]) < .001f || ui.p.value("drywet") < .001f || xyZero ||
+                (module >= 3 && amount < .001f);
+    auto status = !present  ? ui.tr("removed")
+                  : !active ? "BYPASS"
+                  : zero    ? (ui.p.language == 0 ? juce::String::fromUTF8("SEM FX · MIX/XY")
+                                                  : juce::String::fromUTF8("DRY · MIX/XY"))
+                            : ui.tr(shortKeys[module]);
+    g.drawText(status, 10, 25, getWidth() - 18, 16, juce::Justification::left);
     g.drawText(!present ? ui.tr("removed") : ui.tr("mix"), 10, 96, 27, 24,
                juce::Justification::left);
     g.setColour(pal.muted);
-    g.drawText(ui.tr(primary->id), getWidth() / 2, 43, getWidth() / 2 - 9, 24,
-               juce::Justification::right);
+    if (rastro::timingSlot(module) < 0)
+        g.drawText(ui.tr(primary->id), getWidth() / 2, 43, getWidth() / 2 - 9, 24,
+                   juce::Justification::right);
 }
 void RastroEditor::Card::resized()
 {
+    timing.setBounds(getWidth() / 2 + 3, 43, getWidth() / 2 - 12, 24);
     remove.setBounds(getWidth() - 29, 3, 26, 25);
     bypass.setBounds(9, 43, getWidth() / 2 - 13, 24);
     primary->setBounds(8, 68, getWidth() - 16, 26);
@@ -215,11 +266,88 @@ RastroEditor::RastroEditor(RastroProcessor &processor)
       keyboard(p.keyboard, juce::MidiKeyboardComponent::horizontalKeyboard)
 {
     setLookAndFeel(&style);
+    capturePanel = std::make_unique<CapturePanel>(p.capture, p.getTotalNumInputChannels() > 0);
+    addChildComponent(*capturePanel);
+    capturePanel->setAlwaysOnTop(true);
+    addAndMakeVisible(openCapture);
+    openCapture.setComponentID("openCapture");
+    capturePanel->onClose = [this]
+    {
+        for (auto *c : getChildren())
+            if (c != capturePanel.get())
+                c->setEnabled(true);
+        avatar.resume();
+        deck.resume();
+        openCapture.grabKeyboardFocus();
+    };
+    openCapture.onClick = [this]
+    {
+        capturePanel->setVisible(true);
+        for (auto *c : getChildren())
+            if (c != capturePanel.get())
+                c->setEnabled(false);
+        capturePanel->grabKeyboardFocus();
+        if (capturePanel->onRefresh)
+            capturePanel->onRefresh();
+    };
+    capturePanel->onSettings = [this]
+    {
+        if (p.standaloneAudioSettings)
+            p.standaloneAudioSettings();
+    };
+    capturePanel->onRecord = [this]
+    {
+        p.beginCapture(
+            [safe = juce::Component::SafePointer<CapturePanel>(capturePanel.get())](bool ok)
+            {
+                if (safe)
+                    safe->message(ok ? "Sample carregado / Sample loaded"
+                                     : "Captura falhou / Capture failed");
+            });
+    };
+    capturePanel->onPreview = [this] { p.previewRequest = p.engine.previewActive.load() ? -1 : 1; };
+    capturePanel->onRefresh = [this]
+    {
+        p.listCaptures(
+            [safe = juce::Component::SafePointer<CapturePanel>(capturePanel.get())](
+                std::vector<juce::File> files)
+            {
+                if (safe)
+                    safe->setFiles(std::move(files));
+            });
+    };
+    capturePanel->onReceive = [this](juce::File file) { import(file); };
+
+    addAndMakeVisible(openInstrument);
+    openInstrument.setButtonText("SYNTH / PATCHES");
+    openInstrument.setComponentID("openInstrument");
+    instrument = std::make_unique<InstrumentPanel>(p);
+    addChildComponent(*instrument);
+    instrument->setAlwaysOnTop(true);
+    instrument->onClose = [this]
+    {
+        for (auto *child : getChildren())
+            if (child != instrument.get())
+                child->setEnabled(true);
+        avatar.resume();
+        deck.resume();
+        openInstrument.grabKeyboardFocus();
+    };
+    openInstrument.onClick = [this]
+    {
+        instrument->setVisible(true);
+        instrument->update();
+        for (auto *child : getChildren())
+            if (child != instrument.get())
+                child->setEnabled(false);
+        instrument->grabKeyboardFocus();
+    };
+
     for (auto *b :
          {&load, &mutate, &undo, &reset, &add, &about, &center, &preview, &customize, &compact})
         addAndMakeVisible(b);
     customize.setComponentID("customize");
-    customize.setButtonText("CORES / KNOBS / GROOVEIRO");
+    customize.setButtonText("CORES / KNOBS / PERSONAGEM");
     customize.onClick = [this] { showCustomizer(); };
     customizer = std::make_unique<VisualCustomizer>(p);
     addChildComponent(*customizer);
@@ -302,6 +430,11 @@ RastroEditor::RastroEditor(RastroProcessor &processor)
         p.language = language.getSelectedId() - 1;
         localize();
     };
+    addAndMakeVisible(regionLoop);
+    regionLoop.setButtonText("LOOP");
+    regionLoop.setComponentID("regionLoop");
+    regionAttach = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment>(
+        p.params, "regionLoop", regionLoop);
     loop.setVisible(false);
     loopAttach = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment>(
         p.params, "loop", loop);
@@ -376,9 +509,10 @@ void RastroEditor::localize()
 {
     lastLanguage = p.language;
     language.setSelectedId(lastLanguage + 1, juce::dontSendNotification);
-    customize.setButtonText(p.language == 0 ? "CORES / KNOBS / GROOVEIRO"
-                                            : "COLOURS / KNOBS / GROOVEIRO");
-    load.setButtonText(tr("load"));
+    customize.setButtonText(p.language == 0 ? "CORES / KNOBS / PERSONAGEM"
+                                            : "COLOURS / KNOBS / CHARACTER");
+    load.setButtonText(p.language == 0 ? "IMPORTAR" : "IMPORT");
+    openCapture.setButtonText(p.language == 0 ? "CAPTURAR" : "CAPTURE");
     mutate.setButtonText(tr("mutate"));
     reset.setButtonText(tr("reset"));
     undo.setButtonText(tr("undoMutation"));
@@ -390,10 +524,11 @@ void RastroEditor::localize()
         animations.addItem(tr(i == 0 ? "animOff" : i == 1 ? "animReduced" : "animFull"), i + 1);
     animations.setSelectedId(animationSelection, juce::dontSendNotification);
     animations.setTooltip(tr("animationHelp"));
-    play.setTooltip(tr("playHelp"));
+    play.setTooltip(tr("xyHelp"));
     about.setButtonText(tr("about"));
     add.setButtonText(tr("add"));
     loop.setButtonText(tr("loop"));
+    regionLoop.setTooltip(tr("regionLoopHelp"));
     int mode = (int)p.value("playMode");
     if (mode == 0 && p.value("loop") > .5f)
         mode = 1;
@@ -433,7 +568,9 @@ void RastroEditor::localize()
                                                           : "help"));
         }
     }
-    mutate.setTooltip(tr("mutateHelp"));
+    mutate.setTooltip(tr("randomHelp"));
+    undo.setTooltip(p.language == 0 ? juce::String::fromUTF8("Desfazer a última variação ALEATÓRIA")
+                                    : "Undo the last RANDOM variation");
     repaint();
 }
 void RastroEditor::applyAppearance()
@@ -467,7 +604,25 @@ void RastroEditor::applyAppearance()
     ++measurements.fullRepaints;
     repaint();
 }
-void RastroEditor::timerCallback() { synchroniseUi(); }
+void RastroEditor::timerCallback()
+{
+    // Parent windows can become visible without notifying the child editor. Keep only a cheap
+    // visibility probe while hidden, so Standalone/DAW reopen always resumes the real UI.
+    if (!isShowing())
+    {
+        windowWasShowing = false;
+        if (getTimerInterval() != 166)
+            startTimerHz(6);
+        return;
+    }
+    if (!windowWasShowing)
+    {
+        avatar.resume();
+        deck.resume();
+        windowWasShowing = true;
+    }
+    synchroniseUi();
+}
 void RastroEditor::synchroniseUi()
 {
     auto start = juce::Time::getMillisecondCounterHiRes();
@@ -510,10 +665,16 @@ void RastroEditor::synchroniseUi()
                                                                              : 24;
     if (getTimerInterval() != 1000 / hz)
         startTimerHz(hz);
-    bool editing = customizer->isVisible();
+    bool editing = customizer->isVisible() || instrument->isVisible() || capturePanel->isVisible();
+    if (capturePanel->isVisible())
+        capturePanel->update(visuals::palette(p), p.language,
+                             p.standaloneInputAvailable ? p.standaloneInputAvailable()
+                                                        : p.capture.inputChannels.load() > 0);
+    if (instrument->isVisible())
+        instrument->update();
     if (editing)
     {
-        if (customizer->update(animationMode))
+        if (customizer->isVisible() && customizer->update(animationMode))
             ++measurements.previewAvatar;
     }
     else
@@ -523,8 +684,11 @@ void RastroEditor::synchroniseUi()
             deck.update(animationMode);
             ++measurements.deckUpdates;
         }
-        avatar.update(animationMode);
-        ++measurements.mainAvatar;
+        if (avatar.isShowing())
+        {
+            avatar.update(animationMode);
+            ++measurements.mainAvatar;
+        }
         if (p.engine.meter > .0001f)
         {
             sampleView.repaint();
@@ -545,7 +709,23 @@ void RastroEditor::synchroniseUi()
     int presenceMask = 0;
     for (int i = 0; i < moduleCount; ++i)
     {
+        std::array<float, 7> display{p.value(presentIds[i]), p.value(onIds[i]),
+                                     p.value(mixIds[i]),     p.value(controlIds[i][0]),
+                                     p.value("playX"),       p.value("playY"),
+                                     p.value("drywet")};
+        if (cards[i]->displayState != display)
+        {
+            cards[i]->displayState = display;
+            cards[i]->repaint();
+            play.repaint();
+        }
         bool present = p.value(presentIds[i]) > .5f;
+        if (cards[i]->updateTiming())
+        {
+            resized();
+            cards[i]->repaint();
+        }
+        cards[i]->timing.setVisible(present && rastro::timingSlot(i) >= 0);
         presenceMask |= (present ? 1 : 0) << i;
         cards[i]->mix->setVisible(present);
         cards[i]->primary->setVisible(present);
@@ -593,28 +773,33 @@ void RastroEditor::resized()
     compactLayout = h < 780;
     int margin = 20, content = w - margin * 2;
     customize.setBounds(w - 655, 12, 270, 30);
+    regionLoop.setBounds(245, 12, 76, 30);
     compact.setBounds(w - 375, 12, 100, 30);
     about.setBounds(w - 265, 12, 70, 30);
     language.setBounds(w - 185, 12, 165, 30);
     animations.setBounds(w - 350, 48, 330, 28);
+    openInstrument.setBounds(430, 48, w - 800, 28);
+    instrument->setBounds(12, 80, w - 24, h - 92);
     customizer->setBounds(12, 80, w - 24, h - 92);
-    samplePanel = {20, 84, content, compactLayout ? 146 : 162};
-    load.setBounds(w - 190, 96, 170, 30);
+    capturePanel->setBounds(12, 80, w - 24, h - 92);
+    samplePanel = {20, 84, content, compactLayout ? 192 : 256};
+    load.setBounds(w - 190, 96, 80, 30);
+    openCapture.setBounds(w - 104, 96, 84, 30);
     playbackMode.setBounds(w - 390, 96, 190, 30);
     preview.setBounds(w - 510, 96, 110, 30);
     sliceCount.setBounds(w - 576, 96, 56, 30);
     int sampleX = compactLayout ? 204 : 220;
     deck.setBounds(32, 94, sampleX - 44, samplePanel.getBottom() - 106);
-    wave = {sampleX, 128, w - sampleX - 32, compactLayout ? 43 : 53};
+    wave = {sampleX, 128, w - sampleX - 32, compactLayout ? 100 : 156};
     sampleView.setBounds(wave);
-    int sampleY = compactLayout ? 176 : 190;
+    int sampleY = compactLayout ? 230 : 290;
     int column = (w - 180 - sampleX - 10) / 6;
     for (int i = 0; i < 6; ++i)
-        sampleKnobs[i]->setBounds(sampleX + i * column, sampleY, column - 8, 50);
+        sampleKnobs[i]->setBounds(sampleX + i * column, sampleY, column - 8, 42);
     pitchLabel.setBounds(w - 180, sampleY, 148, 18);
     pitchMode.setBounds(w - 180, sampleY + 20, 148, 28);
     int performanceY = samplePanel.getBottom() + 12;
-    int performanceHeight = compactLayout ? 144 : std::max(174, h - 640);
+    int performanceHeight = compactLayout ? 118 : 176 + std::max(0, h - 840) / 3;
     int playW = content * 31 / 100, avatarW = content * 20 / 100, macroX = 44 + playW + avatarW,
         macroW = (w - 20 - macroX) / 4;
     play.setBounds(20, performanceY, playW, performanceHeight);
@@ -628,23 +813,23 @@ void RastroEditor::resized()
             learns[i].setBounds(macroX + i * macroW + 3, performanceY + performanceHeight - 30,
                                 macroW - 12, 26);
     }
-    int barY = performanceY + performanceHeight + 8;
+    int barY = performanceY + performanceHeight + 4;
     center.setBounds(20, barY, 92, 28);
     learns[3].setBounds(120, barY, (playW - 100) / 2, 28);
     learns[4].setBounds(126 + (playW - 100) / 2, barY, (playW - 100) / 2, 28);
     mutate.setBounds(macroX, barY, macroW * 2 - 8, 28);
     undo.setBounds(macroX + macroW * 2, barY, macroW * 2 - 8, 28);
-    rackTitle = {20, barY + 36, content, 24};
+    rackTitle = {20, barY + 32, content, 24};
     reset.setBounds(w - 328, rackTitle.getY(), 186, 28);
     add.setBounds(w - 134, rackTitle.getY(), 114, 28);
-    rack = {20, rackTitle.getBottom() + 8, content, 124};
+    rack = {20, rackTitle.getBottom() + 4, content, 124};
     auto order = p.settings().order;
     int cw = (content - 40) / 6;
     for (int i = 0; i < moduleCount; ++i)
         cards[order[i]]->setBounds(20 + i * (cw + 8), rack.getY(), cw, 124);
     int keyboardHeight = compactLayout ? 34 : 44;
     keyboard.setBounds(20, h - keyboardHeight - 8, content, keyboardHeight);
-    detail = {20, rack.getBottom() + 10, content, keyboard.getY() - rack.getBottom() - 18};
+    detail = {20, rack.getBottom() + 6, content, keyboard.getY() - rack.getBottom() - 14};
     for (int m = 0; m < moduleCount; ++m)
         for (auto &k : cards[m]->knobs)
             k->setVisible(m == selected && p.value(presentIds[m]) > .5f);
@@ -653,10 +838,11 @@ void RastroEditor::resized()
     for (size_t i = 0; i < controls.size(); ++i)
     {
         auto &slider = controls[i]->slider;
-        slider.setSliderStyle(compactLayout ? juce::Slider::LinearHorizontal
-                                            : juce::Slider::RotaryHorizontalVerticalDrag);
-        slider.setTextBoxStyle(
-            compactLayout ? juce::Slider::TextBoxRight : juce::Slider::TextBoxBelow, false, 65, 19);
+        bool useLinear = compactLayout || detail.getHeight() < 100;
+        slider.setSliderStyle(useLinear ? juce::Slider::LinearHorizontal
+                                        : juce::Slider::RotaryHorizontalVerticalDrag);
+        slider.setTextBoxStyle(useLinear ? juce::Slider::TextBoxRight : juce::Slider::TextBoxBelow,
+                               false, 65, 19);
         controls[i]->setBounds(224 + (int)i * dk, detail.getY() + 4, dk - 12,
                                detail.getHeight() - 8);
     }
@@ -669,10 +855,12 @@ void RastroEditor::paint(juce::Graphics &g)
         visuals::cosmicTexture(g, getLocalBounds().toFloat(), pal.highlight);
     g.setColour(pal.highlight);
     g.setFont(juce::Font(juce::FontOptions(36, juce::Font::bold | juce::Font::italic)));
-    g.drawText("RASTRO", 20, 7, 220, 40, juce::Justification::left);
+    g.drawText("RASTRO", 20, 7, 170, 40, juce::Justification::left);
+    g.setFont(juce::Font(juce::FontOptions(17, juce::Font::bold)));
+    g.drawText("PLAY", 191, 18, 51, 24, juce::Justification::left);
     g.setColour(pal.muted);
     g.setFont(juce::Font(juce::FontOptions(12)));
-    g.drawText("PLAY / by Gab Calisman", 20, 49, 220, 18, juce::Justification::left);
+    g.drawText("by Gab Calisman", 20, 49, 204, 18, juce::Justification::left);
     g.setColour(pal.surface);
     g.fillRoundedRectangle(samplePanel.toFloat(),
                            visuals::panelRadius((int)p.value("visualTheme")));
@@ -711,8 +899,9 @@ void RastroEditor::paint(juce::Graphics &g)
     g.setColour(pal.muted);
     g.drawText("MIDI", 242, 48, 40, 20, juce::Justification::left);
     float bpm = p.hostBpm;
-    g.drawText(juce::String(bpm > 0 ? bpm : p.value("tempo"), bpm > 0 ? 1 : 0) + " BPM", 290, 48,
-               120, 20, juce::Justification::left);
+    g.drawText(juce::String(bpm > 0 ? bpm : p.value("tempo"), bpm > 0 ? 1 : 0) +
+                   (bpm > 0 ? " BPM HOST" : " BPM MANUAL"),
+               290, 48, 132, 20, juce::Justification::left);
 }
 bool RastroEditor::keyPressed(const juce::KeyPress &key)
 {
@@ -771,4 +960,58 @@ void RastroEditor::showCustomizer()
             child->setEnabled(false);
     customizer->open();
     synchroniseUi();
+}
+
+void RastroEditor::visibilityChanged()
+{
+    if (!isShowing())
+    {
+        windowWasShowing = false;
+        startTimerHz(6);
+        return;
+    }
+    windowWasShowing = true;
+    avatar.resume();
+    deck.resume();
+    int mode = int(p.value("animation"));
+    startTimerHz(mode == 0 ? 6 : mode == 1 ? 12 : 24);
+}
+
+bool RastroEditor::Card::updateTiming()
+{
+    int slot = rastro::timingSlot(module);
+    if (slot < 0)
+        return false;
+    int mode = int(ui.p.value(rastro::timingIds[slot]));
+    auto id = juce::String(rastro::timingParameter(slot, mode));
+    auto label =
+        mode == 1     ? "FREE"
+        : mode == 2   ? juce::String("SYNC ") + rastro::divisionNames[juce::jlimit(
+                                                  0, 3, int(ui.p.value(rastro::divisionIds[slot])))]
+        : module == 3 ? "FREE*"
+                      : "SYNC*";
+    timing.setButtonText(label);
+    timing.setTooltip(ui.tr("timingHelp"));
+    bool changed = false;
+    int index = module == 3 ? 1 : 0;
+    if (knobs[index]->id != id)
+    {
+        knobs[index] = std::make_unique<Knob>(ui.p, id);
+        ui.addChildComponent(*knobs[index]);
+        knobs[index]->label.setText(ui.tr(id), juce::dontSendNotification);
+        knobs[index]->slider.setTooltip(ui.tr("timingHelp"));
+        knobs[index]->applyPalette();
+        changed = true;
+    }
+    if (module != 3 && primary->id != id)
+    {
+        primary = std::make_unique<Knob>(ui.p, id, false);
+        primary->setComponentID("rackPrimary_" + juce::String(module));
+        primary->label.setVisible(false);
+        primary->slider.setComponentID("rackPrimarySlider_" + juce::String(module));
+        addAndMakeVisible(*primary);
+        resized();
+        changed = true;
+    }
+    return changed;
 }

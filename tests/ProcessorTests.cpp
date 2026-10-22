@@ -7,7 +7,7 @@
 #include <cstring>
 #include <iostream>
 #include <new>
-static bool inAudio = false;
+static thread_local bool inAudio = false;
 bool imageDiffers(const juce::Image &, const juce::Image &);
 void *operator new(std::size_t n)
 {
@@ -157,6 +157,25 @@ void sampleEditingTests()
         view->mouseDrag(mouse(*view, point(target)));
         view->mouseUp(mouse(*view, point(target)));
         check(std::abs(restored.value("slice1") - .3f) < .002f, "manual slice marker drag");
+        float trimA = restored.value("start"), trimB = restored.value("end");
+        view->fitSelection();
+        check(view->visibleStart() < trimA && view->visibleEnd() > trimB,
+              "zoom fits selected trim with margin");
+        view->zoomAt(4, (trimA + trimB) * .5f);
+        check(view->visibleEnd() - view->visibleStart() < .2f, "waveform zoom magnifies");
+        float targetPosition = (view->visibleStart() + view->visibleEnd()) * .5f;
+        check(std::abs(view->normalized(view->pixelFor(targetPosition)) - targetPosition) < .00001f,
+              "zoomed pixel/position mapping is accurate");
+        juce::MouseWheelDetails wheel;
+        wheel.deltaX = .1f;
+        float beforePan = view->visibleStart();
+        view->mouseWheelMove(mouse(*view, {120, 45}), wheel);
+        check(view->visibleStart() < beforePan, "trackpad horizontal pan");
+        view->fitSample();
+        check(view->visibleStart() == 0 && view->visibleEnd() == 1 &&
+                  restored.value("start") == trimA && restored.value("end") == trimB,
+              "zoom/pan/fit do not change trims or audio settings");
+        check(!restored.source.load()->peaks[0].empty(), "multiresolution peaks built on import");
         auto *drop = dynamic_cast<juce::FileDragAndDropTarget *>(editor.get());
         check(drop && drop->isInterestedInFileDrag({file.getFullPathName()}), "MP3 drop accepted");
         check(!drop->isInterestedInFileDrag({"/tmp/image.png"}), "non-audio drop rejected");
@@ -591,22 +610,10 @@ bool imageDiffers(const juce::Image &a, const juce::Image &b)
                 return true;
     return false;
 }
-void pumpUi(int ms = 25)
-{
-    struct Stop : juce::Timer
-    {
-        void timerCallback() override
-        {
-            stopTimer();
-            juce::MessageManager::getInstance()->stopDispatchLoop();
-        }
-    } stop;
-    stop.startTimer(ms);
-    juce::MessageManager::getInstance()->runDispatchLoop();
-}
+void pumpUi(int ms = 25) { juce::MessageManager::getInstance()->runDispatchLoopUntil(ms); }
 void clickUi(juce::Component &root, const juce::String &id)
 {
-    auto *button = dynamic_cast<juce::TextButton *>(findComponent(root, id));
+    auto *button = dynamic_cast<juce::Button *>(findComponent(root, id));
     check(button && button->isShowing() && button->isEnabled(),
           "visible enabled button for interaction");
     auto point = button->getLocalBounds().toFloat().getCentre();
@@ -626,7 +633,20 @@ void checkUiLayout(juce::Component &root)
             dynamic_cast<juce::ComboBox *>(&c))
         {
             auto r = root.getLocalArea(&c, c.getLocalBounds());
-            check(root.getLocalBounds().contains(r), "interactive control within window");
+            auto clipped = r;
+            bool inViewport = false;
+            for (auto *parent = c.getParentComponent(); parent && parent != &root;
+                 parent = parent->getParentComponent())
+                if (auto *viewport = dynamic_cast<juce::Viewport *>(parent))
+                {
+                    inViewport = true;
+                    clipped = clipped.getIntersection(
+                        root.getLocalArea(viewport, viewport->getLocalBounds()));
+                }
+            if (inViewport && clipped.isEmpty())
+                return;
+            check(root.getLocalBounds().contains(inViewport ? clipped : r),
+                  "interactive control within window or clipped scroll viewport");
             check(r.getHeight() >= 24 && r.getWidth() >= 24, "minimum 24 point hit target");
             leaves.push_back(&c);
             return;
@@ -640,6 +660,17 @@ void checkUiLayout(juce::Component &root)
         {
             auto a = root.getLocalArea(leaves[i], leaves[i]->getLocalBounds()),
                  b = root.getLocalArea(leaves[j], leaves[j]->getLocalBounds());
+            auto clipToViewport = [&](juce::Component *child, juce::Rectangle<int> bounds)
+            {
+                for (auto *parent = child->getParentComponent(); parent && parent != &root;
+                     parent = parent->getParentComponent())
+                    if (auto *viewport = dynamic_cast<juce::Viewport *>(parent))
+                        bounds = bounds.getIntersection(
+                            root.getLocalArea(viewport, viewport->getLocalBounds()));
+                return bounds;
+            };
+            a = clipToViewport(leaves[i], a);
+            b = clipToViewport(leaves[j], b);
             if (a.intersects(b))
             {
                 std::cerr << "Overlap: " << leaves[i]->getComponentID() << " " << a.toString()
@@ -735,18 +766,37 @@ void visualStageTests()
     p.engine.visualX = .1f;
     p.engine.visualY = .1f;
     for (int i = 0; i < 30; ++i)
+    {
+        p.engine.blockSerial.fetch_add(1);
         avatar.update(2);
+    }
     auto low = avatar.createComponentSnapshot(avatar.getLocalBounds());
     p.engine.visualY = .9f;
     for (int i = 0; i < 30; ++i)
+    {
+        p.engine.blockSerial.fetch_add(1);
         avatar.update(2);
+    }
     auto high = avatar.createComponentSnapshot(avatar.getLocalBounds());
     check(imageDiffers(low, high), "PLAY Y directly changes posture/expression");
     p.engine.visualX = .9f;
     for (int i = 0; i < 30; ++i)
+    {
+        p.engine.blockSerial.fetch_add(1);
         avatar.update(2);
+    }
     check(imageDiffers(high, avatar.createComponentSnapshot(avatar.getLocalBounds())),
           "PLAY X directly changes direction");
+    float feetRange = 0, armRange = 0;
+    for (int i = 0; i < 60; ++i)
+    {
+        p.engine.blockSerial.fetch_add(1);
+        avatar.update(2);
+        auto pose = avatar.motion();
+        feetRange = std::max(feetRange, std::abs(pose.footLeft - pose.footRight));
+        armRange = std::max(armRange, std::abs(pose.armLeft - pose.armRight));
+    }
+    check(feetRange > .2f && armRange > .1f, "dance articulates independent feet and arms");
     bool crouched = false, jumped = false;
     float previous = 0;
     p.engine.meter = 0;
@@ -798,11 +848,18 @@ void visualStageTests()
             findComponent(*editor, "rackPrimarySlider_" + juce::String(m)));
         check(slider && slider->isShowing(),
               "each rack module has its main control directly accessible");
-        float original = p.value(rastro::controlIds[m][0]);
-        slider->setValue(.43, juce::sendNotificationSync);
-        check(std::abs(p.value(rastro::controlIds[m][0]) - .43f) < .001f,
+        int slot = rastro::timingSlot(m);
+        auto id = (slot >= 0 && m != 3)
+                      ? rastro::timingParameter(slot, int(p.value(rastro::timingIds[slot])))
+                      : rastro::controlIds[m][0];
+        float original = p.value(id);
+        auto *parameter = p.params.getParameter(id);
+        float target =
+            parameter->getNormalisableRange().snapToLegalValue(parameter->convertFrom0to1(.43f));
+        slider->setValue(target, juce::sendNotificationSync);
+        check(std::abs(p.value(id) - target) < .001f,
               "rack main control attached to real DSP parameter");
-        p.set(rastro::controlIds[m][0], original);
+        p.set(id, original);
     }
     auto originalOrder = p.settings().order;
     auto *from = findComponent(*editor, "rack_5"), *to = findComponent(*editor, "rack_0");
@@ -888,7 +945,8 @@ void visualStageTests()
     check(editor->getHeight() == 700 && p.value("uiCompact") == 1,
           "compact mode selected and stored");
     checkUiLayout(*editor);
-    check(macro->getHeight() >= 80, "compact keeps macro knobs large");
+    check(macro->getHeight() >= 60,
+          "compact keeps usable macro controls alongside enlarged waveform");
     saveUi(*editor, "rastro-final-compact.png");
     clickUi(*editor, "customize");
     editor->synchroniseUi();
@@ -955,7 +1013,7 @@ void visualStageTests()
         combo->setSelectedId(3, juce::sendNotificationSync);
     }
     editor->synchroniseUi();
-    saveUi(*editor, "rastro-final-grooveiro.png");
+    saveUi(*editor, "rastro-final-character.png");
     metrics = editor->uiMetrics();
     for (int i = 0; i < 24; ++i)
         editor->synchroniseUi();
@@ -1054,6 +1112,36 @@ void visualStageTests()
     p.language = 0;
     editor->synchroniseUi();
     saveUi(*editor, "rastro-final-hidpi.png", 2);
+    RastroAvatar dancer(p);
+    dancer.setSize(380, 300);
+    p.set("animation", 2);
+    p.set("regionLoop", 1);
+    p.set("triggerMode", 1);
+    p.set("playX", .83f);
+    p.set("playY", .77f);
+    p.previewRequest = -1;
+    process(p, 2, 0);
+    for (int frame = 0; frame < 8; ++frame)
+    {
+        for (int tick = 0; tick < 5; ++tick)
+        {
+            for (int block = 0; block < 4; ++block)
+                process(p, 2, tick == 0 && block == 0 ? 0 : -1);
+            dancer.update(2);
+        }
+        saveUi(dancer, ("rastro-character-dance-" + juce::String(frame) + ".png").toRawUTF8());
+    }
+    for (int presentation = 0; presentation < 3; ++presentation)
+    {
+        p.set("avatarPresentation", float(presentation));
+        p.set("avatarHair", float(presentation % 3));
+        p.set("avatarClothes", float((presentation + 1) % 3));
+        p.set("avatarInstrument", float((presentation + 2) % 3));
+        dancer.update(2);
+        saveUi(
+            dancer,
+            ("rastro-character-presentation-" + juce::String(presentation) + ".png").toRawUTF8());
+    }
     editor->setSize(1680, 1100);
     editor->synchroniseUi();
     checkUiLayout(*editor);
@@ -1094,6 +1182,407 @@ void noteOffProcessorTests()
                   "MIDI and screen keyboard: only One Shot survives early note-off");
         }
 }
+void captureIntegrationTests()
+{
+    RastroProcessor p(true);
+    p.prepareToPlay(48000, 512);
+    check(p.getTotalNumInputChannels() == 2, "Standalone/test capture input is enabled");
+    p.beginCapture({});
+    juce::AudioBuffer<float> block(2, 512);
+    juce::MidiBuffer midi;
+    for (int n = 0; n < 16; ++n)
+    {
+        for (int c = 0; c < 2; ++c)
+            for (int i = 0; i < 512; ++i)
+                block.setSample(
+                    c, i,
+                    .4f * std::sin(float((n * 512 + i) * 6.283185307 * (c ? 500 : 300) / 48000)));
+        inAudio = true;
+        p.processBlock(block, midi);
+        inAudio = false;
+        check(block.getMagnitude(0, 512) == 0,
+              "capture does not automatically monitor or cause feedback");
+    }
+    p.capture.stop();
+    p.capture.finishStop();
+    for (int i = 0; i < 500 && !p.source.load(); ++i)
+        juce::Thread::sleep(5);
+    auto *sample = p.source.load();
+    check(sample && sample->size() == 8192 && sample->rate == 48000,
+          "recorded audio becomes sample off the callback");
+    check(sample->stereo && !sample->peaks[0].empty(), "captured stereo waveform prepared");
+    p.previewRequest = 1;
+    check(process(p, 2) > 0, "recorded sample preview is audible");
+    p.engine.clearVoices();
+    check(process(p, 2, 0) > 0, "recorded sample plays from MIDI");
+    p.set("start", .1f);
+    p.set("end", .8f);
+    juce::MemoryBlock state;
+    p.getStateInformation(state);
+    RastroProcessor restored;
+    restored.setStateInformation(state.getData(), int(state.getSize()));
+    check(restored.source.load() && restored.source.load()->data == sample->data &&
+              restored.value("start") == p.value("start") &&
+              restored.value("end") == p.value("end"),
+          "capture PCM and edits restore without an external recording file");
+    check(restored.getTotalNumInputChannels() == 0,
+          "hosted PLAY preserves output-only bus identity");
+    rastro::CaptureRecorder rec;
+    rec.prepare(48000);
+    rec.start();
+    std::array<float, 512> input;
+    input.fill(.25f);
+    const float *channels[]{input.data(), input.data()};
+    rec.process(channels, 2, 512);
+    rec.stop();
+    rec.finishStop();
+    check(rec.claim(), "bridge take claim");
+    juce::MemoryBlock wav;
+    check(rastro::encodeCapture(rec, wav), "capture worker WAV encoder");
+    rec.release();
+    auto file = rastro::publishCapture(wav);
+    check(file.existsAsFile(), "companion publishes complete local handoff file");
+    auto files = rastro::captureFiles();
+    check(std::find(files.begin(), files.end(), file) != files.end(),
+          "PLAY can discover the completed companion take");
+    check(restored.loadFile(file) && restored.source.load()->size() == 512,
+          "PLAY imports companion take without another application");
+    check(file.deleteFile(), "remove only the synthetic take created by this test");
+    RastroProcessor monitor(true);
+    monitor.prepareToPlay(48000, 512);
+    monitor.capture.monitor = true;
+    for (int i = 0; i < 4; ++i)
+    {
+        block.clear();
+        for (int c = 0; c < 2; ++c)
+            for (int j = 0; j < 512; ++j)
+                block.setSample(c, j, .3f);
+        inAudio = true;
+        monitor.processBlock(block, midi);
+        inAudio = false;
+    }
+    check(block.getMagnitude(0, 512) > .02f && block.getMagnitude(0, 512) < .04f,
+          "explicit monitor is real and attenuated by 20 dB");
+    monitor.capture.monitor = false;
+    for (int i = 0; i < 8; ++i)
+    {
+        block.clear();
+        for (int c = 0; c < 2; ++c)
+            for (int j = 0; j < 512; ++j)
+                block.setSample(c, j, .3f);
+        monitor.processBlock(block, midi);
+    }
+    check(block.getMagnitude(0, 512) < .00001f, "monitor fades to silence when disabled");
+    auto editor = std::unique_ptr<RastroEditor>(new RastroEditor(restored));
+    editor->addToDesktop(juce::ComponentPeer::windowIsTemporary);
+    editor->setVisible(true);
+    editor->synchroniseUi();
+    clickUi(*editor, "openCapture");
+    editor->synchroniseUi();
+    checkUiLayout(*editor);
+    saveUi(*editor, "rastro-capture-receiver.png");
+    clickUi(*editor, "closeCapture");
+    std::cout << "PASS capture integration: synthetic stereo input, no automatic monitoring, "
+                 "waveform/MIDI/preview, PCM/session recall, real shared-file handoff and hosted "
+                 "bus compatibility\n";
+}
+void instrumentStateTests()
+{
+    RastroProcessor p;
+    auto audio = makeAudio(false, false);
+    check(p.loadData(audio.getData(), audio.getSize(), "instrument.wav"), "instrument source");
+    p.prepareToPlay(48000, 512);
+    p.set("synthEnable", 1);
+    p.set("regionLoop", 1);
+    p.set("loopRegionSet", 1);
+    p.set("loopStart", .2f);
+    p.set("loopEnd", .7f);
+    p.set("loopCrossfade", 12);
+    p.set("ampAttack", .02f);
+    p.set("ampRelease", .08f);
+    p.set("filterCutoff", 850);
+    p.set("filterResonance", .7f);
+    p.set("triggerMode", 2);
+    p.set("voiceMode", 2);
+    p.set("glide", .12f);
+    p.set("lfoDepth", .4f);
+    p.set("lfoSync", 2);
+    p.set("envAmount", .3f);
+    p.set("pitchMode", 1);
+    juce::MemoryBlock saved;
+    p.getStateInformation(saved);
+    RastroProcessor restored;
+    restored.setStateInformation(saved.getData(), int(saved.getSize()));
+    for (auto id :
+         {"synthEnable", "ampAttack", "ampRelease", "filterCutoff", "filterResonance",
+          "triggerMode", "voiceMode", "glide", "lfoDepth", "lfoSync", "envAmount", "regionLoop",
+          "loopRegionSet", "loopStart", "loopEnd", "loopCrossfade", "pitchMode"})
+        check(restored.value(id) == p.value(id), "instrument parameters persist in session");
+    juce::AudioBuffer<float> b(2, 512);
+    juce::MidiBuffer m;
+    m.addEvent(juce::MidiMessage::noteOn(1, 60, .8f), 23);
+    m.addEvent(juce::MidiMessage::controllerEvent(1, 64, 127), 100);
+    m.addEvent(juce::MidiMessage::noteOff(1, 60), 200);
+    m.addEvent(juce::MidiMessage::pitchWheel(1, 16383), 210);
+    m.addEvent(juce::MidiMessage::controllerEvent(1, 1, 127), 220);
+    inAudio = true;
+    p.processBlock(b, m);
+    inAudio = false;
+    for (int i = 0; i < 14; ++i)
+        process(p, 2);
+    check(p.engine.activeVoiceCount() == 1, "processor CC64 holds gated sample synth");
+    m.addEvent(juce::MidiMessage::controllerEvent(1, 64, 0), 33);
+    inAudio = true;
+    p.processBlock(b, m);
+    inAudio = false;
+    for (int i = 0; i < 12; ++i)
+        process(p, 2);
+    check(p.engine.activeVoiceCount() == 0, "pedal up releases ADSR");
+    auto tree = p.params.copyState();
+    tree.setProperty("stateVersion", 2, nullptr);
+    for (auto id : {"synthEnable", "triggerMode", "regionLoop", "loopRegionSet", "voiceMode",
+                    "glide", "lfoDepth", "xyCrumble", "avatarPresentation"})
+        tree.removeChild(tree.getChildWithProperty("id", id), nullptr);
+    juce::MemoryBlock old;
+    juce::AudioProcessor::copyXmlToBinary(*tree.createXml(), old);
+    restored.setStateInformation(old.getData(), int(old.getSize()));
+    check(restored.value("synthEnable") == 0 && restored.value("triggerMode") == 0 &&
+              restored.value("regionLoop") == 0 && restored.value("voiceMode") == 0 &&
+              restored.value("xyCrumble") == 0,
+          "old sessions get neutral synth/loop and original XY mapping");
+    auto editor = std::unique_ptr<RastroEditor>(new RastroEditor(p));
+    editor->addToDesktop(juce::ComponentPeer::windowIsTemporary);
+    editor->setVisible(true);
+    editor->synchroniseUi();
+    int mode = int(p.value("playMode"));
+    clickUi(*editor, "regionLoop");
+    check(p.value("playMode") == mode, "LOOP never changes selected playback mode");
+    clickUi(*editor, "openInstrument");
+    editor->synchroniseUi();
+    checkUiLayout(*editor);
+    saveUi(*editor, "rastro-instrument-panel.png");
+    auto *viewport = dynamic_cast<juce::Viewport *>(findComponent(*editor, "instrumentViewport"));
+    check(viewport, "synth has scroll viewport");
+    viewport->setViewPosition(0, 10000);
+    auto *last = findComponent(*editor, "bendRange");
+    auto centre = editor->getLocalPoint(last, last->getLocalBounds().getCentre());
+    check(last->isEnabled() && last->contains(last->getLocalBounds().getCentre()) &&
+              editor->getComponentAt(centre) == last,
+          "last synth control reachable by scrolling");
+    viewport->setViewPosition(0, 0);
+    for (auto size : {juce::Point<int>(1000, 700), juce::Point<int>(1180, 840)})
+    {
+        editor->setSize(size.x, size.y);
+        checkUiLayout(*editor);
+    }
+    clickUi(*editor, "closeInstrument");
+    editor->synchroniseUi();
+    checkUiLayout(*editor);
+    std::cout << "PASS instrument state: ADSR/filter/loop/legacy defaults, actual MIDI offsets "
+                 "CC64/bend/CC1, independent LOOP control and dedicated synth UI\n";
+}
+void patchIntegrationTests()
+{
+    RastroProcessor p;
+    auto audio = makeAudio(false, false);
+    check(p.loadData(audio.getData(), audio.getSize(), "patch-source.wav"), "patch source");
+    p.prepareToPlay(48000, 512);
+    auto *original = p.source.load();
+    auto editor = std::make_unique<RastroEditor>(p);
+    editor->addToDesktop(juce::ComponentPeer::windowIsTemporary);
+    editor->setVisible(true);
+    editor->synchroniseUi();
+    clickUi(*editor, "openInstrument");
+    clickUi(*editor, "patchTab");
+    auto before = p.patchValues();
+    clickUi(*editor, "generatePatches");
+    pumpUi();
+    for (int i = 0; i < 1000 && p.patchSearch.busy; ++i)
+        pumpUi(10);
+    check(!p.patchSearch.busy && p.patchSearch.status == rastro::PatchSearch::complete,
+          "UI runs real patch worker");
+    editor->synchroniseUi();
+    checkUiLayout(*editor);
+    clickUi(*editor, "patchCandidate0");
+    auto chosen = p.patchValues();
+    check(chosen != before && chosen[0] == 1, "candidate applies actual synth values");
+    check(p.source.load() == original, "choosing patch keeps source");
+    check(process(p, 2) > 0, "candidate audition triggers real MIDI playback");
+    clickUi(*editor, "comparePatch");
+    check(p.patchValues() == before, "A recalls prior synth exactly");
+    clickUi(*editor, "comparePatch");
+    check(p.patchValues() == chosen, "B recalls chosen patch exactly");
+    clickUi(*editor, "varyPatch");
+    check(p.patchValues() != chosen, "variation changes real bounded synth parameters");
+    clickUi(*editor, "undoPatch");
+    check(p.patchValues() == chosen, "patch variation exact undo");
+    check(p.source.load() == original && p.value("root") == 60 && p.value("start") == 0 &&
+              p.value("end") == 1,
+          "patch actions preserve source/root/trims");
+    auto *translated = dynamic_cast<juce::Label *>(findComponent(*editor, "patchStatus"));
+    check(translated && translated->getText().contains(juce::String::fromUTF8("opção")),
+          "Portuguese patch labels preserve UTF-8 accents");
+    saveUi(*editor, "rastro-patch-panel.png");
+    editor->setSize(1000, 700);
+    editor->synchroniseUi();
+    checkUiLayout(*editor);
+    saveUi(*editor, "rastro-patch-compact.png");
+    clickUi(*editor, "closeInstrument");
+    juce::TemporaryFile file(".rastro");
+    bool done = false, ok = false;
+    p.patchFileAsync(file.getFile(), true,
+                     [&](bool success)
+                     {
+                         ok = success;
+                         done = true;
+                     });
+    for (int i = 0; i < 500 && !done; ++i)
+        pumpUi(10);
+    check(done && ok, "patch save finishes on worker");
+    p.set("ampAttack", 2);
+    done = false;
+    p.patchFileAsync(file.getFile(), false,
+                     [&](bool success)
+                     {
+                         ok = success;
+                         done = true;
+                     });
+    for (int i = 0; i < 500 && !done; ++i)
+        pumpUi(10);
+    check(done && ok && p.patchValues() == chosen, "patch load restores actual values");
+    check(p.source.load()->data == original->data,
+          "self contained patch restores exact embedded source");
+    file.getFile().replaceWithText("not a patch");
+    done = false;
+    p.patchFileAsync(file.getFile(), false,
+                     [&](bool success)
+                     {
+                         ok = success;
+                         done = true;
+                     });
+    for (int i = 0; i < 500 && !done; ++i)
+        pumpUi(10);
+    check(done && !ok && p.patchValues() == chosen,
+          "bad patch reports failure and preserves current instrument");
+    std::cout << "PASS patch integration: actual UI generation/audition, A/B, bounded "
+                 "variation/exact undo, source safety, compact hit targets, async self-contained "
+                 "save/load and invalid file\n";
+}
+void transportAndXyTests()
+{
+    struct Host : juce::AudioPlayHead
+    {
+        bool bpmAvailable = true, playing = true;
+        juce::Optional<PositionInfo> getPosition() const override
+        {
+            PositionInfo info;
+            if (bpmAvailable)
+                info.setBpm(93);
+            info.setIsPlaying(playing);
+            info.setPpqPosition(8);
+            return info;
+        }
+    } host;
+    RastroProcessor p;
+    auto audio = makeAudio(false, false);
+    check(p.loadData(audio.getData(), audio.getSize(), "transport.wav"), "transport source");
+    p.prepareToPlay(48000, 512);
+    p.setPlayHead(&host);
+    p.set("tempo", 137);
+    p.set("regionLoop", 1);
+    p.set("triggerMode", 1);
+    process(p, 2, 0, 30);
+    check(p.engine.activeVoiceCount() == 1 && p.hostBpm == 93 && p.hostPlaying,
+          "host BPM/playing arrives without altering One Shot note-off");
+    check(p.value("tempo") == 137, "host BPM does not overwrite manual tempo");
+    host.playing = false;
+    for (int i = 0; i < 8; ++i)
+        process(p, 2);
+    check(p.engine.activeVoiceCount() == 0 && !p.hostPlaying,
+          "host stop releases an infinite One Shot loop");
+    host.bpmAvailable = false;
+    process(p, 2);
+    check(p.hostBpm == 0 && p.settings().tempo == 137, "missing BPM advertises manual fallback");
+    p.setPlayHead(nullptr);
+    for (auto point : {juce::Point<int>(0, 0), {0, 127}, {127, 0}, {127, 127}, {64, 64}})
+    {
+        std::array<std::vector<float>, 3> rendered;
+        for (int route = 0; route < 3; ++route)
+        {
+            RastroProcessor instrument;
+            check(instrument.loadData(audio.getData(), audio.getSize(), "xy.wav"), "XY source");
+            instrument.prepareToPlay(48000, 512);
+            float x = point.x / 127.f, y = point.y / 127.f;
+            if (route == 0)
+            {
+                PlayPad pad(instrument);
+                pad.setSize(400, 240);
+                auto event = mouse(pad, {26 + x * 348, 30 + (1 - y) * 180});
+                pad.mouseDown(event);
+                pad.mouseUp(event);
+            }
+            if (route == 1)
+            {
+                instrument.params.getParameter("playX")->setValueNotifyingHost(x);
+                instrument.params.getParameter("playY")->setValueNotifyingHost(y);
+            }
+            if (route == 2)
+            {
+                instrument.cc[3] = 33;
+                instrument.cc[4] = 34;
+                juce::AudioBuffer<float> block(2, 512);
+                block.clear();
+                juce::MidiBuffer midi;
+                midi.addEvent(juce::MidiMessage::controllerEvent(1, 33, point.x), 0);
+                midi.addEvent(juce::MidiMessage::controllerEvent(1, 34, point.y), 0);
+                inAudio = true;
+                instrument.processBlock(block, midi);
+                inAudio = false;
+                instrument.applyCC();
+            }
+            check(std::abs(instrument.value("playX") - x) < 1e-6 &&
+                      std::abs(instrument.value("playY") - y) < 1e-6,
+                  "mouse/automation/CC share XY values at corners and quantized centre");
+            auto settings = instrument.settings();
+            rastro::Engine engine;
+            engine.prepare(48000);
+            engine.noteOn(60, .8f, instrument.source.load(), settings);
+            rendered[route].resize(4096);
+            inAudio = true;
+            for (auto &v : rendered[route])
+            {
+                float right;
+                engine.frame(v, right, instrument.source.load(), settings);
+            }
+            inAudio = false;
+        }
+        for (int route = 1; route < 3; ++route)
+            for (size_t i = 0; i < rendered[0].size(); ++i)
+                check(std::abs(rendered[0][i] - rendered[route][i]) < 2e-5f,
+                      "mouse/automation/CC yield equivalent actual XY audio");
+    }
+    std::cout << "PASS transport/XY: host stop, missing BPM/manual preservation, five audible pad "
+                 "positions equivalent by mouse/automation/CC\n";
+}
+void parentVisibilityTests()
+{
+    RastroProcessor p;
+    juce::DocumentWindow window("visibility test", juce::Colours::black, 0);
+    auto *editor = new RastroEditor(p);
+    window.setContentOwned(editor, true);
+    window.setVisible(true);
+    pumpUi(280);
+    auto visible = editor->uiMetrics().ticks;
+    check(visible > 0, "editor wakes when parent window becomes visible");
+    window.setVisible(false);
+    pumpUi(260);
+    auto hidden = editor->uiMetrics().ticks;
+    check(hidden == visible, "hidden parent suspends interface updates");
+    window.setVisible(true);
+    pumpUi(280);
+    check(editor->uiMetrics().ticks > hidden, "parent window reopen resumes updates");
+    window.clearContentComponent();
+}
 int main()
 {
     juce::ScopedJuceInitialiser_GUI gui;
@@ -1111,6 +1600,11 @@ int main()
     sampleEditingTests();
     recordingImportTests();
     hardwareAndPitchTests();
+    captureIntegrationTests();
+    instrumentStateTests();
+    patchIntegrationTests();
+    transportAndXyTests();
+    parentVisibilityTests();
     {
         RastroProcessor p;
         p.prepareToPlay(48000, 512);

@@ -50,13 +50,19 @@ class CharacterEffects
         follower = movement = dustActivity = crushActivity = envelope = 0;
         seed = 0x52415354;
     }
-    void advance(float sourcePeak, float rate)
+    void advance(float sourcePeak, float rate, double reference = -1, bool running = true)
     {
         follower += (sourcePeak - follower) * (sourcePeak > follower ? attack : release);
         if (follower < 1e-7f)
             follower = 0;
         envelope = follower;
-        phase += (.15 + rate * 2.85) / sr;
+        phase += running ? (.15 + rate * 2.85) / sr : 0;
+        if (reference >= 0)
+        {
+            double difference = reference - phase;
+            difference -= std::floor(difference + .5);
+            phase += std::clamp(difference, -.002, .002);
+        }
         phase -= std::floor(phase);
         flutter += 17.3 / sr;
         flutter -= std::floor(flutter);

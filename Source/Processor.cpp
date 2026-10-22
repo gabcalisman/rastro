@@ -70,29 +70,106 @@ juce::AudioProcessorValueTreeState::ParameterLayout RastroProcessor::layout()
     add("colourSet", 0, 8, 0, 1);
     add("pitchMode", 0, 1, 0, 1);
     add("cosmicArcade", 0, 1, 0, 1);
+    add("gTiming", 0, 2, 2, 1);
+    add("cTiming", 0, 2, 2, 1);
+    add("wTiming", 0, 2, 1, 1);
+    for (auto id : {"gDivision", "cDivision", "wDivision"})
+        add(id, 0, 3, 1, 1);
+    add("gFreeMs", 5, 2000, 250);
+    add("cFreeHz", .5f, 40, 8);
+    add("wFreeHz", .05f, 12, 1.005f);
+    add("lfoTiming", 0, 2, 1, 1);
+    add("lfoDivision", 0, 3, 0, 1);
+    add("avatarPresentation", 0, 2, 0, 1);
+    add("xyCrumble", 0, 1, 1, 1);
+    add("regionLoop", 0, 1, 0, 1);
+    add("loopRegionSet", 0, 1, 0, 1);
+    add("loopStart", 0, .999f, 0);
+    add("loopEnd", .001f, 1, 1);
+    add("loopCrossfade", 0, 50, 5);
+    add("synthEnable", 0, 1, 0, 1);
+    add("ampAttack", .001f, 4, .01f);
+    add("ampDecay", .001f, 4, .2f);
+    add("ampSustain", 0, 1, .75f);
+    add("ampRelease", .001f, 8, .2f);
+    add("filterCutoff", 20, 20000, 16000);
+    add("filterResonance", 0, .95f, .1f);
+    add("envAmount", -1, 1, 0);
+    add("envTarget", 0, 1, 0, 1);
+    add("lfoRate", .05f, 12, 1);
+    add("lfoDepth", 0, 1, 0);
+    add("lfoTarget", 0, 1, 0, 1);
+    add("lfoSync", 0, 3, 0, 1);
+    add("voiceMode", 0, 2, 0, 1);
+    add("glide", 0, 2, 0);
+    add("bendRange", 0, 12, 2);
+    add("triggerMode", 0, 2, 0, 1);
     return l;
 }
-RastroProcessor::RastroProcessor()
+RastroProcessor::RastroProcessor(bool directCaptureForTests)
     : AudioProcessor(BusesProperties().withOutput("Output", juce::AudioChannelSet::stereo(), true)),
       params(*this, nullptr, "RASTRO", layout())
 {
+    directInput = directCaptureForTests || wrapperType == wrapperType_Standalone;
+    if (directInput)
+    {
+        addBus(true);
+        enableAllBuses();
+    }
     formats.registerBasicFormats();
     keyboard.addListener(this);
 }
 void RastroProcessor::prepareToPlay(double sr, int)
 {
     engine.prepare(sr);
+    if (directInput)
+        capture.prepare(sr);
+    monitorGain = 0;
     previousSource = nullptr;
 }
 bool RastroProcessor::isBusesLayoutSupported(const BusesLayout &b) const
 {
-    return b.getMainInputChannelSet().isDisabled() &&
+    return (b.getMainInputChannelSet().isDisabled() ||
+            (directInput && b.getMainInputChannelSet().size() <= 2)) &&
            (b.getMainOutputChannelSet() == juce::AudioChannelSet::mono() ||
             b.getMainOutputChannelSet() == juce::AudioChannelSet::stereo());
 }
 rastro::Settings RastroProcessor::settings() const
 {
     rastro::Settings p;
+    for (int i = 0; i < 3; ++i)
+    {
+        p.timingMode[i] = int(value(rastro::timingIds[i]));
+        p.division[i] = int(value(rastro::divisionIds[i]));
+    }
+    p.ghostMs = value("gFreeMs");
+    p.crumbleHz = value("cFreeHz");
+    p.wobbleHz = value("wFreeHz");
+    p.lfoTiming = int(value("lfoTiming"));
+    p.lfoDivision = int(value("lfoDivision"));
+    p.xyCrumble = value("xyCrumble") > .5f;
+    p.regionLoop = value("regionLoop") > .5f;
+    p.loopRegionSet = value("loopRegionSet") > .5f;
+    p.loopStart = value("loopStart");
+    p.loopEnd = value("loopEnd");
+    p.loopCrossfade = value("loopCrossfade");
+    p.synth = value("synthEnable") > .5f;
+    p.attack = value("ampAttack");
+    p.decay = value("ampDecay");
+    p.sustain = value("ampSustain");
+    p.release = value("ampRelease");
+    p.cutoff = value("filterCutoff");
+    p.resonance = value("filterResonance");
+    p.envAmount = value("envAmount");
+    p.envTarget = (int)value("envTarget");
+    p.lfoRate = value("lfoRate");
+    p.lfoDepth = value("lfoDepth");
+    p.lfoTarget = (int)value("lfoTarget");
+    p.lfoSync = (int)value("lfoSync");
+    p.voiceMode = (int)value("voiceMode");
+    p.glide = value("glide");
+    p.bendRange = value("bendRange");
+    p.triggerMode = (int)value("triggerMode");
     p.root = value("root");
     p.start = value("start");
     p.end = value("end");
@@ -138,7 +215,11 @@ rastro::Settings RastroProcessor::settings() const
 void RastroProcessor::processBlock(juce::AudioBuffer<float> &b, juce::MidiBuffer &midi)
 {
     juce::ScopedNoDenormals no;
-    b.clear();
+    const int captureInputs = std::min(getTotalNumInputChannels(), b.getNumChannels());
+    if (directInput)
+        capture.process(b.getArrayOfReadPointers(), captureInputs, b.getNumSamples());
+    if (captureInputs == 0)
+        b.clear();
     if (b.getNumChannels() == 0)
         return;
     auto p = settings();
@@ -150,10 +231,25 @@ void RastroProcessor::processBlock(juce::AudioBuffer<float> &b, juce::MidiBuffer
             *macros[j] = v;
     }
     float bpm = 0;
+    hostBeat = -1;
+    hostPlaying = false;
     if (auto *ph = getPlayHead())
         if (auto pos = ph->getPosition())
+        {
+            if (wasHostPlaying && !pos->getIsPlaying())
+                engine.allOff();
+            wasHostPlaying = pos->getIsPlaying();
+            hostPlaying = wasHostPlaying;
+            if (auto beat = pos->getPpqPosition())
+            {
+                hostBeat = float(std::fmod(*beat, 4.));
+                p.transportBeat = *beat;
+                p.transportValid = true;
+                p.transportPlaying = wasHostPlaying;
+            }
             if (auto t = pos->getBpm())
                 bpm = (float)*t;
+        }
     hostBpm = bpm;
     if (bpm > 0)
         p.tempo = bpm;
@@ -187,6 +283,8 @@ void RastroProcessor::processBlock(juce::AudioBuffer<float> &b, juce::MidiBuffer
         auto audition = p;
         audition.mode = 0;
         audition.loop = 0;
+        audition.regionLoop = false;
+        audition.triggerMode = 1;
         audition.root = 255;
         engine.noteOn(255, 1, s, audition);
     }
@@ -207,15 +305,23 @@ void RastroProcessor::processBlock(juce::AudioBuffer<float> &b, juce::MidiBuffer
             auto m = meta.getMessage();
             if (m.isNoteOn())
             {
-                engine.noteOn(m.getNoteNumber(), m.getFloatVelocity(), s, p);
+                engine.noteOn(m.getNoteNumber(), m.getFloatVelocity(), s, p, m.getChannel());
                 midiFlash = 8;
             }
             else if (m.isNoteOff())
-                engine.noteOff(m.getNoteNumber(), p);
+                engine.noteOff(m.getNoteNumber(), p, m.getChannel());
+            else if (m.isPitchWheel())
+                engine.pitchBend(m.getChannel(),
+                                 (m.getPitchWheelValue() - 8192) /
+                                     (m.getPitchWheelValue() < 8192 ? 8192.f : 8191.f));
             else if (m.isAllNotesOff() || m.isAllSoundOff())
                 engine.allOff();
             else if (m.isController())
             {
+                if (m.getControllerNumber() == 64)
+                    engine.sustainPedal(m.getChannel(), m.getControllerValue() >= 64, p);
+                if (m.getControllerNumber() == 1)
+                    engine.modWheel(m.getChannel(), m.getControllerValue() / 127.f);
                 int learning = learn.exchange(-1);
                 if (learning >= 0 && learning < 5)
                     cc[learning] = m.getControllerNumber();
@@ -239,8 +345,22 @@ void RastroProcessor::processBlock(juce::AudioBuffer<float> &b, juce::MidiBuffer
             }
             ++it;
         }
+        float inputL = captureInputs > 0 ? b.getSample(0, i) : 0,
+              inputR = captureInputs > 1 ? b.getSample(1, i) : inputL;
+        if (!std::isfinite(inputL))
+            inputL = 0;
+        if (!std::isfinite(inputR))
+            inputR = 0;
+        monitorGain += (capture.monitor.load() ? .1f - monitorGain : -monitorGain) * .01f;
         float l = 0, r = 0;
         engine.frame(l, r, s, p);
+        if (p.transportValid && p.transportPlaying)
+            p.transportBeat += p.tempo / (60 * getSampleRate());
+        if (captureInputs > 0)
+        {
+            l = std::clamp(l + inputL * monitorGain, -1.f, 1.f);
+            r = std::clamp(r + inputR * monitorGain, -1.f, 1.f);
+        }
         if (b.getNumChannels() == 1)
             b.setSample(0, i, (l + r) * .5f);
         else
@@ -348,10 +468,11 @@ rastro::ImportError RastroProcessor::importData(const void *data, size_t size, j
                        ? E::corrupt
                        : E::unsupportedFormat;
     }
-    const size_t decodedBytes = size_t(sample->size()) * 2 * sizeof(float);
     for (auto &channel : sample->data)
         for (auto &f : channel)
             f = std::isfinite(f) ? juce::jlimit(-4.f, 4.f, f) : 0;
+    sample->buildPeaks();
+    const size_t decodedBytes = size_t(sample->size()) * 2 * sizeof(float) + sample->peakBytes();
     for (int i = 0; i < sample->size(); ++i)
     {
         int bucket = std::min(511, int((int64_t)i * 512 / sample->size()));
@@ -458,8 +579,12 @@ void RastroProcessor::mutate()
         for (int i = 0; i < 4; ++i)
             if (auto id = rastro::controlIds[m][i])
             {
+                int slot = rastro::timingSlot(m);
                 float before = value(id);
                 mutationBefore[m][i] = before;
+                if (slot >= 0 && ((m == 3 && i == 1) || (m != 3 && i == 0)) &&
+                    value(rastro::timingIds[slot]) > 0)
+                    continue;
                 bool isMix = juce::String(id).endsWith("Mix");
                 float max = isMix ? .65f : .8f;
                 if (juce::String(id) == "dLevel")
@@ -493,6 +618,12 @@ void RastroProcessor::resetEffects()
         set(id, .5f);
     for (auto id : {"gMix", "cMix", "bMix"})
         set(id, .25f);
+    for (auto id : {"gTiming", "cTiming", "wTiming", "gDivision", "cDivision", "wDivision",
+                    "gFreeMs", "cFreeHz", "wFreeHz"})
+    {
+        auto *param = params.getParameter(id);
+        set(id, param->convertFrom0to1(param->getDefaultValue()));
+    }
     set("wDepth", .25f);
     set("wRate", .3f);
     set("wMix", .5f);
@@ -525,7 +656,7 @@ void RastroProcessor::getStateInformation(juce::MemoryBlock &dest)
     applyCC();
     juce::ScopedLock lock(stateLock);
     auto tree = params.copyState();
-    tree.setProperty("stateVersion", 2, nullptr);
+    tree.setProperty("stateVersion", 3, nullptr);
     auto previous = tree.getChildWithName("MutationUndo");
     if (previous.isValid())
         tree.removeChild(previous, nullptr);
@@ -545,18 +676,21 @@ void RastroProcessor::getStateInformation(juce::MemoryBlock &dest)
     if (auto xml = tree.createXml())
         copyXmlToBinary(*xml, dest);
 }
-void RastroProcessor::setStateInformation(const void *data, int n)
+void RastroProcessor::setStateInformation(const void *data, int n) { restoreState(data, n); }
+bool RastroProcessor::restoreState(const void *data, int n)
 {
+    if (!data || n <= 0 || n > 64 * 1024 * 1024)
+        return false;
     auto xml = getXmlFromBinary(data, n);
     if (!xml || !xml->hasTagName("RASTRO"))
-        return;
+        return false;
     auto tree = juce::ValueTree::fromXml(*xml);
     juce::MemoryBlock bytes;
     bytes.fromBase64Encoding(tree["sample"].toString());
     if (bytes.getSize() > 0)
     {
         if (!loadData(bytes.getData(), bytes.getSize(), tree["sampleName"].toString()))
-            return;
+            return false;
     }
     else
     {
@@ -576,6 +710,9 @@ void RastroProcessor::setStateInformation(const void *data, int n)
                 juce::ValueTree node("PARAM");
                 node.setProperty("id", id, nullptr);
                 float v = ranged->convertFrom0to1(ranged->getDefaultValue());
+                if (id == "xyCrumble" || id == "gTiming" || id == "cTiming" || id == "wTiming" ||
+                    id == "lfoTiming")
+                    v = 0;
                 if (oldVersion && (id == "wOn" || id == "dOn" || id == "kOn"))
                     v = 0;
                 node.setProperty("value", v, nullptr);
@@ -600,6 +737,94 @@ void RastroProcessor::setStateInformation(const void *data, int n)
     language = juce::jlimit(0, 1, (int)tree["language"]);
     for (int j = 0; j < 5; ++j)
         cc[j] = juce::jlimit(-1, 127, (int)tree.getProperty("cc" + juce::String(j), -1));
+    return true;
 }
 juce::AudioProcessorEditor *RastroProcessor::createEditor() { return new RastroEditor(*this); }
 juce::AudioProcessor *JUCE_CALLTYPE createPluginFilter() { return new RastroProcessor(); }
+
+void RastroProcessor::beginCapture(std::function<void(bool)> complete)
+{
+    if (!directInput || !capture.start())
+    {
+        if (complete)
+            complete(false);
+        return;
+    }
+    loader.addJob(
+        [this, complete = std::move(complete)]
+        {
+            while (!shuttingDown && capture.state != rastro::CaptureRecorder::ready)
+            {
+                capture.finishStop();
+                juce::Thread::sleep(5);
+            }
+            bool ok = false;
+            if (!shuttingDown && capture.claim())
+            {
+                juce::MemoryBlock bytes;
+                ok = rastro::encodeCapture(capture, bytes) &&
+                     loadData(bytes.getData(), bytes.getSize(), "Capture.wav");
+                capture.release();
+            }
+            juce::MessageManager::callAsync(
+                [complete, ok]
+                {
+                    if (complete)
+                        complete(ok);
+                });
+        });
+}
+void RastroProcessor::listCaptures(std::function<void(std::vector<juce::File>)> complete)
+{
+    loader.addJob(
+        [complete = std::move(complete)]
+        {
+            auto files = rastro::captureFiles();
+            juce::MessageManager::callAsync(
+                [complete, files = std::move(files)]() mutable
+                {
+                    if (complete)
+                        complete(std::move(files));
+                });
+        });
+}
+
+rastro::PatchValues RastroProcessor::patchValues() const
+{
+    rastro::PatchValues values{};
+    for (size_t i = 0; i < values.size(); ++i)
+        values[i] = value(rastro::patchIds[i]);
+    return values;
+}
+void RastroProcessor::applyPatch(const rastro::PatchValues &values)
+{
+    for (size_t i = 0; i < values.size(); ++i)
+        set(rastro::patchIds[i], values[i]);
+}
+void RastroProcessor::patchFileAsync(juce::File file, bool save, std::function<void(bool)> complete)
+{
+    loader.addJob(
+        [this, file, save, complete = std::move(complete)]
+        {
+            bool ok = false;
+            if (save)
+            {
+                juce::MemoryBlock data;
+                getStateInformation(data);
+                if (data.getSize() <= 64 * 1024 * 1024)
+                    ok = file.replaceWithData(data.getData(), data.getSize());
+            }
+            else if (file.getSize() > 0 && file.getSize() <= 64 * 1024 * 1024)
+            {
+                juce::MemoryBlock data;
+                if (file.loadFileAsData(data))
+                    ok = restoreState(data.getData(), int(data.getSize()));
+            }
+            juce::MessageManager::callAsync(
+                [complete, ok]
+                {
+                    if (complete)
+                        complete(ok);
+                });
+        });
+}

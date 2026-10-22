@@ -3,6 +3,20 @@
 namespace rastro
 {
 inline constexpr int moduleCount = 6;
+inline constexpr float beatDivisions[]{1.f, .5f, .75f, 1.f / 3};
+inline constexpr const char *divisionNames[]{"1/4", "1/8", "1/8.", "1/8T"};
+inline constexpr const char *timingIds[]{"gTiming", "cTiming", "wTiming"};
+inline constexpr const char *divisionIds[]{"gDivision", "cDivision", "wDivision"};
+inline constexpr const char *freeTimeIds[]{"gFreeMs", "cFreeHz", "wFreeHz"};
+inline constexpr const char *legacyTimeIds[]{"gTime", "cRate", "wRate"};
+inline int timingSlot(int module)
+{
+    return module == 0 ? 0 : module == 1 ? 1 : module == 3 ? 2 : -1;
+}
+inline const char *timingParameter(int slot, int mode)
+{
+    return mode == 1 ? freeTimeIds[slot] : mode == 2 ? divisionIds[slot] : legacyTimeIds[slot];
+}
 inline constexpr const char *moduleNames[]{"GHOST", "CRUMBLE", "BLOOM", "WOBBLE", "DUST", "CRUSH"};
 inline constexpr const char *moduleDescriptions[]{"ghost",  "crumble", "bloom",
                                                   "wobble", "dust",    "crush"};

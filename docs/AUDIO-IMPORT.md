@@ -8,7 +8,7 @@ específica do usuário. Os fixtures próprios verificam codecs relevantes às e
 
 1. No Gravador do iPhone/Mac, compartilhe ou exporte a gravação para uma pasta local. Escolha
    **Comprimido/AAC** ou **Sem perdas/ALAC**, quando houver essas opções. Os nomes variam entre versões.
-2. No RASTRO, use **CARREGAR SOM** e selecione o `.m4a`, ou arraste **um arquivo** para o plugin.
+2. No RASTRO, use **IMPORTAR** e selecione o `.m4a`, ou arraste **um arquivo** para o plugin.
 3. Confira o nome e a waveform. **Ouvir trecho** faz uma prévia; o teclado MIDI toca o sample normalmente.
 4. Salve a sessão da DAW. Os bytes originais são embutidos no estado: não depende do caminho externo.
 
@@ -40,9 +40,8 @@ Verificam arquivo truncado, átomo inválido, codec desconhecido, QuickTime incl
 do sample anterior após erro. **O diálogo nativo do seletor e o arrasto físico do Finder não foram operados.**
 WAV/AIFF são gerados em memória na suíte; MP3/M4A são fixtures pequenos versionáveis.
 
-**macOS: implementado com CoreAudio do sistema; o resultado da compilação está no workflow do commit atual. A decodificação não é executada pelos quatro testes portáveis do CI.**
-Não afirmar sucesso de AAC/ALAC no Mac ou no Logic a partir dos testes Linux. Rode a suíte de integração
-no Mac com os mesmos fixtures. Não foram testados HE-AAC, HE-AACv2, xHE-AAC, DRM, áudio espacial/surround,
+**macOS: CoreAudio do sistema. O workflow desta revisão executa `recordings`, teste sem GUI dos seis fixtures, além das oito suítes portáveis. Confira o resultado efetivo no run do commit atual.**
+Não afirmar sucesso de AAC/ALAC no Mac ou no Logic a partir dos testes Linux. A suíte completa de integração/editor continua exigindo sessão gráfica no Mac. Não foram testados HE-AAC, HE-AACv2, xHE-AAC, DRM, áudio espacial/surround,
 outros sample rates/profundidades ou metadados particulares de todas as versões do Gravador.
 A identificação `mp4a` não certifica todos os perfis AAC; o decoder ainda pode recusar um perfil.
 
@@ -95,3 +94,6 @@ ctest --test-dir build-check -C Release --output-on-failure
 No Mac são necessários Xcode/Command Line Tools e CMake, conforme README. Na integração, execute em uma
 sessão gráfica, pois a suíte também abre um peer de janela e renderiza a interface. No Linux sem desktop,
 use Xvfb com window manager; este workspace tem um helper específico descrito em `UI-VALIDATION.md`.
+
+Windows: WAV/AIFF/MP3 offline; M4A informa decoder indisponível nesta revisão, sem fallback online.
+O CI Windows executa oito suítes portáveis; não declara decodificação AAC/ALAC.

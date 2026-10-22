@@ -1,6 +1,8 @@
 #pragma once
+#include "CapturePanel.h"
 #include "Customizer.h"
 #include "Hardware.h"
+#include "InstrumentPanel.h"
 #include "Performance.h"
 #include "Processor.h"
 #include "SampleView.h"
@@ -36,7 +38,9 @@ class RastroEditor : public juce::AudioProcessorEditor,
     {
         RastroEditor &ui;
         int module;
-        juce::TextButton bypass, remove;
+        std::array<float, 7> displayState{};
+        juce::TextButton bypass, remove, timing;
+        bool updateTiming();
         std::unique_ptr<Knob> mix, primary;
         std::vector<std::unique_ptr<Knob>> knobs;
         Card(RastroEditor &, int);
@@ -48,6 +52,9 @@ class RastroEditor : public juce::AudioProcessorEditor,
     RastroProcessor &p;
     Style style;
     std::unique_ptr<VisualCustomizer> customizer;
+    std::unique_ptr<InstrumentPanel> instrument;
+    juce::TextButton openInstrument, openCapture;
+    std::unique_ptr<CapturePanel> capturePanel;
     juce::TooltipWindow tips{this, 700};
     juce::TextButton load, mutate, undo, reset, add, about, center, preview, customize, compact;
     juce::ComboBox language, animations, playbackMode, sliceCount, pitchMode;
@@ -59,7 +66,8 @@ class RastroEditor : public juce::AudioProcessorEditor,
         pitchAttach;
     PlayPad play;
     RastroAvatar avatar;
-    juce::ToggleButton loop;
+    juce::ToggleButton loop, regionLoop;
+    std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> regionAttach;
     std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> loopAttach;
     std::vector<std::unique_ptr<Knob>> sampleKnobs, macros;
     std::array<std::unique_ptr<Card>, rastro::moduleCount> cards;
@@ -99,6 +107,7 @@ class RastroEditor : public juce::AudioProcessorEditor,
 
   private:
     UiMetrics measurements;
+    bool windowWasShowing = false;
 
   public:
     explicit RastroEditor(RastroProcessor &);
@@ -106,6 +115,7 @@ class RastroEditor : public juce::AudioProcessorEditor,
     bool keyPressed(const juce::KeyPress &) override;
     void paint(juce::Graphics &) override;
     void resized() override;
+    void visibilityChanged() override;
     bool isInterestedInFileDrag(const juce::StringArray &) override;
     void filesDropped(const juce::StringArray &, int, int) override;
 };

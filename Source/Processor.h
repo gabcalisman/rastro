@@ -1,17 +1,27 @@
 #pragma once
+#include "CaptureBridge.h"
 #include "Engine.h"
+#include "PatchSearch.h"
 #include "RecordingImport.h"
 #include <juce_audio_utils/juce_audio_utils.h>
 class RastroProcessor : public juce::AudioProcessor, private juce::MidiKeyboardStateListener
 {
   public:
-    RastroProcessor();
+    explicit RastroProcessor(bool directCaptureForTests = false);
     ~RastroProcessor() override
     {
+        patchSearch.stop();
+        shuttingDown = true;
+        capture.stop();
+        capture.finishStop();
         loader.removeAllJobs(true, -1);
         keyboard.removeListener(this);
     }
     void applyCC();
+    rastro::PatchSearch patchSearch;
+    rastro::PatchValues patchValues() const;
+    void applyPatch(const rastro::PatchValues &);
+    void patchFileAsync(juce::File, bool save, std::function<void(bool)>);
     void setPlaybackMode(int);
     void equalSlices(int);
     std::atomic<int> previewRequest{0};
@@ -19,6 +29,24 @@ class RastroProcessor : public juce::AudioProcessor, private juce::MidiKeyboardS
     void prepareToPlay(double, int) override;
     void releaseResources() override {}
     bool isBusesLayoutSupported(const BusesLayout &) const override;
+    bool canAddBus(bool input) const override
+    {
+        return input && directInput && getBusCount(true) == 0;
+    }
+    bool canApplyBusCountChange(bool input, bool adding, BusProperties &properties) override
+    {
+        if (!input || !adding || !directInput)
+            return false;
+        properties.busName = "Capture";
+        properties.defaultLayout = juce::AudioChannelSet::stereo();
+        properties.isActivatedByDefault = true;
+        return true;
+    }
+    rastro::CaptureRecorder capture;
+    std::function<void()> standaloneAudioSettings;
+    std::function<bool()> standaloneInputAvailable;
+    void beginCapture(std::function<void(bool)> complete);
+    void listCaptures(std::function<void(std::vector<juce::File>)> complete);
     void processBlock(juce::AudioBuffer<float> &, juce::MidiBuffer &) override;
     bool acceptsMidi() const override { return true; }
     bool producesMidi() const override { return false; }
@@ -40,7 +68,8 @@ class RastroProcessor : public juce::AudioProcessor, private juce::MidiKeyboardS
     std::atomic<int> language{0}, learn{-1};
     std::array<std::atomic<int>, 5> cc{{-1, -1, -1, -1, -1}};
     std::atomic<int> midiFlash{0};
-    std::atomic<float> hostBpm{0};
+    std::atomic<float> hostBpm{0}, hostBeat{-1};
+    std::atomic<bool> hostPlaying{false};
     bool loadFile(const juce::File &);
     rastro::ImportError importFile(const juce::File &);
     rastro::ImportError importData(const void *, size_t, juce::String);
@@ -60,6 +89,10 @@ class RastroProcessor : public juce::AudioProcessor, private juce::MidiKeyboardS
     void moveModule(int, int);
 
   private:
+    bool restoreState(const void *, int);
+    bool directInput = false;
+    std::atomic<bool> shuttingDown{false};
+    float monitorGain = 0;
     static juce::AudioProcessorValueTreeState::ParameterLayout layout();
     juce::AudioFormatManager formats;
     juce::ThreadPool loader{1};
@@ -95,6 +128,7 @@ class RastroProcessor : public juce::AudioProcessor, private juce::MidiKeyboardS
     std::array<std::array<float, 4>, rastro::moduleCount> mutationBefore{};
     std::array<bool, rastro::moduleCount> mutationAffected{};
     std::atomic<bool> mutationUndoAvailable{false};
+    bool wasHostPlaying = false;
     const rastro::Sample *previousSource = nullptr;
     juce::CriticalSection stateLock;
     std::vector<std::unique_ptr<rastro::Sample>> owned;

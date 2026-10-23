@@ -159,3 +159,9 @@ Separe: o que já existia; o que mudou; o que ficou incompleto; testes que passa
 - O visual "Varsity · Keytar" (`al_keytar.png`) tinha **três mãos** na arte gerada. Retirado até ser redesenhado; looks salvos com ele abrem com o Flare 70s (keytar, duas mãos), que virou o padrão.
 - O cenário não se mexe mais sozinho (sem respiração de câmera, sem seguir o mouse, sem tremer a cada nota). Só as luzes e o personagem reagem; a câmera só balança com WOBBLE + eixo X (efeito real).
 - Limite honesto: com uma pintura única por pose, o personagem só consegue balançar, inclinar e pular; braços e pernas não mudam de pose. Para ele ficar vivo de verdade é preciso arte de animação (quadros de dança, ou partes separadas, ou modelo 3D). Conferir sempre a contagem de mãos e braços em toda arte nova antes de usar.
+
+## Layout (23/10/2026, 17h30) — como nas referências do Gab
+
+- Telas PLAY, SOM e RACK: o Estúdio Palco ocupa a janela inteira, o personagem fica **grande no meio**, em cima da plataforma; painéis nas colunas laterais (452 px cada) e teclado embaixo. Nada de palco numa caixa no canto.
+- PLAY: waveform + playback à esquerda, rack à direita. SOM: ADSR + MIDI/voz à esquerda, filtro/LFO + macros à direita. RACK: rack em coluna à esquerda, efeito selecionado + pad XY à direita.
+- Antes de mudar layout, abrir as referências (anexos do Gab) e comparar lado a lado.

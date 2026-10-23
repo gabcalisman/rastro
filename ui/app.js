@@ -538,7 +538,7 @@
     const list = $("#rackList"); list.innerHTML = "";
     const sc = screen();
     if (sc !== "limpo" && sc !== "perform") return;
-    const tiles = sc === "limpo";
+    const tiles = false; // the rack is a vertical column beside the character (Gab's references)
     list.className = "rack " + (tiles ? "tiles" : "rows");
     order.forEach(function (mi, pos) {
       const M = MOD[mi];
@@ -1029,7 +1029,7 @@
     if (!W || !H) return cam || { tx: 0, ty: 0, s: .5 };
     const k = Math.max(W / 480, H / 452), visW = W / k, visH = H / k, vx0 = 240 - visW / 2, vy0 = 226 - visH / 2;
     const scr = screen(), bottomPad = scr === "palco" && look.strip ? 118 / k : 0, topPad = 0;
-    const S = ART.stage, yTop = 150, yBot = 805;
+    const S = ART.stage, yTop = scr === "limpo" ? 40 : 150, yBot = scr === "limpo" ? 830 : 805;
     let s = (visH - bottomPad - topPad) / (yBot - yTop);
     s = Math.max(s, visW / (S.w - 60), visH / (S.h - 40));
     const life = 1; // the room stays still: the camera only changes with the window size or the tab

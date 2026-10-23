@@ -700,3 +700,41 @@ body[data-screen="captura"] #captureSheet { top: 148px !important; }
 .synth-sw.on { border-color: var(--gold); color: var(--gold2); box-shadow: 0 0 10px rgba(255, 179, 64, .35); }
 .synth-sw.on i { background: var(--gold); box-shadow: 0 0 6px var(--gold); }
 body[data-screen="limpo"] #midiPanel .meter { margin-top: 8px; }
+
+/* ===== Main screens as in Gab's references: the studio fills the window, the character stands big in the
+   middle on the platform, panels float in the side columns, keyboard along the bottom. ===== */
+body[data-screen="limpo"] #stage { left: 0; top: 0; width: 1440px; height: 900px; border: 0; border-radius: 0; z-index: 0; }
+body[data-screen="limpo"] #appBg { opacity: 0; }
+body[data-screen="limpo"] #app::before { content: ""; position: absolute; z-index: 1; left: 0; right: 0; top: 0; height: 96px; background: linear-gradient(#0c0416 30%, rgba(12, 4, 22, 0)); pointer-events: none; }
+body[data-screen="limpo"] .panel:not(#stage) { background: rgba(18, 7, 30, .82); }
+body[data-screen="limpo"] #hud { left: 470px; right: 470px; top: 150px; }
+body[data-screen="limpo"] #editTabs { left: 16px; top: 96px; width: 690px; }
+body[data-screen="limpo"] #keys { display: flex; left: 16px; right: 16px; top: 806px; height: 84px; z-index: 3; background: rgba(15, 6, 26, .82); border: 1.5px solid var(--line); border-radius: 14px; padding: 6px; }
+body[data-screen="limpo"] #samplePanel, body[data-screen="limpo"] #playbackPanel, body[data-screen="limpo"] #envPanel, body[data-screen="limpo"] #filterPanel,
+body[data-screen="limpo"] #midiPanel, body[data-screen="limpo"] #fxPanel, body[data-screen="limpo"] #xyPanel, body[data-screen="limpo"] #macroPanel, body[data-screen="limpo"] #rackPanel { display: none; }
+/* PLAY: waveform + playback on the left, effect rack on the right */
+body[data-screen="limpo"][data-etab="sample"] #samplePanel { display: block; left: 16px; top: 148px; width: 452px; height: 400px; }
+body[data-screen="limpo"][data-etab="sample"] #samplePanel .wave-box { height: 300px; }
+body[data-screen="limpo"][data-etab="sample"] #samplePanel #markSeg button { padding: 0 6px; }
+body[data-screen="limpo"][data-etab="sample"] #playbackPanel { display: block; left: 16px; top: 556px; width: 452px; height: 240px; }
+body[data-screen="limpo"][data-etab="sample"] #rackPanel { display: block; left: 972px; top: 148px; width: 452px; height: 648px; }
+/* SOM: envelope + voice on the left, filter/LFO + macros on the right */
+body[data-screen="limpo"][data-etab="instrument"] #envPanel { display: block; left: 16px; top: 148px; width: 452px; height: 320px; }
+body[data-screen="limpo"][data-etab="instrument"] #midiPanel { display: block; left: 16px; top: 476px; width: 452px; height: 320px; }
+body[data-screen="limpo"][data-etab="instrument"] #filterPanel { display: block; left: 972px; top: 148px; width: 452px; height: 320px; }
+body[data-screen="limpo"][data-etab="instrument"] #macroPanel { display: block; left: 972px; top: 476px; width: 452px; height: 320px; }
+body[data-screen="limpo"] #midiPanel .seg-wide { display: flex; width: 100%; margin: 0 0 8px; }
+/* RACK: the rack column on the left, selected effect + XY on the right */
+body[data-screen="limpo"][data-etab="fx"] #rackPanel { display: block; left: 16px; top: 148px; width: 452px; height: 648px; }
+body[data-screen="limpo"][data-etab="fx"] #fxPanel { display: block; left: 972px; top: 148px; width: 452px; height: 250px; }
+body[data-screen="limpo"][data-etab="fx"] #xyPanel { display: block; left: 972px; top: 406px; width: 452px; height: 390px; }
+body[data-screen="limpo"][data-etab="fx"] #xyPanel .pad { height: 260px; }
+body[data-screen="limpo"] #rackPanel #fxLegend, body[data-screen="limpo"] #rackPanel #topoHint, body[data-screen="limpo"] #rackPanel .chev { display: none; }
+body[data-screen="limpo"] #rackPanel .rack { overflow-y: auto; max-height: 560px; }
+body[data-screen="limpo"] #fxPanel .fx-body .knob { width: 62px; }
+body[data-screen="limpo"] #fxPanel .fx-tools { flex-wrap: wrap; }
+body[data-screen="limpo"] .panel:not(#stage) { background: rgba(16, 6, 28, .92); }
+body[data-screen="limpo"][data-etab] #macroPanel { display: none; }
+body[data-screen="limpo"][data-etab="instrument"] #macroPanel { display: block; }
+body[data-screen="limpo"][data-etab="fx"] #fxPanel { height: 250px; }
+body[data-screen="limpo"] #hud { left: 484px; right: 484px; top: 742px; }

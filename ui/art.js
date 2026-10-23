@@ -225,23 +225,47 @@
   /* ---------------- painted art (from the concept illustrations) ---------------- */
   // Painted characters: cut out from the approved paintings, split at the neck so the head can move.
   // Image px (height 760) -> stage units with scale k, origin at the feet.
-  function painted(file, w, headH, pivot, head, top) {
+  function painted(file, w, headH, pivot, head, top, inst, style) {
     return function () {
       const k = .395, W = w * k, H = 760 * k, ox = -W / 2, oy = -H;
+      const X = function (x) { return (ox + x * k).toFixed(1); }, Y = function (y) { return (oy + y * k).toFixed(1); };
+      let fx = "";
+      if (inst.pads) { // 4x4 pad grid: each note lights one pad
+        const p = inst.pads;
+        fx = '<g id="c-fx" transform="rotate(' + p.rot + ' ' + X(p.x) + ' ' + Y(p.y) + ')">';
+        for (let r = 0; r < 4; r++) for (let c = 0; c < 4; c++) fx += '<rect class="padLit" data-i="' + (r * 4 + c) + '" x="' + (ox + (p.x + (c - 2) * p.cell) * k + 1).toFixed(1) + '" y="' + (oy + (p.y + (r - 2) * p.cell) * k + 1).toFixed(1) + '" width="' + (p.cell * k - 2).toFixed(1) + '" height="' + (p.cell * k - 2).toFixed(1) + '" rx="1.5" fill="#ffc46b" opacity="0" style="mix-blend-mode:screen"/>';
+        fx += '</g>';
+      } else { // keyboard glow along the keys
+        const g = inst.keys;
+        fx = '<g id="c-fx" transform="rotate(' + g.rot + ' ' + X(g.x) + ' ' + Y(g.y) + ')"><ellipse class="keyGlow" cx="' + X(g.x) + '" cy="' + Y(g.y) + '" rx="' + (g.rx * k).toFixed(1) + '" ry="' + (g.ry * k).toFixed(1) + '" fill="url(#gKeys)" opacity="0"/>' +
+          '<ellipse class="keySpot" cx="' + X(g.x) + '" cy="' + Y(g.y) + '" rx="' + (12 * k).toFixed(1) + '" ry="' + (g.ry * k * .7).toFixed(1) + '" fill="#fff6d0" opacity="0"/></g>';
+      }
       return {
-        painted: true,
+        painted: true, style: style, inst: inst,
         pivot: [ox + pivot[0] * k, oy + pivot[1] * k],
         anchors: { head: [ox + head[0] * k, oy + head[1] * k], headW: head[2] * k, chest: [ox + pivot[0] * k, oy + (pivot[1] + 50) * k], back: [ox + pivot[0] * k, oy + (pivot[1] + 35) * k], top: [ox + top[0] * k, oy + top[1] * k] },
-        svg: '<g id="c-root"><g id="c-torso"><image href="' + file + '_body.png" x="' + ox.toFixed(1) + '" y="' + oy.toFixed(1) + '" width="' + W.toFixed(1) + '" height="' + H.toFixed(1) + '"/></g>' +
+        svg: '<defs><radialGradient id="gKeys"><stop offset="0" stop-color="#fff2c0" stop-opacity=".95"/><stop offset=".55" stop-color="#ffb347" stop-opacity=".5"/><stop offset="1" stop-color="#ff7a3d" stop-opacity="0"/></radialGradient></defs>' +
+          '<g id="c-root"><g id="c-torso"><image href="' + file + '_body.png" x="' + ox.toFixed(1) + '" y="' + oy.toFixed(1) + '" width="' + W.toFixed(1) + '" height="' + H.toFixed(1) + '"/>' + fx + '</g>' +
           '<g id="c-head"><image href="' + file + '_head.png" x="' + ox.toFixed(1) + '" y="' + oy.toFixed(1) + '" width="' + W.toFixed(1) + '" height="' + (headH * k).toFixed(1) + '"/></g></g>'
       };
     };
   }
-  const fuzzArt = painted("fuzz", 482, 260, [220, 238], [190, 120, 260], [185, 14]);
-  const soulArt = painted("soul", 403, 270, [200, 232], [200, 130, 250], [200, 10]);
-  const luaArt = painted("lua", 397, 280, [205, 246], [200, 150, 230], [180, 14]);
-  const novaArt = painted("nova", 450, 290, [215, 262], [210, 170, 200], [230, 12]);
-  const fuzz2Art = painted("fuzz2", 379, 240, [185, 205], [190, 120, 230], [185, 10]);
+  // Each character plays its own way. bounce/sway/nod: dance amounts; hit: how a note lands
+  // (dip = squash down, lean = tilt back, hop = quick jump, nodHit = head hit); jitter adds nervous energy.
+  const STYLE = {
+    fuzz: { bounce: 1.25, sway: .8, nod: 1.6, dip: 1.2, lean: .2, hop: 0, nodHit: 1.6, jitter: 0 },
+    soul: { bounce: .45, sway: 2.2, nod: .9, dip: .4, lean: .3, hop: 0, nodHit: .6, jitter: 0, smooth: true },
+    lua: { bounce: .8, sway: .6, nod: 1, dip: .3, lean: .2, hop: 1.4, nodHit: .8, jitter: .6 },
+    nova: { bounce: .7, sway: 1, nod: 1.1, dip: .5, lean: 1.6, hop: 0, nodHit: 1, jitter: 0 },
+    fuzz2: { bounce: 1, sway: 1.2, nod: 1.3, dip: .9, lean: .4, hop: 0, nodHit: 1.3, jitter: 0 },
+    sapo: { bounce: .9, sway: .7, nod: 1.4, dip: 1.5, lean: 0, hop: 0, nodHit: 1.1, jitter: 0, fingers: true }
+  };
+  const fuzzArt = painted("fuzz", 482, 260, [220, 238], [190, 120, 260], [185, 14], { keys: { x: 215, y: 368, rx: 120, ry: 34, rot: -27 } }, STYLE.fuzz);
+  const soulArt = painted("soul", 403, 270, [200, 232], [200, 130, 250], [200, 10], { keys: { x: 225, y: 352, rx: 140, ry: 30, rot: -20 } }, STYLE.soul);
+  const luaArt = painted("lua", 397, 280, [205, 246], [200, 150, 230], [180, 14], { keys: { x: 260, y: 352, rx: 130, ry: 26, rot: -17 } }, STYLE.lua);
+  const novaArt = painted("nova", 450, 290, [215, 262], [210, 170, 200], [230, 12], { keys: { x: 238, y: 400, rx: 115, ry: 30, rot: -31 } }, STYLE.nova);
+  const fuzz2Art = painted("fuzz2", 379, 240, [185, 205], [190, 120, 230], [185, 10], { keys: { x: 190, y: 330, rx: 120, ry: 30, rot: -21 } }, STYLE.fuzz2);
+  const sapoArt = painted("sapo", 398, 215, [180, 186], [170, 110, 200], [170, 6], { pads: { x: 163, y: 333, cell: 21, rot: 20 } }, STYLE.sapo);
   // Painted rooms: the painting plus glows placed over its objects, so they react to the sound.
   const ROOMS = {
     neon: { img: "room_neon.jpg", w: 1584, h: 993, tint: "#9c7bff", spot: "#bffcff", spotEdge: "#39e3d2", veil: "#0a0418",
@@ -253,10 +277,14 @@
     lofi: { img: "room_lofi.jpg", w: 1586, h: 992, tint: "#ffb066", spot: "#ffd7a0", spotEdge: "#ff8a4c", veil: "#07040f",
       win: [810, 40, 370, 350], screen: [845, 445, 95, 40, "#ffcf7a"], bed: [300, 690, 520, 26], strip: "",
       lamp: [1095, 180, 120], globe: [370, 385, 110], lamp2: null, spk: [[1210, 365, 46], [1295, 368, 58], [1420, 770, 80], [175, 860, 70]] },
+    orbital: { img: "room_orbital.jpg", w: 1672, h: 941, tint: "#ffb066", spot: "#ffe2b0", spotEdge: "#ff8a4c", veil: "#120a14",
+      win: [650, 30, 580, 380], screen: [1355, 370, 120, 60, "#ff9ad5"], bed: [80, 640, 380, 30], strip: "M597 135 L597 250",
+      lamp: [270, 305, 100], globe: [1630, 105, 85], lamp2: [1105, 385, 60], spk: [[1335, 365, 50], [1622, 365, 55], [432, 75, 34], [1560, 640, 40]] },
     lunar: { img: "room_lunar.jpg", w: 1585, h: 992, tint: "#ff9a4a", spot: "#ffd7a0", spotEdge: "#c05cff", veil: "#07040f",
       win: [650, 85, 440, 440], screen: [420, 345, 120, 90, "#ffcf7a"], bed: [520, 700, 600, 40], strip: "",
       lamp: [555, 400, 90], globe: [1385, 445, 95], lamp2: [262, 190, 80], spk: [[345, 585, 58], [315, 488, 34], [660, 560, 40], [1500, 545, 46]] }
   };
+  function roomOffset(kind) { const c = ROOMS[kind]; return c ? -(c.w * 488 / c.h - 480) / 2 : 0; }
   function scenePainted(kind) {
     const c = ROOMS[kind];
     const glow = function (id, g) { return g ? '<circle id="' + id + '" cx="' + g[0] + '" cy="' + g[1] + '" r="' + g[2] + '" fill="url(#gWarm)" opacity="0"/>' : ""; };
@@ -265,7 +293,7 @@
       '<radialGradient id="gCyan"><stop offset="0" stop-color="' + c.spot + '" stop-opacity=".95"/><stop offset=".5" stop-color="' + c.spotEdge + '" stop-opacity=".4"/><stop offset="1" stop-color="' + c.spotEdge + '" stop-opacity="0"/></radialGradient>' +
       '<radialGradient id="gSpot" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="' + c.spot + '" stop-opacity=".55"/><stop offset="1" stop-color="' + c.spotEdge + '" stop-opacity="0"/></radialGradient>' +
       '<radialGradient id="gShadow" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#0a0418" stop-opacity=".7"/><stop offset="1" stop-color="#0a0418" stop-opacity="0"/></radialGradient></defs>' +
-      '<g id="room" transform="translate(-149 -18) scale(' + (488 / c.h).toFixed(4) + ')">' +
+      '<g id="room" transform="translate(' + roomOffset(kind).toFixed(1) + ' -18) scale(' + (488 / c.h).toFixed(4) + ')">' +
       '<image href="' + c.img + '" x="0" y="0" width="' + c.w + '" height="' + c.h + '"/>' +
       '<rect id="winGlow" x="' + c.win[0] + '" y="' + c.win[1] + '" width="' + c.win[2] + '" height="' + c.win[3] + '" fill="' + c.tint + '" opacity="0" style="mix-blend-mode:screen"/>' +
       '<rect id="arcadeGlow" x="' + c.screen[0] + '" y="' + c.screen[1] + '" width="' + c.screen[2] + '" height="' + c.screen[3] + '" rx="10" fill="' + c.screen[4] + '" opacity="0" style="mix-blend-mode:screen"/>' +
@@ -288,9 +316,10 @@
   window.RastroArt = {
     scene: function (kind) { return ROOMS[kind] ? scenePainted(kind) : F(scene()); },
     roomScale: function (kind) { return ROOMS[kind] ? 488 / ROOMS[kind].h : 1; },
-    characters: { nova: novaArt, fuzz: fuzzArt, fuzz2: fuzz2Art, soul: soulArt, lua: luaArt, novaVector: wrapChar(nova), fuzzVector: wrapChar(fuzz) },
-    rooms: ["sunset", "neon", "lofi", "lunar"],
-    paintedSize: { fuzz: [482, 260], fuzz2: [379, 240], soul: [403, 270], lua: [397, 280], nova: [450, 290] },
+    characters: { nova: novaArt, fuzz: fuzzArt, fuzz2: fuzz2Art, soul: soulArt, lua: luaArt, sapo: sapoArt, novaVector: wrapChar(nova), fuzzVector: wrapChar(fuzz) },
+    rooms: ["sunset", "neon", "lofi", "lunar", "orbital"],
+    roomOffset: roomOffset,
+    paintedSize: { fuzz: [482, 260], fuzz2: [379, 240], sapo: [398, 215], soul: [403, 270], lua: [397, 280], nova: [450, 290] },
     items: items,
     accessory: function (id, a) { return F(accessory(id, a)); },
     behind: behind,

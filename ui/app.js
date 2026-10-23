@@ -647,17 +647,19 @@
     { key: "soul", name: "Soul", note: "arte pintada", species: 1, img: "soul_body.png" },
     { key: "lua", name: "Lua", note: "arte pintada", species: 2, img: "lua_body.png" },
     { key: "nova", name: "Nova", note: "arte pintada", species: 3, img: "nova_body.png" },
+    { key: "sapo", name: "Sapo", note: "pads de beat", species: 5, img: "sapo_body.png" },
     { key: "fuzz2", name: "Fuzz Street", note: "visual extra", species: 4, img: "fuzz2_body.png", level: 3 }
   ];
-  const SPECIES = { 0: "fuzz", 1: "soul", 2: "lua", 3: "nova", 4: "fuzz2" };
+  const SPECIES = { 0: "fuzz", 1: "soul", 2: "lua", 3: "nova", 4: "fuzz2", 5: "sapo" };
+  const DEFAULT_STYLE = { bounce: 1, sway: 1, nod: 1, dip: 1, lean: .3, hop: 0, nodHit: 1, jitter: 0 };
   let charKind = "fuzz", rig = {}, anchors = null, charSvg = null, sceneKind = "", sc = {};
-  const motion = { squash: 0, squashV: 0, strike: 0, look: 0, blink: 0, nextBlink: 2, energy: 0, shake: 0, shakeT: 9, hair: 0, hairV: 0, alive: 0, lastSound: -1e9, x: 240, y: 412, rot: 0, nod: 0, nodV: 0, dark: 0, lfoPhase: 0 };
+  const motion = { squash: 0, squashV: 0, strike: 0, look: 0, blink: 0, nextBlink: 2, energy: 0, shake: 0, shakeT: 9, hair: 0, hairV: 0, alive: 0, lastSound: -1e9, x: 240, y: 412, rot: 0, nod: 0, nodV: 0, dark: 0, lfoPhase: 0, lean: 0, leanV: 0, hop: 0, hopV: 0 };
   function setT(el, t) { if (el) el.setAttribute("transform", t); }
   function setA(el, k, val) { if (el) el.setAttribute(k, val); }
   function buildStage() {
     sceneKind = ART.rooms[Math.round(v("sceneRoom"))] || "sunset";
     $("#stageArt").innerHTML = ART.scene(sceneKind);
-    charSvg = $("#stageArt svg"); sc = { scale: ART.roomScale(sceneKind) };
+    charSvg = $("#stageArt svg"); sc = { scale: ART.roomScale(sceneKind), ox: ART.roomOffset(sceneKind) };
     ["pxSky", "pxCity", "fg", "spot", "vu", "bloomVeil", "darkVeil", "neon", "room", "winGlow", "arcadeGlow", "bedGlow", "neonStrip", "lampGlow", "lamp2Glow", "globeGlow",
      "coneL1", "coneL2", "coneR1", "coneR2", "reel1", "reel2", "blob1", "blob2", "blob3"].forEach(function (id) { sc[id] = charSvg.getElementById(id); });
     sc.bulbs = $$(".bulb", charSvg); sc.wins = $$(".win", charSvg); sc.stars = $$(".star", charSvg); sc.sways = $$(".sway", charSvg).concat($$("#leaves .sway")); sc.spk = $$(".spkGlow", charSvg);
@@ -668,9 +670,11 @@
     anchors = C.anchors;
     const layer = $("#charLayer", charSvg);
     layer.innerHTML = '<g id="charPos" transform="translate(240 412)"><g transform="scale(' + (.86) + ')">' + C.svg + '</g></g>';
-    rig = { painted: !!C.painted, pivot: C.pivot || [0, C.anchors.head[1] + 40] };
+    rig = { painted: !!C.painted, pivot: C.pivot || [0, C.anchors.head[1] + 40], style: C.style || DEFAULT_STYLE };
     ["c-root", "c-head", "c-hair", "c-eyes", "c-armL", "c-armR", "c-inst", "c-torso", "c-legL", "c-legR", "c-mouth", "c-mouthOpen"].forEach(function (id) { rig[id] = layer.querySelector("#" + id); });
     rig.pos = layer.querySelector("#charPos"); rig.pupils = $$(".c-pupil", layer);
+    rig.keyGlow = layer.querySelector(".keyGlow"); rig.keySpot = layer.querySelector(".keySpot"); rig.pads = $$(".padLit", layer).map(function (el) { return { el: el, v: 0 }; });
+    rig.keyRx = rig.keyGlow ? Number(rig.keyGlow.getAttribute("rx")) : 0; rig.keyCx = rig.keyGlow ? Number(rig.keyGlow.getAttribute("cx")) : 0; rig.flash = 0;
     wearItems();
     const gl = $("#ghosts", charSvg); gl.innerHTML = "";
     rig.ghosts = [0, 1, 2, 3].map(function () { const g = document.createElementNS("http://www.w3.org/2000/svg", "g"); g.setAttribute("class", "ghost"); g.setAttribute("opacity", "0"); gl.appendChild(g); return { el: g }; });
@@ -852,7 +856,14 @@
     if (T.serial !== lastSerial) {
       if (lastSerial >= 0) {
         const vel = T.vel || .7;
-        motion.squashV -= (.35 + vel * .45) * amp; motion.strike = 1; motion.shake = vel * 2.5 * amp; motion.shakeT = 0; motion.nodV += (2 + vel * 4) * amp; midiFlash = 1;
+        const st = rig.style || DEFAULT_STYLE;
+        motion.squashV -= (.35 + vel * .45) * amp * st.dip; motion.strike = 1; motion.shake = vel * 2.5 * amp; motion.shakeT = 0; motion.nodV += (2 + vel * 4) * amp * st.nodHit; midiFlash = 1;
+        motion.leanV += vel * vel * 26 * amp * st.lean; motion.hopV += (6 + vel * 10) * amp * st.hop;
+        // light the instrument: keys glow where the note sits, pads light one cell per note
+        let lastN = -1; for (let n = 0; n < 128; n++) if (noteHeld(n)) lastN = n;
+        if (lastN < 0) lastN = 60;
+        rig.flash = 1; rig.flashPos = ((lastN - base) / 48);
+        if (rig.pads.length) { const p = rig.pads[(lastN % 16 + 16) % 16]; if (p) p.v = .6 + vel * .4; }
         spawnNotes(240 + (Math.random() - .5) * 60, 250, 1 + Math.round(vel * 3), vel);
         game.note(vel, now);
       }
@@ -875,6 +886,9 @@
     motion.squashV += (-motion.squash * 90 - motion.squashV * 15) * dt; motion.squash = clamp(motion.squash + motion.squashV * dt, -.06, .06);
     motion.nodV += (-motion.nod * 70 - motion.nodV * 13) * dt; motion.nod += motion.nodV * dt;
     motion.strike = Math.max(0, motion.strike - dt * 5);
+    motion.leanV += (-motion.lean * 60 - motion.leanV * 11) * dt; motion.lean += motion.leanV * dt;
+    motion.hopV += (-motion.hop * 160 - motion.hopV * 9) * dt; motion.hop = Math.max(-2, motion.hop + motion.hopV * dt);
+    const ST = rig.style || DEFAULT_STYLE;
     motion.shakeT += dt; const shake = motion.shake * Math.exp(-motion.shakeT * 9) * Math.sin(motion.shakeT * 55);
     const bounce = style === 1 ? Math.abs(Math.sin(beatClock * Math.PI)) * .6 : Math.abs(Math.sin(beatClock * Math.PI));
     const sway = style === 1 ? Math.sin(beatClock * Math.PI) * 1.8 : Math.sin(beatClock * Math.PI * .5) * .8;
@@ -895,15 +909,16 @@
     const camWob = (wobOn ? Math.max(0, v("playX") - .5) * 2 : 0) * alive, degrade = (degOn ? Math.max(0, v("playY") - .5) * 2 : 0) * alive;
     const stageOn = document.body.dataset.tab === "sound" || document.body.dataset.tab === "character";
     if (rig.pos && animMode > 0 && stageOn) {
-      const tx = 240 + sway * 8 * dance + Math.sin(now / 260) * (wob + camWob * .4) * 5 * amp, ty = 412 - bounce * 8 * dance;
-      motion.x += (tx - motion.x) * ease(16); motion.y += (ty - motion.y) * ease(22);
+      const jit = ST.jitter ? (Math.sin(now / 47) * Math.sin(now / 131)) * ST.jitter * dance * 2 : 0;
+      const tx = 240 + sway * 8 * dance * ST.sway + jit + Math.sin(now / 260) * (wob + camWob * .4) * 5 * amp, ty = 412 - bounce * 8 * dance * ST.bounce - Math.max(0, motion.hop);
+      motion.x += (tx - motion.x) * ease(ST.smooth ? 7 : 16); motion.y += (ty - motion.y) * ease(ST.smooth ? 10 : 22);
       let x = motion.x, y = motion.y;
       if (crush > .25) { const q = 2 + crush * 5; x = Math.round(x / q) * q; y = Math.round(y / q) * q; }
       const sq = motion.squash + breathe, sx = 1 - sq * .5, sy = 1 + sq;
-      const trot = sway * 2.2 * dance + Math.sin(now / 300) * (wob + camWob * .5) * 4 * amp + lfo * 2;
+      const trot = sway * 2.2 * dance * ST.sway + Math.sin(now / 300) * (wob + camWob * .5) * 4 * amp + lfo * 2 - motion.lean;
       motion.rot += (trot - motion.rot) * ease(10);
       rig.pos.setAttribute("transform", "translate(" + x.toFixed(2) + " " + y.toFixed(2) + ") rotate(" + motion.rot.toFixed(2) + ") scale(" + sx.toFixed(4) + " " + sy.toFixed(4) + ")");
-      const pv = rig.pivot, nodBeat = Math.sin(beatClock * Math.PI * 2 + .6) * (rig.painted ? 3.5 : 5) * dance;
+      const pv = rig.pivot, nodBeat = Math.sin(beatClock * Math.PI * 2 + .6) * (rig.painted ? 3.5 : 5) * dance * ST.nod;
       setT(rig["c-head"], "rotate(" + (nodBeat + motion.look * (rig.painted ? 2.5 : 4) - motion.nod).toFixed(2) + " " + pv[0].toFixed(1) + " " + pv[1].toFixed(1) + ")");
       const hy = anchors.head[1];
       motion.hairV += ((-sway * 10 * dance - bounce * 5 * dance) - motion.hair) * 40 * dt; motion.hairV *= Math.exp(-dt * 8); motion.hair += motion.hairV * dt;
@@ -927,6 +942,14 @@
         last.el.innerHTML = ""; last.el.appendChild(snap);
       }
       rig.ghosts.forEach(function (gh, i) { gh.el.setAttribute("opacity", Math.max(0, ghostAct * amp * (.5 - i * .11)).toFixed(2)); gh.el.setAttribute("transform", "translate(" + (-(i + 1) * 16 * ghostAct).toFixed(1) + " " + (-(i + 1) * 3 * ghostAct).toFixed(1) + ")"); });
+      rig.flash = Math.max(0, rig.flash - dt * 4);
+      if (rig.keyGlow) {
+        const held = anyHeld ? .45 : 0, f = Math.max(rig.flash, held * alive);
+        rig.keyGlow.setAttribute("opacity", (f * .85).toFixed(2));
+        rig.keySpot.setAttribute("opacity", (rig.flash * .9).toFixed(2));
+        rig.keySpot.setAttribute("cx", (rig.keyCx + clamp((rig.flashPos || .5) - .5, -.5, .5) * rig.keyRx * 1.6).toFixed(1));
+      }
+      rig.pads.forEach(function (p) { p.v = Math.max(0, p.v - dt * 3.5); p.el.setAttribute("opacity", (p.v * .9).toFixed(2)); });
     }
     if (charSvg && animMode > 0 && stageOn) {
       const camRot = Math.sin(now / 320) * camWob * 1.4 * amp;
@@ -934,7 +957,7 @@
       setT(sc.pxSky, "translate(" + (-mx * 10).toFixed(1) + " " + (-my * 6).toFixed(1) + ")");
       setT(sc.pxCity, "translate(" + (-mx * 18).toFixed(1) + " " + (-my * 4).toFixed(1) + ")");
       setT(sc.fg, "translate(" + (mx * 16).toFixed(1) + " " + (my * 6).toFixed(1) + ")");
-      setT(sc.room, "translate(" + (-149 - mx * 110).toFixed(1) + " " + (-18 - my * 10).toFixed(1) + ") scale(" + sc.scale.toFixed(4) + ")");
+      setT(sc.room, "translate(" + (sc.ox - mx * 110).toFixed(1) + " " + (-18 - my * 10).toFixed(1) + ") scale(" + sc.scale.toFixed(4) + ")");
       const cone = 1 + motion.energy * .3 * amp + onBeat * motion.energy * .15;
       ["coneL1", "coneL2", "coneR1", "coneR2"].forEach(function (id) { setT(sc[id], "scale(" + cone.toFixed(3) + ")"); });
       sc.spk.forEach(function (g) { const cx = g.getAttribute("cx"), cy = g.getAttribute("cy"); g.setAttribute("opacity", (motion.energy * .8 + onBeat * groove * .4).toFixed(2)); g.setAttribute("transform", "translate(" + cx + " " + cy + ") scale(" + (.8 + motion.energy * .45 + onBeat * groove * .25).toFixed(2) + ") translate(" + (-cx) + " " + (-cy) + ")"); });

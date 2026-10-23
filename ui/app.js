@@ -646,9 +646,10 @@
     { key: "fuzz", name: "Fuzz", note: "arte pintada", species: 0, img: "fuzz_body.png" },
     { key: "soul", name: "Soul", note: "arte pintada", species: 1, img: "soul_body.png" },
     { key: "lua", name: "Lua", note: "arte pintada", species: 2, img: "lua_body.png" },
-    { key: "nova", name: "Nova", note: "arte pintada", species: 3, img: "nova_body.png" }
+    { key: "nova", name: "Nova", note: "arte pintada", species: 3, img: "nova_body.png" },
+    { key: "fuzz2", name: "Fuzz Street", note: "visual extra", species: 4, img: "fuzz2_body.png", level: 3 }
   ];
-  const SPECIES = { 0: "fuzz", 1: "soul", 2: "lua", 3: "nova" };
+  const SPECIES = { 0: "fuzz", 1: "soul", 2: "lua", 3: "nova", 4: "fuzz2" };
   let charKind = "fuzz", rig = {}, anchors = null, charSvg = null, sceneKind = "", sc = {};
   const motion = { squash: 0, squashV: 0, strike: 0, look: 0, blink: 0, nextBlink: 2, energy: 0, shake: 0, shakeT: 9, hair: 0, hairV: 0, alive: 0, lastSound: -1e9, x: 240, y: 412, rot: 0, nod: 0, nodV: 0, dark: 0, lfoPhase: 0 };
   function setT(el, t) { if (el) el.setAttribute("transform", t); }
@@ -736,7 +737,8 @@
         this.state.xp -= this.need(this.state.level); this.state.level++;
         const item = ART.items.filter(function (it) { return it.level === game.state.level; })[0];
         popup("NÍVEL " + this.state.level + "!", 240, 150, "#ffd23f");
-        toast(item ? "Desbloqueou: " + item.name + "! Vista na aba CHARACTER." : "Nível " + this.state.level + "!", 4000);
+        const ch = CHARS.filter(function (c) { return c.level === game.state.level; })[0];
+        toast(ch ? "Desbloqueou o visual " + ch.name + "! Escolha na aba CHARACTER." : item ? "Desbloqueou: " + item.name + "! Vista na aba CHARACTER." : "Nível " + this.state.level + "!", 4000);
       }
       this.save(); this.hud();
       if (why && why !== "note" && why !== "tweak") popup("+" + xp + " XP", 240, 300, "#39e3d2");
@@ -789,12 +791,14 @@
   function renderCustom() {
     const cg = $("#charChoices"); cg.innerHTML = "";
     CHARS.forEach(function (c) {
-      const b = document.createElement("button"); b.className = "choice" + (c.key === charKind ? " on" : ""); b.disabled = !!c.disabled;
+      const locked = c.level && game.state.level < c.level;
+      const b = document.createElement("button"); b.className = "choice" + (c.key === charKind ? " on" : "") + (locked ? " locked" : ""); b.disabled = !!c.disabled || locked;
       let art;
-      if (c.img) art = '<img src="' + c.img + '" alt="">';
+      const ps = ART.paintedSize[c.key];
+      if (c.img && ps) art = '<span class="pc" style="aspect-ratio:' + ps[0] + '/760"><img src="' + c.key + '_body.png" alt=""><img src="' + c.key + '_head.png" alt="" style="height:' + (ps[1] / 760 * 100).toFixed(2) + '%"></span>';
       else if (c.disabled) art = '<svg viewBox="-60 -60 120 120"><circle r="44" fill="var(--knob-track)"/><text y="22" text-anchor="middle" font-size="60" font-weight="900" fill="var(--muted)">?</text></svg>';
       else art = '<svg viewBox="-90 -340 180 350">' + ART.characters[c.key]().svg.replace(/ id="[^"]+"/g, "") + '</svg>';
-      b.innerHTML = art + '<b>' + c.name + '</b><small>' + c.note + '</small>';
+      b.innerHTML = art + '<b>' + c.name + '</b><small>' + (locked ? "🔒 nível " + c.level : c.note) + '</small>';
       if (!c.disabled) b.addEventListener("click", function () { gesture("avatarCharacter", c.species); });
       cg.appendChild(b);
     });

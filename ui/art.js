@@ -241,6 +241,7 @@
   const soulArt = painted("soul", 403, 270, [200, 232], [200, 130, 250], [200, 10]);
   const luaArt = painted("lua", 397, 280, [205, 246], [200, 150, 230], [180, 14]);
   const novaArt = painted("nova", 450, 290, [215, 262], [210, 170, 200], [230, 12]);
+  const fuzz2Art = painted("fuzz2", 379, 240, [185, 205], [190, 120, 230], [185, 10]);
   // Painted rooms: the painting plus glows placed over its objects, so they react to the sound.
   const ROOMS = {
     neon: { img: "room_neon.jpg", w: 1584, h: 993, tint: "#9c7bff", spot: "#bffcff", spotEdge: "#39e3d2", veil: "#0a0418",
@@ -287,8 +288,9 @@
   window.RastroArt = {
     scene: function (kind) { return ROOMS[kind] ? scenePainted(kind) : F(scene()); },
     roomScale: function (kind) { return ROOMS[kind] ? 488 / ROOMS[kind].h : 1; },
-    characters: { nova: novaArt, fuzz: fuzzArt, soul: soulArt, lua: luaArt, novaVector: wrapChar(nova), fuzzVector: wrapChar(fuzz) },
+    characters: { nova: novaArt, fuzz: fuzzArt, fuzz2: fuzz2Art, soul: soulArt, lua: luaArt, novaVector: wrapChar(nova), fuzzVector: wrapChar(fuzz) },
     rooms: ["sunset", "neon", "lofi", "lunar"],
+    paintedSize: { fuzz: [482, 260], fuzz2: [379, 240], soul: [403, 270], lua: [397, 280], nova: [450, 290] },
     items: items,
     accessory: function (id, a) { return F(accessory(id, a)); },
     behind: behind,

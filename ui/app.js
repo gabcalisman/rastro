@@ -1119,7 +1119,7 @@
     return { x: (m.a * x + m.c * y + m.e - r.left) / k, y: (m.b * x + m.d * y + m.f - r.top) / k, unit: m.a / k };
   }
   function drawHero(state, dt, X0, Y0, s, ghostAct, react) {
-    const p = heroScreen(X0, Y0), heightPx = 488 * s * p.unit;
+    const p = heroScreen(X0, Y0), heightPx = 600 * s * p.unit; // same height as the painted mascot
     const h = hero.heightFor(heightPx), w = h * .82;
     hero.setSize(w, h);
     const f = hero.feetPixel(), left = p.x - f[0], top = p.y - f[1];

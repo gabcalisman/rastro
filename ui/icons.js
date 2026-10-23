@@ -22,6 +22,7 @@
     filter: S('<path d="M4 7h16M7 12h10M10 17h4"/>'),
     left: S('<path d="M15 5l-7 7 7 7"/>'), right: S('<path d="M9 5l7 7-7 7"/>'), down: S('<path d="M6 9l6 6 6-6"/>'), up: S('<path d="M6 15l6-6 6 6"/>'),
     zoomIn: S('<circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5M8 11h6M11 8v6"/>'), zoomOut: S('<circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5M8 11h6"/>'),
+    room: S('<ellipse cx="12" cy="17" rx="8" ry="2.6"/><path d="M4 17V8l8-4 8 4v9"/><path d="M12 9v5"/>'),
     hanger: S('<path d="M12 7a2 2 0 1 1 2 2c-1 .4-2 1-2 2l9 6H3l9-6"/>'),
     spark: S('<path d="M12 3l2 6 6 2-6 2-2 6-2-6-6-2 6-2z"/>'),
     lab: S('<circle cx="6" cy="6" r="2.4"/><circle cx="18" cy="6" r="2.4"/><circle cx="12" cy="18" r="2.4"/><path d="M6 8.4c0 4 6 3 6 7.2M18 8.4c0 4-6 3-6 7.2"/>'),

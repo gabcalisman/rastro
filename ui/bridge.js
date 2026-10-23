@@ -68,7 +68,7 @@
   const search = { busy: false, paused: false, progress: 0, status: 0, revision: 0 }, cap = { state: 0, outcome: 0, frames: 0, seconds: 0, peak: 0, monitor: false };
   let results = [], look = "", progress = "";
   try { look = localStorage.getItem("rastro.preview.look") || ""; progress = localStorage.getItem("rastro.preview.progress") || ""; } catch (e) { /* storage off */ }
-  add("avatarCharacter", 0, 15, 6, 1); add("sceneRoom", 0, 7, 1, 1); add("rackParallel", 0, 1, 0, 1);
+  add("avatarCharacter", 0, 15, 6, 1); add("sceneRoom", 0, 7, 5, 1); add("rackParallel", 0, 1, 0, 1);
   ["knobDesign", "danceStyle", "danceAmount"].forEach(function (id, i) { add(id, 0, [4, 2, 2][i], [0, 0, 1][i], 1); });
   ["gJamLock", "cJamLock", "bJamLock", "wJamLock", "dJamLock", "kJamLock"].forEach(function (id) { add(id, 0, 1, 0, 1); });
   ["envTarget", "lfoTiming", "lfoDivision", "bendRange"].forEach(function (id, i) { add(id, 0, [1, 2, 3, 12][i], [0, 1, 0, 2][i], i === 3 ? 0 : 1); });

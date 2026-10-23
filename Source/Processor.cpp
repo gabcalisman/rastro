@@ -128,7 +128,7 @@ juce::AudioProcessorValueTreeState::ParameterLayout RastroProcessor::layout()
         add(id, 0, 1, 0, 1);
     // Append-only, visual only (web interface): painted character and painted room choices.
     add("avatarCharacter", 0, 15, 6, 1); // 6 = main shadow alien (0..5 painted guests)
-    add("sceneRoom", 0, 7, 1, 1);        // 1 = night studio room
+    add("sceneRoom", 0, 7, 5, 1);        // 5 = Estúdio Palco (round platform, living lights)
     // Sound parameter, appended: 0 serial (legacy default), 1 parallel.
     add("rackParallel", 0, 1, 0, 1);
     return l;

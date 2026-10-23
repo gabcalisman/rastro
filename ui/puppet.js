@@ -33,24 +33,29 @@
       '<mask id="' + id + 'mB" maskUnits="userSpaceOnUse" x="-40" y="-40" width="' + (W + 80) + '" height="' + (H + 80) + '"><rect x="-40" y="-40" width="' + (W + 80) + '" height="' + (H + 80) + '" fill="url(#' + id + 'bg)"/><ellipse cx="' + hx + '" cy="' + hy + '" rx="' + hrx + '" ry="' + hry + '" fill="url(#' + id + 'hh)"/></mask>' +
       '<mask id="' + id + 'mH" maskUnits="userSpaceOnUse" x="-40" y="-40" width="' + (W + 80) + '" height="' + (H + 80) + '"><ellipse cx="' + hx + '" cy="' + hy + '" rx="' + hrx + '" ry="' + hry + '" fill="url(#' + id + 'hw)"/></mask>' +
       '<mask id="' + id + 'mG" maskUnits="userSpaceOnUse" x="0" y="0" width="' + W + '" height="' + H + '"><image href="' + ghref + '" width="' + W + '" height="' + H + '"/></mask>' +
+      '<mask id="' + id + 'mR" maskUnits="userSpaceOnUse" x="-40" y="-40" width="' + (W + 80) + '" height="' + (H + 80) + '"><image href="' + ghref + '" width="' + W + '" height="' + H + '"/><image class="rimcut" href="' + ghref + '" width="' + W + '" height="' + H + '" style="filter:brightness(0)" transform="translate(10 0)"/></mask>' +
       '<radialGradient id="' + id + 'au"><stop offset="0" stop-color="#fff" stop-opacity=".6" class="a0"/><stop offset="1" stop-color="#fff" stop-opacity="0" class="a1"/></radialGradient>';
-    const R = { root: root, id: id, look: lookId, L: L, springs: {}, t: 0, st: { hit: 0, hitV: 0, nod: 0, nodV: 0, strum: 0, strumV: 0, press: 0 } };
+    const R = { root: root, id: id, look: lookId, L: L, springs: {}, t: 0, st: { hit: 0, hitV: 0, nod: 0, nodV: 0, strum: 0, strumV: 0, press: 0, hop: 0, hopV: 0, sq: 0, sqV: 0, lastHop: -1, air: false } };
     R.aura = el(root, "ellipse", { cx: W / 2, cy: H * .45, rx: W * .62, ry: H * .52, fill: "url(#" + id + "au)", opacity: ".4" });
     R.shadow = el(root, "ellipse", { cx: L.hip[0], cy: L.feet + 4, rx: W * .38, ry: 12, fill: "rgba(0,0,0,.45)" });
+    // "whole" carries the game-feel body motion: hops with squash on landing, fake turning (yaw), lean.
+    const whole = R.whole = el(root, "g", {});
     // glow layers (silhouette blur tinted by the sound): base glow + a cyan WOBBLE echo
-    R.glowG = el(root, "g", {});
+    R.glowG = el(whole, "g", {});
     R.glow = el(R.glowG, "rect", { x: 0, y: 0, width: W, height: H, fill: "#5fe3ff", mask: "url(#" + id + "mG)", opacity: ".5" });
-    R.wobG = el(root, "g", { opacity: "0" });
+    R.wobG = el(whole, "g", { opacity: "0" });
     el(R.wobG, "rect", { x: 0, y: 0, width: W, height: H, fill: "#2fe0ff", mask: "url(#" + id + "mG)" });
-    R.legs = el(root, "g", {}); el(R.legs, "image", { href: href, width: W, height: H, mask: "url(#" + id + "mL)" });
-    R.body = el(root, "g", {}); el(R.body, "image", { href: href, width: W, height: H, mask: "url(#" + id + "mB)" });
+    R.legs = el(whole, "g", {}); el(R.legs, "image", { href: href, width: W, height: H, mask: "url(#" + id + "mL)" });
+    R.body = el(whole, "g", {}); el(R.body, "image", { href: href, width: W, height: H, mask: "url(#" + id + "mB)" });
     // instrument lights sit on the body layer so they move with the hands
     R.fx = el(R.body, "g", {});
     if (L.keys) { R.keyLight = el(R.fx, "ellipse", { rx: 16, ry: 9, fill: "#fff", opacity: 0, class: "pp-light" }); }
     if (L.strum) { R.string = el(R.fx, "path", { d: "M" + L.fret[0] + " L" + L.strum, stroke: "#fff", "stroke-width": 2.4, fill: "none", opacity: 0, class: "pp-light" }); }
     if (L.pads) { R.padCells = []; for (let r = 0; r < 2; r++) for (let c = 0; c < 8; c++) { const x0 = L.pads[0][0] + (L.pads[1][0] - L.pads[0][0]) * (c + .5) / 8, y0 = L.pads[0][1] + (L.pads[1][1] - L.pads[0][1]) * (r + .5) / 2; R.padCells.push({ el: el(R.fx, "rect", { x: x0 - 6, y: y0 - 4, width: 12, height: 8, rx: 2, fill: "#fff", opacity: 0, class: "pp-light" }), v: 0 }); } }
-    R.head = el(root, "g", {}); el(R.head, "image", { href: href, width: W, height: H, mask: "url(#" + id + "mH)" });
-    R.stops = defs.querySelectorAll("#" + id + "au stop");
+    R.head = el(whole, "g", {});
+    // rim light: the painted silhouette lit from the side the body turns away from (sells the volume)
+    R.rimG = el(R.head.parentNode, "g", { opacity: "0" }); el(R.rimG, "rect", { x: 0, y: 0, width: W, height: H, fill: "#ffffff", mask: "url(#" + id + "mR)" }); el(R.head, "image", { href: href, width: W, height: H, mask: "url(#" + id + "mH)" });
+    R.stops = defs.querySelectorAll("#" + id + "au stop"); R.rimCut = defs.querySelector(".rimcut");
     R.update = function (s, dt) { update(R, s, dt); };
     R.pose = function () { R.springs = {}; update(R, { alive: 0 }, 0); };
     update(R, { alive: 0 }, 0);
@@ -80,6 +85,27 @@
     const headR = spring(R, "hr", D.headR * I * 1.1 + (s.look || 0) * 5 - clamp(st.nod, -3, 8) * .5, 7.5, dt);
     const headY = spring(R, "hy", (D.headY * I + clamp(st.nod, -2, 6) * .4) * k, 9, dt);
     const breathe = Math.sin(R.t * 1.5) * 1.2;
+    // --- game feel ---
+    // hops: on the downbeat of every 2nd beat when the groove is strong (Disco / Funk / Expressivo); the landing squashes
+    const beats = s.beats || 0, beatN = Math.floor(beats);
+    if (I > .55 && beatN !== st.lastHop && beatN % 2 === 0 && (s.style === "disco" || s.style === "funk" || I > .95) && !st.air) { st.hopV = -(120 + 160 * Math.min(1, I - .5)) * amp; st.air = true; st.sqV -= 2.2; }
+    st.lastHop = beatN;
+    if (st.air) { st.hopV += 1500 * dt; st.hop += st.hopV * dt; if (st.hop >= 0) { st.hop = 0; st.air = false; st.sqV += 3.6 * Math.min(1, Math.abs(st.hopV) / 260); st.hopV = 0; } }
+    else if (dt <= 0) { st.hop = 0; st.hopV = 0; }
+    st.sqV += (-st.sq * 260 - st.sqV * 16) * dt; st.sq += st.sqV * dt;
+    if (s.hit) st.sqV += .9 * (s.vel || .7) * amp;
+    const sq = clamp(st.sq, -.5, .6);
+    // yaw: the body turns a little toward the notes / mouse and with the 4-bar phrase of the dance
+    const yaw = spring(R, "yw", clamp(Math.sin(beats * Math.PI / 8) * .55 * I + (s.look || 0) * .5, -1, 1), 3.2, dt);
+    const lean = spring(R, "ln", (D.hipR || 0) * .35 * I + (s.look || 0) * 1.2, 6, dt);
+    const idle = (1 - Math.min(1, alive * 2)) * Math.min(1, amp + .3);
+    const idleX = Math.sin(R.t * .55) * 3 * idle;
+    const sxW = (1 - Math.abs(yaw) * .1) * (1 + sq * .05), syW = 1 - sq * .07 + (st.air ? .025 : 0);
+    const fx0 = L.hip[0], fy0 = L.feet;
+    R.whole.setAttribute("transform", "translate(" + f1(fx0 + idleX) + " " + f1(fy0 + st.hop * .8) + ") rotate(" + lean.toFixed(2) + ") skewY(" + (yaw * 3.2).toFixed(2) + ") scale(" + sxW.toFixed(4) + " " + syW.toFixed(4) + ") translate(" + (-fx0) + " " + (-fy0) + ")");
+    R.rimG.setAttribute("opacity", (clamp(Math.abs(yaw) * .5 + (s.glowAmt || 0) * .25, 0, .55) * Math.min(1, amp + .2)).toFixed(2));
+    R.rimCut.setAttribute("transform", "translate(" + (yaw >= 0 ? 9 : -9) + " 3)");
+    R.rimG.firstChild.setAttribute("fill", s.glow || "#5fe3ff");
     // legs: shear from the planted feet, compress for the knee dip
     const F = L.feet, Lh = F - L.hip[1], sx = hipX / Lh, sy = 1 - dip / Lh;
     R.legs.setAttribute("transform", "matrix(1 0 " + (-sx).toFixed(5) + " " + sy.toFixed(5) + " " + (sx * F).toFixed(2) + " " + (F * (1 - sy)).toFixed(2) + ")");
@@ -88,6 +114,7 @@
     R.body.setAttribute("transform", bodyT);
     R.head.setAttribute("transform", bodyT + " rotate(" + headR.toFixed(2) + " " + L.neck[0] + " " + L.neck[1] + ") translate(0 " + f1(headY) + ")");
     R.glowG.setAttribute("transform", bodyT);
+    R.rimG.setAttribute("transform", bodyT);
     // WOBBLE: a cyan echo of the outline that sways sideways with the real WOBBLE activity
     const wob = clamp(s.wob || 0, 0, 1);
     R.wobG.setAttribute("opacity", (wob * .55).toFixed(2));
@@ -99,7 +126,9 @@
     const bloom = clamp(s.bloom || 0, 0, 1);
     R.aura.setAttribute("opacity", (.18 + ga * .35 + bloom * .55).toFixed(2));
     R.aura.setAttribute("transform", "translate(" + W / 2 + " " + 315 + ") scale(" + (1 + bloom * .45 + ga * .05).toFixed(3) + ") translate(" + (-W / 2) + " -315)");
-    R.shadow.setAttribute("rx", f1(W * .36 + Math.abs(hipX) * .5));
+    const air = clamp(-st.hop / 90, 0, 1);
+    R.shadow.setAttribute("rx", f1((W * .36 + Math.abs(hipX) * .5) * (1 - air * .3) * (1 + sq * .06)));
+    R.shadow.setAttribute("opacity", (1 - air * .45).toFixed(2));
     // instrument lights from real notes
     const pitch = clamp(s.pitch === undefined ? .5 : s.pitch, 0, 1), playing = !!s.playing;
     if (R.keyLight) { const a = L.keys[0], b = L.keys[1]; R.keyLight.setAttribute("cx", f1(a[0] + (b[0] - a[0]) * pitch)); R.keyLight.setAttribute("cy", f1(a[1] + (b[1] - a[1]) * pitch)); R.keyLight.setAttribute("fill", col); R.keyLight.setAttribute("opacity", (playing ? .45 + st.press * .45 : 0).toFixed(2)); }

@@ -123,3 +123,11 @@ O que só eu verifico: som no Logic, sensação de tocar, legibilidade, animaç�
 ## Relatório ao fim de cada tarefa
 
 Separe: o que já existia; o que mudou; o que ficou incompleto; testes que passaram de verdade; o que preciso verificar no Mac e no Logic; branch e commit.
+
+## Decisões (23/10/2026, madrugada) — palco vivo, logo e arte do Gab
+
+- **Logo oficial = a arte do Gab** (`ui/logo.png`, PNG transparente recortado do arquivo dele). Não redesenhar com fontes.
+- **Cenário padrão: Estúdio Palco** (`ui/room_stage.jpg`, `sceneRoom` = 5; sessões antigas mantêm o quarto salvo). Tudo vive num grupo "mundo" com câmera de jogo (enquadra plataforma + personagem, respira, segue o mouse, empurra no beat). Luzes presas a objetos reais da pintura: luminárias, caixas, lava lamp, fitas neon, janelas da cidade, planeta, anéis e barras da plataforma, cones de luz, bokeh na frente. Personagem em pé na plataforma com sombra e reflexo.
+- Personagem com sensação 3D: pulos com squash na aterrissagem (Disco/Funk/Expressivo), giro falso (yaw), inclinação, luz de contorno, respiração e balanço parado. Dança só com som; no Locker, prévia leve.
+- **Knobs = imagens do Gab** (`ui/knob_*.png`, 43 modelos). Vista de cima: a imagem gira. Vista 3/4: só o topo gira, recortado na elipse do topo. Look salvo com `knob` em texto; índices antigos são migrados.
+- **Locker** sobre o palco real (o quarto ocupa a janela). Itens com a arte do Gab (`ui/it_*.jpg`). Outfits e instrumentos funcionam (trocam o visual pintado completo). Chapéus, fones, óculos e as 4 roupas novas aparecem como **EM BREVE**: precisam da arte em partes.

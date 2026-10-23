@@ -310,14 +310,71 @@
       '</svg>';
   }
 
+  // STAGE: Gab's studio with the round platform. Unlike the other rooms, everything (painting, lights, platform,
+  // character, effects) lives in one "world" group in picture pixels, moved by a game-style camera in app.js.
+  // Every glow sits on a real object of the painting: lamps, speakers, lava lamp, neon strips, city lights,
+  // planet, the platform rings and its front light bars.
+  const STAGE = { img: "room_stage.jpg", w: 1672, h: 941, feet: [836, 664], plat: [836, 664, 462, 50],
+    lamps: [[165, 240, 95], [460, 276, 60], [1290, 362, 95], [1630, 266, 60], [1420, 306, 50], [316, 384, 45], [1020, 360, 40]],
+    lava: [1040, 478, 75], planet: [1032, 118, 105],
+    spk: [[565, 250, 58], [722, 366, 36], [1185, 280, 56], [1113, 452, 30]],
+    strips: ["M388 0 V300", "M1252 112 V226", "M300 146 H452", "M1268 0 V40"],
+    bars: [[712, 761, 240, 13, "o"], [457, 737, 93, 11, "c"], [1122, 739, 93, 11, "c"]],
+    dots: [[366, 733], [381, 733], [396, 733], [1286, 733], [1301, 733], [1316, 733]],
+    city: [700, 150, 1150, 330] };
+  function sceneStage() {
+    const c = STAGE, p = c.plat;
+    let rnd = 7; const R = function () { rnd = (rnd * 16807) % 2147483647; return rnd / 2147483647; };
+    let tw = "";
+    for (let i = 0; i < 34; i++) {
+      const x = c.city[0] + R() * (c.city[2] - c.city[0]), y = c.city[1] + R() * (c.city[3] - c.city[1]);
+      if (Math.hypot(x - c.planet[0], y - c.planet[1]) < 90) continue;
+      tw += '<rect class="twk" x="' + x.toFixed(0) + '" y="' + y.toFixed(0) + '" width="' + (3 + R() * 4).toFixed(0) + '" height="' + (4 + R() * 5).toFixed(0) + '" fill="' + ["#ffd27a", "#ff7ad9", "#9ffcff", "#ffffff"][(R() * 4) | 0] + '" opacity="0"/>';
+    }
+    const glow = function (cls, g, fill) { return '<circle class="' + cls + '" cx="' + g[0] + '" cy="' + g[1] + '" r="' + g[2] + '" fill="' + fill + '" opacity="0"/>'; };
+    const ring = function (rx, ry, w, dash) { return '<ellipse cx="' + p[0] + '" cy="' + p[1] + '" rx="' + rx + '" ry="' + ry + '" fill="none" stroke-width="' + w + '"' + (dash ? ' stroke-dasharray="' + dash + '"' : "") + '/>'; };
+    return '<svg viewBox="0 0 480 452" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">' +
+      '<defs><radialGradient id="gWarm"><stop offset="0" stop-color="#ffd38a" stop-opacity=".95"/><stop offset=".45" stop-color="#ff9a4a" stop-opacity=".45"/><stop offset="1" stop-color="#ff7a3d" stop-opacity="0"/></radialGradient>' +
+      '<radialGradient id="gPink"><stop offset="0" stop-color="#ffb6f0" stop-opacity=".9"/><stop offset=".5" stop-color="#d06bff" stop-opacity=".35"/><stop offset="1" stop-color="#8a3cf0" stop-opacity="0"/></radialGradient>' +
+      '<radialGradient id="gCyan"><stop offset="0" stop-color="#d6fbff" stop-opacity=".9"/><stop offset=".5" stop-color="#39e3d2" stop-opacity=".35"/><stop offset="1" stop-color="#39e3d2" stop-opacity="0"/></radialGradient>' +
+      '<radialGradient id="gGlow"><stop id="gGlow0" offset="0" stop-color="#5fe3ff" stop-opacity=".85"/><stop id="gGlow1" offset="1" stop-color="#5fe3ff" stop-opacity="0"/></radialGradient>' +
+      '<linearGradient id="gCone" x1="0" y1="0" x2="0" y2="1"><stop id="gCone0" offset="0" stop-color="#5fe3ff" stop-opacity=".0"/><stop id="gCone1" offset=".25" stop-color="#5fe3ff" stop-opacity=".35"/><stop id="gCone2" offset="1" stop-color="#5fe3ff" stop-opacity="0"/></linearGradient>' +
+      '<radialGradient id="gVig" cx=".5" cy=".46" r=".72"><stop offset=".62" stop-color="#05020c" stop-opacity="0"/><stop offset="1" stop-color="#05020c" stop-opacity=".7"/></radialGradient>' +
+      '<clipPath id="platClip"><ellipse cx="' + p[0] + '" cy="' + p[1] + '" rx="' + (p[2] - 8) + '" ry="' + (p[3] - 4) + '"/></clipPath></defs>' +
+      '<g id="world">' +
+      '<image href="' + c.img + '" x="0" y="0" width="' + c.w + '" height="' + c.h + '"/>' +
+      '<g id="twinkles">' + tw + '</g>' +
+      glow("planetG", c.planet, "url(#gPink)") +
+      '<g id="lampGs">' + c.lamps.map(function (l) { return glow("lampG", l, "url(#gWarm)"); }).join("") + '</g>' +
+      glow("lavaG", c.lava, "url(#gWarm)") +
+      '<g id="stripGs" fill="none" stroke-linecap="round" style="mix-blend-mode:screen">' + c.strips.map(function (d) { return '<path class="stripG" d="' + d + '" stroke="#ffc46b" stroke-width="10" opacity="0"/>'; }).join("") + '</g>' +
+      '<g id="spkGlows">' + c.spk.map(function (s, i) { return '<circle class="spkGlow" data-i="' + i + '" cx="' + s[0] + '" cy="' + s[1] + '" r="' + s[2] + '" fill="url(#gCyan)" opacity="0"/>'; }).join("") + '</g>' +
+      // light cones from the ceiling onto the platform (follow the glow colour, sway with the groove)
+      '<g id="cones" style="mix-blend-mode:screen" opacity="0"><path id="coneA" d="M560 -20 L620 -20 L900 690 L640 690Z" fill="url(#gCone)"/><path id="coneB" d="M1050 -20 L1110 -20 L1030 690 L770 690Z" fill="url(#gCone)"/></g>' +
+      '<ellipse id="platPool" cx="' + p[0] + '" cy="' + p[1] + '" rx="' + (p[2] - 30) + '" ry="' + (p[3] - 4) + '" fill="url(#gGlow)" opacity="0"/>' +
+      '<g clip-path="url(#platClip)"><use id="charRefl" href="#charPos" transform="translate(0 ' + (2 * c.feet[1] + 6) + ') scale(1 -1)" opacity=".24"/></g>' +
+      '<g id="platRings" stroke="#5fe3ff" style="mix-blend-mode:screen" opacity="0">' + ring(p[2], p[3], 5, "60 26") + ring(375, 40, 3.5, "") + ring(280, 30, 3, "18 14") + ring(170, 18, 2.5, "") + '</g>' +
+      '<g id="barGs" style="mix-blend-mode:screen">' + c.bars.map(function (b) { return '<rect class="barG" data-k="' + b[4] + '" x="' + (b[0] - 14) + '" y="' + (b[1] - 10) + '" width="' + (b[2] + 28) + '" height="' + (b[3] + 20) + '" rx="' + ((b[3] + 20) / 2) + '" fill="#ffb340" opacity="0"/>'; }).join("") + '</g>' +
+      '<g id="dotGs">' + c.dots.map(function (d) { return '<circle class="dotG" cx="' + d[0] + '" cy="' + d[1] + '" r="9" fill="#fff4d6" opacity="0"/>'; }).join("") + '</g>' +
+      '<g id="ghosts"></g><g id="charLayer"></g><g id="notesP"></g><g id="dustP"></g>' +
+      '</g>' +
+      '<g id="bokeh"></g>' +
+      '<rect x="-200" y="-200" width="880" height="852" fill="url(#gVig)" pointer-events="none"/>' +
+      '<rect id="darkVeil" x="-200" y="-200" width="880" height="852" fill="#07030f" opacity="0" pointer-events="none"/>' +
+      '<rect id="bloomVeil" x="-200" y="-200" width="880" height="852" fill="#ff7ad9" opacity="0" pointer-events="none" style="mix-blend-mode:screen"/>' +
+      '</svg>';
+  }
+
   // Parts declare an outline plus their own colour class; merge them into one class attribute.
   function F(s) { return s.replace(/class="ol" class="([^"]+)"/g, 'class="ol $1"'); }
   function wrapChar(make) { return function () { const c = make(); c.svg = F(c.svg); return c; }; }
   window.RastroArt = {
-    scene: function (kind) { return ROOMS[kind] ? scenePainted(kind) : F(scene()); },
+    scene: function (kind) { return kind === "stage" ? sceneStage() : ROOMS[kind] ? scenePainted(kind) : F(scene()); },
+    stage: STAGE,
     roomScale: function (kind) { return ROOMS[kind] ? 488 / ROOMS[kind].h : 1; },
     characters: { nova: novaArt, fuzz: fuzzArt, fuzz2: fuzz2Art, soul: soulArt, lua: luaArt, sapo: sapoArt, novaVector: wrapChar(nova), fuzzVector: wrapChar(fuzz) },
-    rooms: ["sunset", "neon", "lofi", "lunar", "orbital"],
+    rooms: ["sunset", "neon", "lofi", "lunar", "orbital", "stage"],
+    roomNames: ["Sunset Loft", "Quarto Neon", "Lo-fi", "Base Lunar", "Orbital", "Estúdio Palco"],
     roomOffset: roomOffset,
     paintedSize: { fuzz: [482, 260], fuzz2: [379, 240], sapo: [398, 215], soul: [403, 270], lua: [397, 280], nova: [450, 290] },
     items: items,

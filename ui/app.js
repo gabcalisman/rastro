@@ -108,6 +108,7 @@
   $("#mOpenFull").addEventListener("click", function () { menu.hidden = true; fileAction(false, false); });
   $("#mReact").addEventListener("click", function () { menu.hidden = true; lkCat = "react"; setScreen("locker"); });
   $("#mKeys").addEventListener("click", function () { look.kb = look.kb ? 0 : 1; applyKb(); saveLook(); });
+  $("#mHero").addEventListener("click", function () { look.hero3d = look.hero3d === 0 ? 1 : 0; $("#mHeroState").textContent = look.hero3d ? "3D (beta)" : "pintado 2.5D"; saveLook(); applyLook(); });
   function applyKb() { document.body.classList.toggle("kb-on", !!look.kb); $("#mKeysState").textContent = look.kb ? "ligado" : "desligado"; setTimeout(buildKeys, 0); }
 
   /* ================= knobs ================= */
@@ -958,7 +959,7 @@
   const DEFAULT_STYLE = { bounce: 1, sway: 1, nod: 1, dip: 1, lean: .3, hop: 0, nodHit: 1, jitter: 0 };
   let charKind = "alien", rig = {}, charSvg = null, sceneKind = "", sc = {}, puppet = null;
   const motion = { squash: 0, squashV: 0, strike: 0, look: 0, energy: 0, shake: 0, shakeT: 9, alive: 0, lastSound: -1e9, nod: 0, nodV: 0, dark: 0, lfoPhase: 0, peak: .05, hit: false, pitch: .5, pad: 0, x: 240, y: 412, rot: 0 };
-  const look = { pose: "disco", dance: "groove", sync: 1, bpm: 110, strip: 1, knob: "kn_00", glow: "auto", react: 1, kb: 0 };
+  const look = { hero3d: 1, pose: "disco", dance: "groove", sync: 1, bpm: 110, strip: 1, knob: "kn_00", glow: "auto", react: 1, kb: 0 };
   let lookTimer = 0;
   function saveLook() { clearTimeout(lookTimer); lookTimer = setTimeout(function () { R.call("lookSet", JSON.stringify(look)); }, 300); }
   function readLook(json) {
@@ -973,6 +974,7 @@
         if (AL.GLOW[o.glow]) look.glow = o.glow;
         if (typeof o.react === "number") look.react = clamp(o.react, 0, 1.5);
         look.kb = o.kb ? 1 : 0;
+        look.hero3d = o.hero3d === 0 ? 0 : 1;
       }
     } catch (e) { /* keep defaults */ }
   }
@@ -1074,6 +1076,52 @@
       b.el.setAttribute("opacity", (b.a * (.3 + .7 * e) * (.6 + .4 * Math.sin(b.ph * 1.3)) * react).toFixed(3));
     });
   }
+  // ---------- 3D hero (PR #3 prototype). Falls back to the painted puppet when WebGL is missing. ----------
+  let hero = null, heroLayer = null, heroTrail = null, heroRefl = null, heroFailed = false;
+  function heroWanted() { return look.hero3d !== 0 && !heroFailed && charKind === "alien" && window.RastroHero3D; }
+  function setupHero() {
+    if (!heroWanted()) { if (heroLayer) heroLayer.hidden = true; if (rig.pos) rig.pos.style.visibility = ""; return; }
+    if (!heroLayer) {
+      heroLayer = document.createElement("div"); heroLayer.id = "heroLayer"; $("#stageArt").after(heroLayer);
+      heroTrail = document.createElement("canvas"); heroTrail.className = "hero-trail"; heroLayer.appendChild(heroTrail);
+      heroRefl = document.createElement("canvas"); heroRefl.className = "hero-refl"; heroLayer.appendChild(heroRefl);
+      hero = window.RastroHero3D.create(heroLayer);
+      if (!hero) { heroFailed = true; heroLayer.remove(); heroLayer = null; toast("3D indisponível neste computador: usando o personagem pintado."); return; }
+    }
+    heroLayer.hidden = false;
+    hero.setOutfit(look.pose);
+    if (rig.pos) rig.pos.style.visibility = "hidden"; // the painted puppet keeps running invisibly (positions for effects)
+    fx.ghosts.forEach(function (g) { g.style.display = "none"; });
+    if (sc.charRefl) sc.charRefl.style.display = "none";
+  }
+  function heroScreen(x, y) {
+    // stage-local CSS pixels of a point in the character layer (the world camera moves it)
+    const layer = rig.pos.parentNode, m = layer.getScreenCTM(), st = $("#stage"), r = st.getBoundingClientRect(), k = r.width / st.clientWidth;
+    return { x: (m.a * x + m.c * y + m.e - r.left) / k, y: (m.b * x + m.d * y + m.f - r.top) / k, unit: m.a / k };
+  }
+  function drawHero(state, dt, X0, Y0, s, ghostAct, react) {
+    const p = heroScreen(X0, Y0), heightPx = 488 * s * p.unit;
+    const h = hero.heightFor(heightPx), w = h * .82;
+    hero.setSize(w, h);
+    const f = hero.feetPixel(), left = p.x - f[0], top = p.y - f[1];
+    hero.canvas.style.left = left.toFixed(1) + "px"; hero.canvas.style.top = top.toFixed(1) + "px";
+    hero.update(state, dt); hero.render();
+    const cw = hero.canvas.width, ch = hero.canvas.height;
+    // reflection on the glossy platform (flipped copy, faded)
+    if (heroRefl.width !== cw || heroRefl.height !== ch) { heroRefl.width = cw; heroRefl.height = ch; heroTrail.width = cw; heroTrail.height = ch; }
+    [heroRefl, heroTrail].forEach(function (c) { c.style.width = w + "px"; c.style.height = h + "px"; c.style.left = left.toFixed(1) + "px"; });
+    heroTrail.style.top = top.toFixed(1) + "px";
+    heroRefl.style.top = (2 * p.y - top - h).toFixed(1) + "px";
+    const rc = heroRefl.getContext("2d"); rc.clearRect(0, 0, cw, ch); rc.globalAlpha = .26; rc.drawImage(hero.canvas, 0, 0);
+    // GHOST: violet afterimages that trail behind the moving body (strength = real GHOST activity)
+    const tc = heroTrail.getContext("2d");
+    if (ghostAct > .02) {
+      tc.globalCompositeOperation = "destination-out"; tc.fillStyle = "rgba(0,0,0," + (.08 + (1 - v("gFeedback")) * .14).toFixed(3) + ")"; tc.fillRect(0, 0, cw, ch);
+      tc.globalCompositeOperation = "source-over"; tc.globalAlpha = clamp(ghostAct * react * .55, 0, .6); tc.drawImage(hero.canvas, -ghostAct * 10 * (window.devicePixelRatio || 1), 0); tc.globalAlpha = 1;
+      tc.globalCompositeOperation = "source-atop"; tc.fillStyle = "rgba(176,107,255,.75)"; tc.fillRect(0, 0, cw, ch); tc.globalCompositeOperation = "source-over";
+      heroTrail.dataset.on = "1";
+    } else if (heroTrail.dataset.on) { tc.clearRect(0, 0, cw, ch); heroTrail.dataset.on = ""; }
+  }
   function buildCharacter() {
     const layer = $("#charLayer", charSvg);
     puppet = null;
@@ -1082,6 +1130,7 @@
       const pos = layer.querySelector("#charPos");
       puppet = PUP.create(pos, look.pose);
       rig = { puppet: true, pos: pos, pads: [], style: DEFAULT_STYLE };
+      setupHero();
     } else {
       const C = ART.characters[charKind]();
       layer.innerHTML = '<g id="charPos" transform="translate(240 412)"><g transform="scale(.86)">' + C.svg + '</g></g>';
@@ -1653,6 +1702,9 @@
         rig.pos.setAttribute("transform", "translate(" + ax.toFixed(2) + " " + ay.toFixed(2) + ") scale(" + s.toFixed(4) + ")");
         puppet.update({ alive: sc0 === "locker" ? Math.max(alive, .35) : alive, intensity: Math.max(sc0 === "locker" ? .45 : 0, [0, .8, 1.15][amtSel] * clamp(motion.energy / .6, 0, 1.25)) * Math.min(1.25, react), beats: beatClock, style: look.dance, playing: anyHeld || (T.playing && now - lastNoteAt < 700),
           pitch: motion.pitch, pad: motion.pad, hit: motion.hit && amp > 0, vel: motion.vel || .7, look: motion.look, amp: amp, glow: glow, glowAmt: glowAmt, bloom: bloom * react, wob: wob * react, wobRate: v("wRate") * 4 }, dt);
+        if (hero && heroLayer && !heroLayer.hidden)
+          drawHero({ alive: sc0 === "locker" ? Math.max(alive, .35) : alive, intensity: Math.max(sc0 === "locker" ? .45 : 0, [0, .8, 1.15][amtSel] * clamp(motion.energy / .6, 0, 1.25)) * Math.min(1.25, react), beats: beatClock, style: look.dance,
+            playing: anyHeld || (T.playing && now - lastNoteAt < 700), pitch: motion.pitch, hit: motion.hit && amp > 0, vel: motion.vel || .7, look: motion.look * .8 + mx * .4, amp: amp, glow: glow, glowAmt: glowAmt, bloom: bloom * react, wob: wob * react, crush: crush }, dt, X0, L0.y, s, ghostAct, react);
         // centre of the body in stage units (for particles and auras)
         const cx = X0, cy = L0.y - 330 * s, sz = 700 * s;
         if (fx.bloom) { const bs = (.7 + bloom * .55 + (v("presence") - .5) * .2) * sz / 330; fx.bloom.setAttribute("transform", "translate(" + cx + " " + (cy + 10 * s) + ") scale(" + bs.toFixed(3) + ")"); bloomV += ((bloom * alive) - bloomV) * ease(bloom * alive > bloomV ? 6 : 1 / (.3 + v("bDecay") * 2.5)); fx.bloom.setAttribute("opacity", (bloomV * .9 * react).toFixed(2)); }
@@ -1700,6 +1752,7 @@
       rig.pos.setAttribute("transform", "translate(" + ((L0.x || 240) - L.hip[0] * s).toFixed(2) + " " + (L0.y - L.feet * s).toFixed(2) + ") scale(" + s.toFixed(4) + ")");
       if (sc.world) { stageCam(now, 0, 0, react, 0); stepWorld(now, 0, { glow: glow, react: Math.max(.6, react), beat: 0, onBeat: 0, groove: 0, energy: .3, alive: 0, env: 0, bloom: 0, lfo: 0, res: 0, cut: .5 }); }
       puppet.update({ alive: 0, amp: 0, glow: glow, glowAmt: .2 }, dt);
+      if (hero && heroLayer && !heroLayer.hidden) drawHero({ alive: 0, amp: 0, glow: glow, glowAmt: .2 }, dt, L0.x || 240, L0.y, s, 0, react);
     }
     if (sc0 === "locker") lockerLines();
     if (labAlien && sc0 === "lab") labAlien.update({ alive: Math.max(alive, .3), intensity: .5, beats: beatClock, style: "groove", amp: amp || .3, glow: glow, glowAmt: .4 }, dt);
@@ -1719,6 +1772,7 @@
     setupSample(); setupEnv(); setupSynth(); setupPad();
     readPalette(); setEtab("sample"); setScreen("limpo"); fit(); buildKeys(); game.hud(); onSample(init.sample); updatePill(); applyLook(); history.commit();
     if (game.state.lang === "en") setLang("en"); else setLang("pt");
+    $("#mHeroState").textContent = look.hero3d ? "3D (beta)" : "pintado 2.5D";
     refreshUserPatches();
     $("#undoJam").disabled = !init.canUndoJam;
     new MutationObserver(function () { $("#jamPatch").textContent = $("#patchName").textContent; }).observe($("#patchName"), { childList: true, characterData: true, subtree: true });

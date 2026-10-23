@@ -159,3 +159,11 @@ Separe: o que já existia; o que mudou; o que ficou incompleto; testes que passa
 - O visual "Varsity · Keytar" (`al_keytar.png`) tinha **três mãos** na arte gerada. Retirado até ser redesenhado; looks salvos com ele abrem com o Flare 70s (keytar, duas mãos), que virou o padrão.
 - O cenário não se mexe mais sozinho (sem respiração de câmera, sem seguir o mouse, sem tremer a cada nota). Só as luzes e o personagem reagem; a câmera só balança com WOBBLE + eixo X (efeito real).
 - Limite honesto: com uma pintura única por pose, o personagem só consegue balançar, inclinar e pular; braços e pernas não mudam de pose. Para ele ficar vivo de verdade é preciso arte de animação (quadros de dança, ou partes separadas, ou modelo 3D). Conferir sempre a contagem de mãos e braços em toda arte nova antes de usar.
+
+## PR #3 (branch `claude/pr3-3d-character`) — personagem 3D em tempo real (protótipo)
+
+- `ui/hero3d.js` + `ui/three.min.js` (three.js r159, MIT, licença em `third_party/three/`). Personagem original feito em código a partir do design do Gab: alien preto brilhante, crista com bordas neon, fones dourados, olhos em meia-lua ciano, roupa Flare 70s com estampa, keytar.
+- Rig de verdade: quadril, coluna, cabeça; pernas e braços resolvidos por IK de dois ossos a cada quadro (pés plantados na plataforma, exatamente duas mãos: uma toca as teclas seguindo a nota, a outra segura o braço do keytar e aponta para cima nos acentos).
+- Leve: um canvas pequeno sobre a plataforma, sem sombras em tempo real nem pós-processamento; o 2.5D pintado continua por baixo (invisível) para posicionar efeitos e volta sozinho se WebGL faltar. Menu → Personagem: 3D (beta) / pintado 2.5D.
+- Efeitos: luzes de contorno com a cor do som, GHOST = rastros violeta, CRUSH = resolução real mais baixa (pixels), WOBBLE = luz ciano que balança, reflexo na plataforma.
+- Limite: modelado em código, ele tem a forma e o estilo, não os detalhes das pinturas. O modelo final deve vir de um artista 3D (glTF) no mesmo esqueleto.

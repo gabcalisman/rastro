@@ -685,3 +685,9 @@ body[data-lkm="mix"] .lk-mix { display: flex; }
 #macroPanel .dice-row .chip-btn { padding: 0 4px; font-size: 9.5px; white-space: nowrap; }
 #macroPanel .dice-row { margin-top: 6px; }
 body[data-screen="locker"] #popups, body[data-screen="locker"] #pausedBadge { display: none; }
+
+/* 3D hero layer (PR #3) */
+#heroLayer { position: absolute; inset: 0; pointer-events: none; z-index: 1; overflow: hidden; }
+#heroLayer canvas { position: absolute; display: block; }
+#heroLayer .hero-refl { transform: scaleY(-1); -webkit-mask-image: linear-gradient(to top, rgba(0,0,0,.9), rgba(0,0,0,0) 22%); mask-image: linear-gradient(to top, rgba(0,0,0,.9), rgba(0,0,0,0) 22%); }
+body.anim-off #heroLayer .hero-trail { display: none; }

@@ -59,7 +59,7 @@ target_sources(Rastro PRIVATE Source/WebEditor.cpp Source/Processor.cpp Source/E
 set(RASTRO_FFMPEG_EXECUTABLE "/usr/bin/ffmpeg" CACHE FILEPATH "Offline FFmpeg executable for Linux M4A")
 target_compile_definitions(Rastro PRIVATE RASTRO_FFMPEG_EXECUTABLE="${RASTRO_FFMPEG_EXECUTABLE}")
 if(RASTRO_WEB_UI)
- file(GLOB rastro_web_files CONFIGURE_DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/ui/*.html ${CMAKE_CURRENT_SOURCE_DIR}/ui/*.js ${CMAKE_CURRENT_SOURCE_DIR}/ui/*.css ${CMAKE_CURRENT_SOURCE_DIR}/ui/*.svg ${CMAKE_CURRENT_SOURCE_DIR}/ui/*.png)
+ file(GLOB rastro_web_files CONFIGURE_DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/ui/*.html ${CMAKE_CURRENT_SOURCE_DIR}/ui/*.js ${CMAKE_CURRENT_SOURCE_DIR}/ui/*.css ${CMAKE_CURRENT_SOURCE_DIR}/ui/*.svg ${CMAKE_CURRENT_SOURCE_DIR}/ui/*.png ${CMAKE_CURRENT_SOURCE_DIR}/ui/*.jpg)
  juce_add_binary_data(RastroWebAssets HEADER_NAME RastroWeb.h NAMESPACE RastroWeb SOURCES ${rastro_web_files})
  target_link_libraries(Rastro PRIVATE RastroWebAssets)
  target_compile_definitions(Rastro PUBLIC RASTRO_WEB_UI=1 JUCE_WEB_BROWSER=1)

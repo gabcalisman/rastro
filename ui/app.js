@@ -524,17 +524,28 @@
   /* ================= stage & character ================= */
   let charKind = "fuzz", rig = {}, anchors = null, charSvg = null;
   const motion = { bob: 0, bobV: 0, squash: 0, squashV: 0, lean: 0, hair: 0, hairV: 0, strike: 0, look: 0, blink: 0, nextBlink: 2, energy: 0, groove: 0, beatPhase: 0, shake: 0, hist: [] };
+  let sceneKind = "";
   function buildStage() {
-    $("#stageArt").innerHTML = ART.scene();
+    sceneKind = document.body.classList.contains("theme-night") ? "neon" : "sunset";
+    $("#stageArt").innerHTML = ART.scene(sceneKind);
     charSvg = $("#stageArt svg");
+    sc = {};
+    ["pxSky", "pxCity", "fg", "spot", "vu", "bloomVeil", "darkVeil", "neon", "hangPlant", "room", "winGlow", "arcadeGlow", "bedGlow", "neonStrip", "lampGlow", "globeGlow",
+     "coneL1", "coneL2", "coneR1", "coneR2", "reel1", "reel2", "blob1", "blob2", "blob3"].forEach(function (id) { sc[id] = charSvg.getElementById(id); });
+    sc.bulbs = $$(".bulb", charSvg); sc.wins = $$(".win", charSvg); sc.stars = $$(".star", charSvg); sc.sways = $$(".sway", charSvg).concat($$("#leaves .sway"));
+    sc.spk = $$(".spkGlow", charSvg);
     buildCharacter();
   }
+  let sc = {};
+  function setT(el, t) { if (el) el.setAttribute("transform", t); }
+  function setA(el, k, val) { if (el) el.setAttribute(k, val); }
   function buildCharacter() {
     const C = ART.characters[charKind]();
-    anchors = C.anchors;
+    anchors = C.anchors; rig.painted = !!C.painted;
+    const pivot = C.pivot || [0, C.anchors.head[1] + 40];
     const layer = $("#charLayer", charSvg);
-    layer.innerHTML = '<g id="charPos" transform="translate(240 412)"><g transform="scale(' + (charKind === "nova" ? .84 : 1) + ')">' + C.svg + '</g></g>';
-    rig = {};
+    layer.innerHTML = '<g id="charPos" transform="translate(240 412)"><g transform="scale(' + (charKind === "nova" ? .84 : .84) + ')">' + C.svg + '</g></g>';
+    rig = { painted: !!C.painted, pivot: pivot };
     ["c-root", "c-head", "c-hair", "c-eyes", "c-armL", "c-armR", "c-inst", "c-torso", "c-legL", "c-legR", "c-mouth", "c-mouthOpen", "c-hand"].forEach(function (id) { rig[id] = layer.querySelector("#" + id); });
     rig.pos = layer.querySelector("#charPos"); rig.pupils = $$(".c-pupil", layer);
     wearItems();
@@ -673,6 +684,7 @@
       document.body.className = document.body.className.replace(/theme-\w+/, "") + " theme-" + (night ? "night" : "sunset");
       $$("#themeSeg button").forEach(function (b) { b.classList.toggle("on", (b.dataset.theme === "night") === night); });
       readPalette();
+      if (charSvg && sceneKind !== (night ? "neon" : "sunset")) buildStage();
     });
     $$("#charSeg button").forEach(function (b) { b.addEventListener("click", function () { gesture("avatarSpecies", b.dataset.char === "fuzz" ? 1 : 2); }); });
     watch("avatarSpecies", function (x) {
@@ -728,30 +740,42 @@
     let lookTarget = mouseX * .8;
     for (let n = 0; n < 128; n++) if (noteHeld(n)) { lookTarget = clamp((n - base - 18) / 18, -1, 1); break; }
     motion.look = lerp(motion.look, lookTarget, .12);
+    // filter cutoff, LFO and PLAY pad drive the stage too (visual only; follows the real parameters)
+    const synthOn = v("synthEnable") > .5;
+    const cutT = clamp(Math.log(Math.max(20, v("filterCutoff")) / 20) / Math.log(1000), 0, 1);
+    motion.dark = lerp(motion.dark || 0, synthOn ? (1 - cutT) * .5 : 0, .12);
+    motion.lfoPhase = ((motion.lfoPhase || 0) + dt * v("lfoRate") * Math.PI * 2) % (Math.PI * 2);
+    const lfo = synthOn ? Math.sin(motion.lfoPhase) * v("lfoDepth") : 0;
+    const res = synthOn ? v("filterResonance") : 0;
+    const wobOn = v("wOn") > .5 && v("wPresent") > .5, degOn = ["c", "d", "k"].some(function (m) { return v(m + "On") > .5 && v(m + "Present") > .5; });
+    const camWob = wobOn ? Math.max(0, v("playX") - .5) * 2 : 0, degrade = degOn ? Math.max(0, v("playY") - .5) * 2 : 0;
     if (rig.pos && animMode > 0) {
-      let x = 240 + sway * 10 + Math.sin(now / 160) * wob * 6 * amp, y = 412 - Math.abs(beatBob) * 9;
+      let x = 240 + sway * 10 + Math.sin(now / 160) * (wob + camWob * .4) * 6 * amp, y = 412 - Math.abs(beatBob) * 9;
       if (crush > .05) { const q = 2 + crush * 6; x = Math.round(x / q) * q; y = Math.round(y / q) * q; }
       const sq = motion.squash + breathe, sx = 1 - sq * .7, sy = 1 + sq;
-      rig.pos.setAttribute("transform", "translate(" + x.toFixed(1) + " " + y.toFixed(1) + ") rotate(" + (sway * 3 + Math.sin(now / 210) * wob * 5 * amp).toFixed(2) + ") scale(" + sx.toFixed(3) + " " + sy.toFixed(3) + ")");
+      const k = 1; // per-character size lives in buildCharacter
+      rig.pos.setAttribute("transform", "translate(" + x.toFixed(1) + " " + y.toFixed(1) + ") rotate(" + (sway * 3 + Math.sin(now / 210) * (wob + camWob * .5) * 5 * amp + lfo * 2).toFixed(2) + ") scale(" + (sx * k).toFixed(3) + " " + (sy * k).toFixed(3) + ")");
+      const pv = rig.pivot;
+      const nod = Math.sin(beatClock * Math.PI * 2 + .6) * (rig.painted ? 4 : 6) * dance + motion.look * (rig.painted ? 2.5 : 4) - motion.strike * (rig.painted ? 3 : 0);
+      setT(rig["c-head"], "rotate(" + nod.toFixed(2) + " " + pv[0].toFixed(1) + " " + pv[1].toFixed(1) + ")");
       const hy = anchors.head[1];
-      rig["c-head"].setAttribute("transform", "rotate(" + (Math.sin(beatClock * Math.PI * 2 + .6) * 6 * dance + motion.look * 4).toFixed(2) + " 0 " + (hy + 40) + ")");
       motion.hairV += ((-sway * 14 - Math.abs(beatBob) * 6) - motion.hair) * 40 * dt; motion.hairV *= .86; motion.hair += motion.hairV * dt;
-      rig["c-hair"].setAttribute("transform", "rotate(" + motion.hair.toFixed(2) + " 0 " + (hy - 20) + ")");
+      setT(rig["c-hair"], "rotate(" + motion.hair.toFixed(2) + " 0 " + (hy - 20) + ")");
       const ey = hy + 4, bl = 1 - motion.blink * .9;
-      rig["c-eyes"].setAttribute("transform", "translate(0 " + ey + ") scale(1 " + bl.toFixed(2) + ") translate(0 " + (-ey) + ")");
+      setT(rig["c-eyes"], "translate(0 " + ey + ") scale(1 " + bl.toFixed(2) + ") translate(0 " + (-ey) + ")");
       rig.pupils.forEach(function (p) { p.setAttribute("transform", "translate(" + (motion.look * 4).toFixed(1) + " " + (mouseY * 3).toFixed(1) + ")"); });
       const open = clamp(T.env * 1.2, 0, 1) * (T.playing ? 1 : 0);
-      rig["c-mouthOpen"].setAttribute("ry", (open * (charKind === "fuzz" ? 16 : 8)).toFixed(1));
-      rig["c-mouth"].setAttribute("opacity", open > .15 ? 0 : 1);
-      const handX = motion.look * 10, handY = motion.strike * 6;
-      rig["c-armL"].setAttribute("transform", "translate(" + handX.toFixed(1) + " " + handY.toFixed(1) + ")");
-      rig["c-armR"].setAttribute("transform", "rotate(" + (Math.sin(beatClock * Math.PI * 2) * 4 * dance) + " 40 " + (anchors.chest[1] - 20) + ")");
-      rig["c-inst"].setAttribute("transform", rig["c-inst"].getAttribute("transform").replace(/rotate\([^)]*\)/, "rotate(" + ((charKind === "fuzz" ? -20 : -24) + motion.strike * 3 + sway * 2).toFixed(2) + ")"));
+      setA(rig["c-mouthOpen"], "ry", (open * 8).toFixed(1));
+      setA(rig["c-mouth"], "opacity", open > .15 ? 0 : 1);
+      setT(rig["c-armL"], "translate(" + (motion.look * 10).toFixed(1) + " " + (motion.strike * 6).toFixed(1) + ")");
+      setT(rig["c-armR"], "rotate(" + (Math.sin(beatClock * Math.PI * 2) * 4 * dance) + " 40 " + (anchors.chest[1] - 20) + ")");
+      if (rig["c-inst"]) rig["c-inst"].setAttribute("transform", rig["c-inst"].getAttribute("transform").replace(/rotate\([^)]*\)/, "rotate(" + (-24 + motion.strike * 3 + sway * 2).toFixed(2) + ")"));
       const knee = Math.abs(beatBob) * 5;
-      rig["c-legL"].setAttribute("transform", "rotate(" + (-knee).toFixed(2) + " -20 " + (charKind === "fuzz" ? -64 : -124) + ")");
-      rig["c-legR"].setAttribute("transform", "rotate(" + knee.toFixed(2) + " 20 " + (charKind === "fuzz" ? -64 : -124) + ")");
+      setT(rig["c-legL"], "rotate(" + (-knee).toFixed(2) + " -20 -124)");
+      setT(rig["c-legR"], "rotate(" + knee.toFixed(2) + " 20 -124)");
+      // painted character: the body breathes and leans into each note
+      if (rig.painted) setT(rig["c-torso"], "translate(0 " + (motion.strike * 2).toFixed(1) + ")");
       // GHOST: the character leaves a trail of echoes — the RASTRO
-      motion.hist.unshift([x, y]); if (motion.hist.length > 40) motion.hist.pop();
       rig.ghostClock += dt;
       if (ghostAct > .04 && amp > 0 && rig.ghostClock > .09) {
         rig.ghostClock = 0;
@@ -769,28 +793,38 @@
     // scene reactions
     if (charSvg && animMode > 0) {
       const art = $("#stageArt");
-      art.style.transform = "translate(" + ((Math.random() - .5) * motion.shake).toFixed(1) + "px," + ((Math.random() - .5) * motion.shake).toFixed(1) + "px)";
-      $("#pxSky", charSvg).setAttribute("transform", "translate(" + (-mouseX * 10).toFixed(1) + " " + (-mouseY * 6).toFixed(1) + ")");
-      $("#pxCity", charSvg).setAttribute("transform", "translate(" + (-mouseX * 18).toFixed(1) + " " + (-mouseY * 4).toFixed(1) + ")");
-      $("#fg", charSvg).setAttribute("transform", "translate(" + (mouseX * 16).toFixed(1) + " " + (mouseY * 6 + motion.energy * 3).toFixed(1) + ")");
+      const camRot = Math.sin(now / 280) * camWob * 1.6 * amp;
+      art.style.transform = "translate(" + ((Math.random() - .5) * motion.shake).toFixed(1) + "px," + ((Math.random() - .5) * motion.shake).toFixed(1) + "px) rotate(" + camRot.toFixed(2) + "deg)";
+      setT(sc.pxSky, "translate(" + (-mouseX * 10).toFixed(1) + " " + (-mouseY * 6).toFixed(1) + ")");
+      setT(sc.pxCity, "translate(" + (-mouseX * 18).toFixed(1) + " " + (-mouseY * 4).toFixed(1) + ")");
+      setT(sc.fg, "translate(" + (mouseX * 16).toFixed(1) + " " + (mouseY * 6 + motion.energy * 3).toFixed(1) + ")");
+      setT(sc.room, "translate(" + (-149 - mouseX * 110).toFixed(1) + " " + (-18 - mouseY * 10 + motion.energy * 2).toFixed(1) + ") scale(.4915)");
       const cone = 1 + motion.energy * .35 * amp + onBeat * motion.energy * .2;
-      ["coneL1", "coneL2", "coneR1", "coneR2"].forEach(function (id) { const c = charSvg.getElementById(id); if (c) c.setAttribute("transform", "scale(" + cone.toFixed(3) + ")"); });
-      $("#spot", charSvg).setAttribute("opacity", (.25 + motion.energy * .9 + motion.strike * .3).toFixed(2));
-      const bulbs = $$(".bulb", charSvg), lit = Math.floor(beatClock * 2) % 3;
-      bulbs.forEach(function (b, i) { b.classList.toggle("lit", groove > .03 && i % 3 === lit); });
+      ["coneL1", "coneL2", "coneR1", "coneR2"].forEach(function (id) { setT(sc[id], "scale(" + cone.toFixed(3) + ")"); });
+      sc.spk.forEach(function (g, i) { g.setAttribute("opacity", (motion.energy * .8 + onBeat * groove * .5).toFixed(2)); g.setAttribute("transform", "translate(" + g.getAttribute("cx") + " " + g.getAttribute("cy") + ") scale(" + (.8 + motion.energy * .5 + onBeat * groove * .3).toFixed(2) + ") translate(" + (-g.getAttribute("cx")) + " " + (-g.getAttribute("cy")) + ")"); });
+      setA(sc.spot, "opacity", (.25 + motion.energy * .9 + motion.strike * .3).toFixed(2));
+      const lit = Math.floor(beatClock * 2) % 3;
+      sc.bulbs.forEach(function (b, i) { b.classList.toggle("lit", groove > .03 && i % 3 === lit); });
       const spin = (now / 1000) * (T.playing ? 220 : 0);
-      ["reel1", "reel2"].forEach(function (id, i) { const r = charSvg.getElementById(id); r.setAttribute("transform", "translate(" + (i ? 80 : 44) + " 207) rotate(" + spin.toFixed(1) + ")"); });
-      charSvg.getElementById("vu").setAttribute("width", (motion.energy * 64).toFixed(1));
+      setT(sc.reel1, "translate(44 207) rotate(" + spin.toFixed(1) + ")"); setT(sc.reel2, "translate(80 207) rotate(" + spin.toFixed(1) + ")");
+      setA(sc.vu, "width", (motion.energy * 64).toFixed(1));
       const lava = now / 1000 * (.4 + bloom * 2.4);
-      ["blob1", "blob2", "blob3"].forEach(function (id, i) { const b = charSvg.getElementById(id); b.setAttribute("transform", "translate(" + (Math.sin(lava * (1 + i * .3) + i) * 5).toFixed(1) + " " + (Math.sin(lava * .7 + i * 2) * 14).toFixed(1) + ")"); });
-      charSvg.getElementById("bloomVeil").setAttribute("style", "fill:" + (document.body.classList.contains("theme-night") ? "rgba(156,123,255," : "rgba(255,200,150,") + (bloom * .28 * amp).toFixed(3) + ")");
-      const neon = charSvg.getElementById("neon"); neon.style.opacity = (.75 + bloom * .25 + onBeat * groove * .2).toFixed(2);
-      $$(".win", charSvg).forEach(function (w, i) { if (Math.random() < .02 + motion.energy * .05) w.style.opacity = Math.random() < .3 + motion.energy ? "1" : "0"; });
-      $$(".star", charSvg).forEach(function (s, i) { s.style.opacity = (.4 + .6 * Math.abs(Math.sin(now / 700 + i))).toFixed(2); });
-      $$(".sway", charSvg).concat($$("#leaves .sway")).forEach(function (l, i) { l.style.transform = "rotate(" + (Math.sin(now / 1300 + i) * 2 + motion.energy * Math.sin(beatClock * Math.PI * 2) * 3).toFixed(2) + "deg)"; });
-      $("#fx-pixels").style.opacity = (crush * .9 * amp).toFixed(2);
-      if (crumbleAct > .05) crumbleGlitch(crumbleAct * amp);
-      stepDust(dst * amp, dt);
+      ["blob1", "blob2", "blob3"].forEach(function (id, i) { setT(sc[id], "translate(" + (Math.sin(lava * (1 + i * .3) + i) * 5).toFixed(1) + " " + (Math.sin(lava * .7 + i * 2) * 14).toFixed(1) + ")"); });
+      if (sc.bloomVeil) { if (sceneKind === "neon") sc.bloomVeil.setAttribute("opacity", (bloom * .22 * amp).toFixed(3)); else sc.bloomVeil.setAttribute("style", "fill:rgba(255,200,150," + (bloom * .28 * amp).toFixed(3) + ")"); }
+      setA(sc.darkVeil, "opacity", motion.dark.toFixed(3));
+      if (sc.neon) sc.neon.style.opacity = (.75 + bloom * .25 + onBeat * groove * .2 + res * Math.abs(Math.sin(now / 90)) * .2).toFixed(2);
+      setA(sc.lampGlow, "opacity", (.15 + cutT * (synthOn ? .5 : .25) + onBeat * groove * .25).toFixed(2));
+      setA(sc.globeGlow, "opacity", (.2 + Math.abs(lfo) * .7 + bloom * .4).toFixed(2));
+      setA(sc.winGlow, "opacity", (bloom * .35 + groove * .08).toFixed(2));
+      setA(sc.arcadeGlow, "opacity", (Math.random() < (crush + crumbleAct) * .5 ? .7 : .12 + onBeat * groove * .3).toFixed(2));
+      setA(sc.bedGlow, "opacity", (groove * .8 * onBeat + motion.strike * .3).toFixed(2));
+      setA(sc.neonStrip, "opacity", (.1 + res * .5 * (.5 + .5 * Math.sin(now / 70)) + groove * .15).toFixed(2));
+      if (Math.random() < .3) sc.wins.forEach(function (w) { if (Math.random() < .02 + motion.energy * .05) w.style.opacity = Math.random() < .3 + motion.energy ? "1" : "0"; });
+      sc.stars.forEach(function (st, i) { st.style.opacity = (.4 + .6 * Math.abs(Math.sin(now / 700 + i))).toFixed(2); });
+      sc.sways.forEach(function (l, i) { l.style.transform = "rotate(" + (Math.sin(now / 1300 + i) * 2 + motion.energy * Math.sin(beatClock * Math.PI * 2) * 3 + lfo * 6).toFixed(2) + "deg)"; });
+      $("#fx-pixels").style.opacity = clamp((crush * .9 + degrade * .45) * amp, 0, 1).toFixed(2);
+      if (crumbleAct > .05 || degrade > .3) crumbleGlitch(Math.max(crumbleAct, degrade * .5) * amp);
+      stepDust(Math.max(dst, degrade * .3) * amp, dt);
     }
     // groove bars
     const bars = $$("#grooveBars i");

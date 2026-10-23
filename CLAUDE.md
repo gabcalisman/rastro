@@ -51,13 +51,20 @@ Referências em `docs/referencias/`. **São direção visual, não lista de fun�
 
 - Base: conceito 2, **Sunset** (creme, retrô anos 70). Tema **Noite** com a paleta neon do conceito 1.
 - Skin **Ilustrado** (conceito 4): molduras grossas com sombra dura, **folhas nas bordas** (decoração que nunca cobre controles), **módulos do rack como cartões ilustrados** cuja arte mostra o que o efeito faz.
+- Modulações também aparecem: cutoff do filtro = luz do quarto; LFO = balanço/pulso de luz no ritmo do LFO; pad PLAY X = câmera balançando, Y = imagem degradando (só com os módulos ativos).
 - O palco reage ao som de verdade: personagem dança no BPM só quando há som, reage a cada nota, e **os efeitos visuais espelham os efeitos sonoros** (GHOST deixa rastros do personagem, CRUMBLE gera falhas, BLOOM brilha, WOBBLE balança, DUST solta poeira, CRUSH pixeliza).
 - Logo: **RASTRO** em destaque, **Play** em script colado, **by Gab Calisman** visível.
 - Contraste, áreas clicáveis confortáveis, animação completa/reduzida/desligada.
 
 ## Personagens
 
-Quatro personagens aprovados nos conceitos: monstrinho peludo de um olho (Fuzz), alien azul (Nova), cara afro anos 70, personagem roxa de cachos. Fuzz e Nova já existem como arte vetorial **provisória** em partes animáveis (`art.js`). Os outros dois são o próximo passo. A arte final virá de ilustração profissional num estilo único, substituindo as partes uma a uma.
+Quatro personagens aprovados nos conceitos: monstrinho peludo de um olho (Fuzz), alien azul (Nova), cara afro anos 70 (Soul), personagem roxa de cachos (Lua).
+
+- **Fuzz** usa a arte pintada (gerada a partir do conceito, fundo magenta recortado): `ui/fuzz_body.png` + `ui/fuzz_head.png` (cabeça separada no pescoço para balançar). Coordenadas em `fuzzArt()` no `art.js`.
+- **Nova** ainda é vetor provisório em partes (`art.js`).
+- Pipeline de arte: o GPT gera cada personagem e cenário a partir dos conceitos, com fundo de cor chapada (#FF00FF para azuis/turquesa, #00FF00 para os outros); recortamos com chave de cor só nas regiões ligadas à borda (preserva rosa/roxo internos).
+- Cenário **Noite** usa o quarto pintado `ui/room_neon.jpg`, com brilhos reativos posicionados sobre os objetos (caixas, luminárias, fliperama, janela). Cenário **Sunset** ainda é vetorial até chegar a arte pintada.
+- Para animação mais rica, o próximo passo é pedir partes separadas (cabeça, tronco, braços, pernas, instrumento) e objetos soltos do cenário.
 
 ## Gamificação
 

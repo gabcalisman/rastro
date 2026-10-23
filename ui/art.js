@@ -93,6 +93,7 @@
       '<g id="notesP"></g><g id="dustP"></g>' +
       // foreground leaves
       '<g id="fg">' + monstera(-34, 470, -18, .95) + monstera(512, 474, 196, .9) + leaf(-20, 300, -24, .8, "sway") + leaf(500, 330, 200, .75, "sway") + '</g>' +
+      '<rect id="darkVeil" x="0" y="0" width="480" height="452" fill="#1a0c10" opacity="0" pointer-events="none"/>' +
       '<rect id="bloomVeil" class="bloomVeil" x="0" y="0" width="480" height="452"/>' +
       '</svg>';
   }
@@ -221,12 +222,51 @@
     return M(-6, 790, -44, .75) + L(-4, 540, -30, .55, "2") + L(1206, 530, 210, .55) + M(1208, 792, 228, .8) + L(-6, 92, 20, .45, "2") + L(1206, 86, 160, .45);
   }
 
+  /* ---------------- painted art (from the concept illustrations) ---------------- */
+  // Fuzz cut out from the approved painting, split at the neck so the head can move.
+  // Image px -> stage units: scale .395, origin at the feet.
+  function fuzzArt() {
+    const k = .395, w = 482 * k, h = 760 * k, ox = -w / 2, oy = -h;
+    return {
+      painted: true,
+      pivot: [ox + 220 * k, oy + 238 * k],
+      anchors: { head: [ox + 190 * k, oy + 120 * k], headW: 104, chest: [ox + 205 * k, oy + 285 * k], back: [ox + 205 * k, oy + 270 * k], top: [ox + 185 * k, oy + 14 * k] },
+      svg: '<g id="c-root"><g id="c-torso"><image href="fuzz_body.png" x="' + ox.toFixed(1) + '" y="' + oy.toFixed(1) + '" width="' + w.toFixed(1) + '" height="' + h.toFixed(1) + '"/></g>' +
+        '<g id="c-head"><image href="fuzz_head.png" x="' + ox.toFixed(1) + '" y="' + oy.toFixed(1) + '" width="' + w.toFixed(1) + '" height="' + (260 * k).toFixed(1) + '"/></g></g>'
+    };
+  }
+  // Night room painted by the concept artist. Reactive glows sit on top of the painted objects.
+  function sceneNeon() {
+    const glow = function (id, x, y, r, cls) { return '<circle id="' + id + '" class="' + cls + '" cx="' + x + '" cy="' + y + '" r="' + r + '" fill="url(#gWarm)" opacity="0"/>'; };
+    return '<svg viewBox="0 0 480 452" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">' +
+      '<defs><radialGradient id="gWarm"><stop offset="0" stop-color="#ffd38a" stop-opacity=".95"/><stop offset=".45" stop-color="#ff9a4a" stop-opacity=".45"/><stop offset="1" stop-color="#ff7a3d" stop-opacity="0"/></radialGradient>' +
+      '<radialGradient id="gCyan"><stop offset="0" stop-color="#bffcff" stop-opacity=".95"/><stop offset=".5" stop-color="#39e3d2" stop-opacity=".4"/><stop offset="1" stop-color="#39e3d2" stop-opacity="0"/></radialGradient>' +
+      '<radialGradient id="gPink"><stop offset="0" stop-color="#ffd1f0" stop-opacity=".9"/><stop offset=".5" stop-color="#ff4fa3" stop-opacity=".35"/><stop offset="1" stop-color="#ff4fa3" stop-opacity="0"/></radialGradient>' +
+      '<radialGradient id="gSpot" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#bffcff" stop-opacity=".55"/><stop offset="1" stop-color="#39e3d2" stop-opacity="0"/></radialGradient>' +
+      '<radialGradient id="gShadow" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#0a0418" stop-opacity=".7"/><stop offset="1" stop-color="#0a0418" stop-opacity="0"/></radialGradient></defs>' +
+      '<g id="room" transform="translate(-149 -18) scale(.4915)">' +
+      '<image href="room_neon.jpg" x="0" y="0" width="1584" height="993"/>' +
+      '<rect id="winGlow" x="225" y="185" width="430" height="265" fill="#9c7bff" opacity="0" style="mix-blend-mode:screen"/>' +
+      '<rect id="arcadeGlow" x="1370" y="405" width="128" height="88" rx="10" fill="#39e3d2" opacity="0" style="mix-blend-mode:screen"/>' +
+      '<rect id="bedGlow" x="250" y="722" width="760" height="34" rx="17" fill="url(#gWarm)" opacity="0"/>' +
+      '<path id="neonStrip" d="M585 38 L690 178 L690 420" stroke="#9ffcff" stroke-width="14" fill="none" stroke-linecap="round" opacity="0" style="mix-blend-mode:screen"/>' +
+      glow("lampGlow", 785, 100, 150, "") + glow("globeGlow", 1160, 562, 120, "") +
+      '<g id="spkGlows">' + [[127, 583, 70], [250, 488, 48], [676, 478, 40], [932, 478, 34], [215, 872, 86]].map(function (s, i) { return '<circle class="spkGlow" data-i="' + i + '" cx="' + s[0] + '" cy="' + s[1] + '" r="' + s[2] + '" fill="url(#gCyan)" opacity="0"/>'; }).join("") + '</g>' +
+      '</g>' +
+      '<ellipse cx="240" cy="414" rx="92" ry="16" fill="url(#gShadow)"/>' +
+      '<ellipse id="spot" cx="240" cy="410" rx="130" ry="30" fill="url(#gSpot)" opacity=".3"/>' +
+      '<g id="ghosts"></g><g id="charLayer"></g><g id="notesP"></g><g id="dustP"></g>' +
+      '<rect id="darkVeil" x="0" y="0" width="480" height="452" fill="#0a0418" opacity="0" pointer-events="none"/>' +
+      '<rect id="bloomVeil" x="0" y="0" width="480" height="452" fill="#9c7bff" opacity="0" pointer-events="none" style="mix-blend-mode:screen"/>' +
+      '</svg>';
+  }
+
   // Parts declare an outline plus their own colour class; merge them into one class attribute.
   function F(s) { return s.replace(/class="ol" class="([^"]+)"/g, 'class="ol $1"'); }
   function wrapChar(make) { return function () { const c = make(); c.svg = F(c.svg); return c; }; }
   window.RastroArt = {
-    scene: function () { return F(scene()); },
-    characters: { nova: wrapChar(nova), fuzz: wrapChar(fuzz) },
+    scene: function (kind) { return kind === "neon" ? sceneNeon() : F(scene()); },
+    characters: { nova: wrapChar(nova), fuzz: fuzzArt, fuzzVector: wrapChar(fuzz) },
     items: items,
     accessory: function (id, a) { return F(accessory(id, a)); },
     behind: behind,

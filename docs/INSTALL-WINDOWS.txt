@@ -1,0 +1,17 @@
+RASTRO PLAY - Windows x64 test build
+1. Download the artifact while signed into GitHub with access to the private repository.
+2. Extract it, then extract the inner RASTRO-Windows-x64.zip. Read BUILD-INFO.txt for the source commit.
+3. Close your DAW. Copy each WHOLE folder from VST3/ into:
+   C:\Program Files\Common Files\VST3\
+   (Windows may ask for administrator permission for this copy.)
+4. Open your DAW and rescan VST3. RASTRO is a MIDI instrument; insert it on an instrument track.
+   RASTRO Capture is an optional AUDIO insert, used only to record and hand off audio locally.
+5. Or run Standalone/RASTRO.exe from an extracted writable folder. Select audio/MIDI devices in Settings.
+   Keep the executable outside the ZIP; no external runtime installer is needed.
+6. Import WAV/AIFF/MP3. M4A is NOT decoded on Windows in this build; use rendered WAV/AIFF instead.
+7. Capture monitoring defaults OFF. Use headphones, select the input, check the meter, REC, STOP.
+   The resulting sample is embedded when the instrument session/patch is saved after loading finishes.
+
+Unsigned prototype, no installer or release. If security software blocks it, review the origin and
+BUILD-INFO; do not disable system protection. macOS AU cannot be used on Windows.
+CI builds/tests do not prove playback, MIDI hardware, a real sound device or DAW compatibility.

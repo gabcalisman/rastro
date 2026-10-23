@@ -1,0 +1,332 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>RASTRO Play</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body class="kd-14" data-screen="limpo" data-etab="sample" data-tab="sound" data-mode="limpo">
+<div id="frame">
+<div id="app">
+  <div id="appBg" aria-hidden="true"></div>
+
+  <!-- ================= header ================= -->
+  <header id="top">
+    <div class="logo" id="logo" aria-label="RASTRO Play by Gab Calisman"></div>
+    <div class="preset" id="presetBar">
+      <button class="pb-arrow" id="presetPrev" data-ic="left" aria-label="Som anterior da biblioteca"></button>
+      <div class="pb-name"><span id="patchName">Novo patch</span><small id="patchSub">—</small></div>
+      <button class="pb-heart" id="presetFav" data-ic="heart" aria-label="Favoritar este som"></button>
+      <button class="pb-arrow" id="presetNext" data-ic="right" aria-label="Próximo som da biblioteca"></button>
+    </div>
+    <div class="hdr-actions">
+      <button id="saveBtn" class="hbtn" title="Salvar patch .rastro com o áudio embutido"><i data-ic="save"></i><span data-i18n="save">SAVE</span></button>
+      <span class="hsep"></span>
+      <button id="undoBtn" class="hbtn icon" data-ic="undo" title="Desfazer a última mudança no som" disabled></button>
+      <button id="redoBtn" class="hbtn icon" data-ic="redo" title="Refazer" disabled></button>
+      <span class="hsep"></span>
+      <button id="dice" class="hbtn" title="RANDOMIZE: sorteia um patch novo (envelope, filtro, LFO, voz e efeitos). O atual fica em A; o novo toca em B."><i data-ic="dice"></i><span>RANDOMIZE</span></button>
+      <button id="jam" class="jam-btn" title="JAM: modo de performance. Esconde os painéis e deixa personagem, patch, teclado e controles essenciais. Clique de novo para voltar."><i data-ic="wave"></i>JAM</button>
+      <div class="gtransport" role="group" aria-label="Transporte interno do RASTRO (não controla o Logic)">
+        <button id="tPlay" class="tbtn" data-ic="play" title="Tocar a prévia do sample ou retomar" aria-label="Tocar"></button>
+        <button id="tPause" class="tbtn" data-ic="pause" title="Pausar: para a prévia e congela a animação, guardando a posição" aria-label="Pausar"></button>
+        <button id="tStop" class="tbtn" data-ic="stop" title="Parar: volta ao início do trecho, encerra gravação e devolve a pose inicial" aria-label="Parar"></button>
+      </div>
+      <button id="menuBtn" class="hbtn icon menu-btn" data-ic="menu" title="Menu: telas, arquivos e opções" aria-haspopup="true"></button>
+    </div>
+  </header>
+
+  <!-- global navigation (PERFORM, LOCKER, PATCH LAB) -->
+  <nav id="navTabs" class="nav-tabs">
+    <button data-nav="sons"><i data-ic="wave"></i><span data-i18n="nav.sons">SAMPLES</span></button>
+    <button data-nav="patches"><i data-ic="sliders"></i><span data-i18n="nav.patches">INSTRUMENTS</span></button>
+    <button data-nav="favs"><i data-ic="heart"></i><span data-i18n="nav.favs">FAVORITES</span></button>
+    <button data-nav="locker"><i data-ic="hanger"></i><span>LOCKER</span></button>
+    <button data-nav="lab"><i data-ic="lab"></i><span>PATCH LAB</span></button>
+  </nav>
+
+  <!-- main tabs: PLAY · SOM · RACK · PATCHES · ESTÚDIO (JAM is a mode, in the header) -->
+  <nav id="editTabs" class="edit-tabs main-tabs">
+    <button data-main="play" title="Carregar, arrastar ou capturar áudio; waveform; modo de reprodução; teclado"><i data-ic="wave"></i>PLAY</button>
+    <button data-main="som" title="ADSR, filtro, LFO, polifonia, pitch e performance"><i data-ic="sliders"></i>SOM</button>
+    <button data-main="rack" title="Cadeia de efeitos: a ordem é a ordem do som"><i data-ic="cube"></i>RACK</button>
+    <button data-main="patches" title="Salvar, carregar, comparar e organizar sons"><i data-ic="folder"></i>PATCHES</button>
+    <button data-main="estudio" title="Personagem, guarda-roupa, instrumentos, knobs, cenário e cores"><i data-ic="hanger"></i>ESTÚDIO</button>
+  </nav>
+
+  <!-- ================= browser (PERFORM) ================= -->
+  <section id="browser" class="panel">
+    <div class="search"><i data-ic="search"></i><input id="libSearch" type="text" placeholder="Buscar sons…" aria-label="Buscar"><button class="icon-btn" id="libImport" title="Importar um áudio seu" data-ic="folder"></button></div>
+    <div class="br-body">
+      <ul id="libCats" class="cats"></ul>
+      <ul id="libList" class="lib-list"></ul>
+    </div>
+  </section>
+
+  <!-- ================= stage ================= -->
+  <section id="stage" class="panel stage" aria-label="Palco do personagem">
+    <div id="stageArt"></div>
+    <div id="fx-pixels" class="fx-layer"></div>
+    <div id="fx-crumble" class="fx-layer"></div>
+    <div id="hud">
+      <div class="hud-level"><span id="lvlBadge" class="lvl-badge">NV 1</span><div class="xp"><div id="xpFill"></div></div><span id="nextReward" class="xp-text"></span></div>
+      <div class="hud-combo"><span id="comboNum">0</span><small>COMBO</small></div>
+    </div>
+    <div id="popups"></div>
+    <div id="pausedBadge" class="paused-badge" hidden>❚❚ PAUSADO</div>
+    <div id="palcoLogo" class="logo palco-logo" aria-hidden="true"></div>
+    <button id="palcoMenu" class="hbtn icon palco-menu" data-ic="menu" title="Menu"></button>
+    <div id="jamTop" class="jam-top"><div class="jam-patch"><small>PATCH</small><b id="jamPatch">—</b></div><button id="jamExit" class="jam-btn on" title="Sair do modo JAM (volta para a aba em que você estava)"><i data-ic="wave"></i>SAIR DO JAM</button></div>
+    <div id="palcoBar" class="palco-bar">
+      <button id="stripBtn" class="strip-toggle" data-ic="up" title="Mostrar ou esconder a faixa"></button>
+      <div class="pb-inner">
+        <div id="palcoK1"></div>
+        <span class="pb-ic" id="palcoIc1"></span>
+        <div id="palcoPad" class="mini-pad" title="X/Y: Estável ↔ Wobble · Limpo ↔ Degradado"><span id="palcoDot"></span></div>
+        <div id="palcoK2"></div>
+        <span class="pb-ic" id="palcoIc2"></span>
+      </div>
+    </div>
+    <div id="groove" class="groove" hidden><b>GROOVE</b><div id="grooveBars" class="groove-bars"></div><button id="collectionBtn" class="chip">COLEÇÃO <span id="collectionCount">0</span></button></div>
+  </section>
+
+  <!-- ================= sample editor ================= -->
+  <section id="samplePanel" class="panel">
+    <div class="panel-head">
+      <h2 class="perform-only">SAMPLE EDITOR</h2>
+      <button id="sampleFav" class="icon-btn perform-only" data-ic="heart" title="Favoritar este sample"></button>
+      <span id="sampleName" class="sample-name">Arraste um áudio aqui</span>
+      <button id="captureHead" class="cap-head" title="CAPTURA: gravar voz, guitarra ou o que chegar na entrada e tocar no teclado"><i data-ic="rec"></i>CAPTURA</button>
+      <div class="seg seg-glow" id="markSeg" role="group" aria-label="O que arrastar">
+        <button data-mark="snap" class="on" title="SNAP: os marcadores grudam em cruzamentos de zero">SNAP</button>
+        <button data-mark="start" title="Mostrar e ajustar o início">START</button>
+        <button data-mark="end" title="Mostrar e ajustar o fim">END</button>
+        <button data-mark="loop" title="Mostrar a região de LOOP">LOOP</button>
+      </div>
+      <button class="icon-btn" data-zoom="out" data-ic="zoomOut" title="Afastar (−)"></button>
+      <button class="icon-btn" data-zoom="in" data-ic="zoomIn" title="Aproximar (+)"></button>
+      <button class="chip-btn" data-zoom="sel" title="Voltar à seleção">SEL</button>
+      <button class="chip-btn" data-zoom="all" title="Sample inteiro">ALL</button>
+    </div>
+    <div id="waveBox" class="wave-box" tabindex="0" aria-label="Forma de onda. Arraste S, E e o colchete de loop; clique para posicionar a reprodução; + e − dão zoom.">
+      <canvas id="wave"></canvas>
+      <button class="wave-nav l" id="wavePrev" data-ic="left" aria-label="Rolar para a esquerda"></button>
+      <button class="wave-nav r" id="waveNext" data-ic="right" aria-label="Rolar para a direita"></button>
+      <div id="dropHint" class="drop-hint">Solte o áudio para importar</div>
+      <div id="emptyHint" class="empty-hint"><b>Comece aqui</b><span>Arraste um WAV, AIFF, MP3 ou M4A, escolha um som na biblioteca, ou capture pelo menu.</span></div>
+    </div>
+    <div class="wave-foot"><span id="markerInfo" class="mono">0.00s</span><span id="cueInfo" class="mono cue"></span><span id="waveLen" class="mono">0.00s</span></div>
+  </section>
+
+  <!-- ================= amp envelope ================= -->
+  <section id="envPanel" class="panel">
+    <div class="panel-head"><h2>AMP ENVELOPE</h2><button id="synthBtn" class="synth-sw" title="Liga o motor de synth: ADSR, filtro, envelope de filtro e LFO passam a moldar o som. Desligado, o sample toca como foi gravado (o ADSR também vale no disparo GATE)."><i></i><span id="synthLbl">DESLIGADO</span></button></div>
+    <div class="env-body">
+      <div class="env-graph"><svg id="envSvg" viewBox="0 0 300 70" preserveAspectRatio="none"></svg></div>
+      <div class="knob-row" id="envKnobs"></div>
+    </div>
+    <div id="envNote" class="panel-note"></div>
+  </section>
+
+  <!-- ================= filter / LFO ================= -->
+  <section id="filterPanel" class="panel">
+    <div class="panel-head"><span class="led on lv" aria-hidden="true"></span><div class="seg seg-flat" id="flTabs"><button data-fl="0" class="on">FILTER</button><button data-fl="1">LFO</button></div><span class="pill-sel">Low Pass</span></div>
+    <div class="fl-page" data-fl="0">
+      <div class="fl-body"><div class="filter-graph"><svg id="filterSvg" viewBox="0 0 240 46" preserveAspectRatio="none"></svg></div><div class="knob-row" id="filterKnobs"></div></div>
+    </div>
+    <div class="fl-page" data-fl="1" hidden>
+      <div class="fl-body"><div class="filter-graph"><svg id="lfoSvg" viewBox="0 0 240 46" preserveAspectRatio="none"></svg></div><div class="knob-row" id="lfoKnobs"></div></div>
+      <div class="seg seg-small" id="lfoTargetSeg" role="group" aria-label="Destino do LFO"><button data-lfo="0">→ Cutoff</button><button data-lfo="1">→ Pitch</button></div>
+    </div>
+  </section>
+
+  <!-- ================= playback ================= -->
+  <section id="playbackPanel" class="panel">
+    <div class="panel-head"><h2>PLAYBACK</h2><button id="loopBtn" class="toggle" title="LOOP independente do modo: repete a região sem mudar o modo">LOOP</button></div>
+    <div class="seg seg-wide seg-glow" id="modeSeg" role="group" aria-label="Modo de reprodução">
+      <button data-mode="0" title="Toca o trecho até o fim, mesmo soltando a tecla">ONE SHOT</button>
+      <button data-mode="1" title="Repete o trecho">LOOP</button>
+      <button data-mode="2" title="De trás para frente">REV</button>
+      <button data-mode="3" title="Vai e volta">P-PONG</button>
+      <button data-mode="4" title="Cada nota toca um corte">SLICE</button>
+    </div>
+    <div class="pb-row">
+      <div class="knob-row" id="sampleKnobs"></div>
+      <div class="side-stack">
+        <div class="seg seg-small" id="pitchSeg" role="group" aria-label="Pitch mode"><button data-pitch="0" title="REPITCH: altura e velocidade mudam com a nota">REPITCH</button><button data-pitch="1" title="FIXED: mantém altura e velocidade">FIXED</button></div>
+        <div class="slice-ctl" id="sliceCtl"><button class="chip-btn" data-slices="-1" aria-label="Menos cortes">−</button><span id="sliceCount" class="mono">8 cortes</span><button class="chip-btn" data-slices="1" aria-label="Mais cortes">+</button></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= MIDI / voice ================= -->
+  <section id="midiPanel" class="panel">
+    <div class="panel-head"><h2>MIDI / VOZ</h2></div>
+    <div class="seg seg-small seg-wide" id="voiceSeg" role="group" aria-label="Modo de voz"><button data-voice="0">POLY 16</button><button data-voice="1">MONO</button><button data-voice="2">LEGATO</button></div>
+    <div class="seg seg-small seg-wide" id="trigSeg" role="group" aria-label="Disparo"><button data-trig="0" title="Comportamento de cada modo">POR MODO</button><button data-trig="1" title="Ignora o soltar da tecla">ONE SHOT</button><button data-trig="2" title="Soltar a tecla inicia o release">GATE</button></div>
+    <div class="midi-row"><div class="knob-row" id="voiceKnobs"></div><div class="knob-row" id="masterKnobs"></div></div>
+    <div class="meter"><div id="masterMeter"></div></div>
+    <button id="captureBtn" class="rec-btn" hidden title="Gravar voz, guitarra ou o que estiver na entrada"><i data-ic="rec"></i>RECORD</button>
+  </section>
+
+  <!-- ================= XY ================= -->
+  <section id="xyPanel" class="panel">
+    <div class="panel-head"><h2>XY PERFORMANCE PAD</h2><span id="padInfo" class="hint mono"></span></div>
+    <div class="xy-wrap">
+      <div class="xy-y"><span>DEGRADADO</span><i></i><b class="xy-val" id="xyYVal">Y<br>0.50</b><i></i><span>LIMPO</span></div>
+      <div id="pad" class="pad" tabindex="0" aria-label="Pad X/Y: X estável para wobble, Y limpo para degradado"><div id="padTrail"></div><div id="padDot" class="pad-dot"></div></div>
+    </div>
+    <div class="xy-x"><span>ESTÁVEL</span><i></i><b class="xy-val" id="xyXVal">X 0.50</b><i></i><span>WOBBLE</span></div>
+    <div id="padNote" class="panel-note wrap"></div>
+  </section>
+
+  <!-- ================= macros ================= -->
+  <section id="macroPanel" class="panel">
+    <div class="panel-head"><h2>MACROS</h2></div>
+    <div class="knob-grid" id="macroKnobs"></div>
+    <div class="dice-row"><button id="varyFx" class="chip-btn" title="VARIAR FX: sorteia valores novos só nos efeitos ligados. Não mexe no sample, raiz, trims nem modo; não liga nem desliga módulos.">VARIAR FX</button><button id="undoJam" class="chip-btn" disabled title="Desfaz a última variação dos efeitos">↶ DESFAZER</button></div>
+    <div class="dice-row"><button id="diceKeep" class="chip-btn" disabled title="Ficar com o patch sorteado">FICAR</button><button id="diceBack" class="chip-btn" disabled title="Voltar ao patch de antes do RANDOMIZE">VOLTAR</button></div>
+  </section>
+
+  <!-- ================= selected effect (LIMPO · FX) ================= -->
+  <section id="fxPanel" class="panel">
+    <div class="panel-head"><h2 id="fxTitle">EFEITO</h2><span id="fxSay" class="hint"></span></div>
+    <div id="fxBody" class="fx-body"></div>
+  </section>
+
+  <!-- ================= effect rack ================= -->
+  <section id="rackPanel" class="panel">
+    <div class="panel-head">
+      <i class="drag-ic" data-ic="drag"></i><h2>EFFECT RACK</h2>
+      <label class="switch" title="PARALLEL: cada módulo processa o som original e as diferenças são somadas. SERIAL: um alimenta o outro, e a ordem muda o som."><input type="checkbox" id="parallelSw"><span></span><b>PARALLEL</b></label>
+      <button id="addModule" class="icon-btn" data-ic="plus" title="Adicionar módulo removido"></button>
+      <button id="resetFx" class="chip-btn" title="Volta os efeitos aos valores padrão (desligados)">RESET</button>
+    </div>
+    <div id="rackList" class="rack"></div>
+    <div id="fxLegend" class="color-map"></div>
+    <div id="topoHint" class="panel-note"></div>
+  </section>
+
+  <!-- ================= LOCKER ================= -->
+  <section id="lkLevel" class="panel lk-level"><span class="lk-star" data-ic="star"></span><b>LVL <span id="lkLvl">1</span></b><div class="bar"><div id="lkBar"></div></div><span id="lkXp" class="mono">0 / 100 XP</span></section>
+  <section id="lkSummary" class="panel lk-summary"><h3>RASTRO</h3><small>CUSTOMIZE YOUR LOOK</small><div id="lkSumList"></div></section>
+  <section id="lkRight" class="panel lk-right">
+    <div class="lk-top"><div class="seg lk-mode" id="lkModeSeg"><button data-lkm="wardrobe"><i data-ic="hanger"></i>WARDROBE</button><button data-lkm="mix"><i data-ic="sliders"></i>MIX &amp; MATCH</button></div>
+      <div class="lk-say"><b id="lkSayT">LOOKS COMPLETOS</b><small id="lkSayS">Escolha um visual inteiro. Toque notas para ver ele dançar.</small></div></div>
+    <div id="lkWardrobe" class="wardrobe"></div>
+    <div id="lkMix" class="lk-mix"><div id="lkCats" class="lk-cats"></div><div id="lkItems" class="lk-items"><div class="panel-head"><h2 id="slotTitle">AUDIO</h2><span id="slotNote" class="hint"></span></div><div class="item-grid" id="itemGrid"></div></div></div>
+  </section>
+  <section id="lockerPanel" class="lk-stage" aria-label="Personagem e espaços equipáveis"><svg id="lockerSvg" viewBox="-330 -350 660 390" preserveAspectRatio="xMidYMid meet"></svg>
+    <div class="locker-actions"><button id="lookUndo" class="chip-btn" disabled>↶ DESFAZER</button><button id="lookRandom" class="chip-btn">SORTEAR VISUAL</button><button id="lookSave" class="chip-btn">SALVAR LOOK</button></div></section>
+  <section id="lkInst" class="panel lk-inst"><div class="panel-head"><h2>INSTRUMENTS</h2><div class="chips" id="instChips"></div></div><div class="item-grid three" id="instGrid"></div></section>
+  <section id="lkKnobs" class="panel lk-knobs"><div class="panel-head"><h2>KNOB COLLECTION</h2><span class="hint">muda o visual de todos os knobs reais</span></div><div class="knob-shelf" id="knobChoices"></div></section>
+  <section id="lkPalettes" class="panel lk-pal"><div class="panel-head"><h2>COLOR PALETTES</h2><span class="hint">tema da interface inteira</span></div><div id="paletteChoices" class="pal-list"></div></section>
+  <section id="lkTake" class="panel lk-take"><div class="panel-head"><h2>TAKE THE STAGE</h2></div><p class="hint">Crie, ganhe XP, libere peças. Continue fazendo música.</p>
+    <div class="take-steps"><div><span data-ic="music"></span><b>MAKE MUSIC</b><small>toque e crie</small></div><i data-ic="right"></i><div><span data-ic="star"></span><b>EARN XP</b><small>suba de nível</small></div><i data-ic="right"></i><div><span data-ic="gift"></span><b>UNLOCK GEAR</b><small>roupas, knobs, cores</small></div></div>
+    <div id="challengeList" class="challenges"></div></section>
+
+  <!-- ================= PATCH LAB ================= -->
+  <section id="libPanel" class="panel">
+    <div class="panel-head"><h2>PATCH LIBRARY</h2></div>
+    <div class="search"><i data-ic="search"></i><input id="labSearch" type="text" placeholder="Buscar patches…" aria-label="Buscar patches"></div>
+    <div class="br-body"><ul id="labCats" class="cats icons"></ul><div id="labLib" class="lib-cards"></div></div>
+  </section>
+  <section id="labPanel" class="panel">
+    <div class="panel-head"><h2>PATCH LAB</h2><span class="hint">explore, evolua e crie sons novos a partir do seu sample. Busca aproximada; não é IA.</span></div>
+    <div class="lab-top">
+      <div class="parent-card" id="labParent"></div>
+      <div class="lab-actions">
+        <button id="labGo" class="gold-btn"><i data-ic="spark"></i>GENERATE PATCHES</button>
+        <button id="labVar" class="ghost-btn"><i data-ic="plus"></i>NEW VARIATION</button>
+        <div class="seg seg-small" id="labDir" role="group" aria-label="Direção"><button data-dir="0" class="on">Mais fiel</button><button data-dir="1">Mais transformado</button></div>
+      </div>
+      <div class="lab-mascot"><svg id="labAlien" viewBox="-120 -300 240 310"></svg><span class="bubble" id="labBubble">Bora criar sons novos?</span></div>
+    </div>
+    <svg class="lab-tree" id="labTree" viewBox="0 0 600 60" preserveAspectRatio="none"></svg>
+    <div id="labResults" class="lab-results"></div>
+    <div class="lab-foot"><div class="progress"><div id="labBar"></div></div><span id="labStatus" class="hint">Pronto.</span><button id="labPause" class="chip-btn" disabled>PAUSAR</button><button id="labCancel" class="chip-btn" disabled>CANCEL</button></div>
+  </section>
+  <section id="comparePanel" class="panel">
+    <div class="panel-head"><h2>COMPARE A / B</h2><button class="icon-btn" id="abSwap" data-ic="swap" title="Alternar A e B"></button></div>
+    <div class="ab-cards">
+      <button id="abA" class="ab-card a on" title="Configuração A"><b>A</b><span id="abAName">Patch atual</span><div class="ab-art" id="abAArt"></div><ul id="abAList"></ul></button>
+      <button id="abB" class="ab-card b" title="Configuração B (começa como cópia da A)"><b>B</b><span id="abBName">—</span><div class="ab-art" id="abBArt"></div><ul id="abBList"></ul></button>
+    </div>
+    <button id="abCompare" class="violet-btn"><i data-ic="play"></i>COMPARE A / B</button>
+    <div class="cmp-foot"><button id="patchSave" class="ghost-btn"><i data-ic="save"></i>SAVE PATCH</button><button id="labFav" class="ghost-btn icon" data-ic="heart" title="Favoritar"></button></div>
+    <div class="files-mini"><button id="patchOpenSound" class="chip-btn" title="Troca o som e mantém sua aparência">ABRIR · SÓ SOM</button><button id="patchOpenFull" class="chip-btn" title="Troca também a aparência guardada no patch">ABRIR · COMPLETO</button></div>
+    <div id="fileStatus" class="hint"></div>
+  </section>
+
+  <!-- ================= keyboard ================= -->
+  <footer id="keys" aria-label="Teclado">
+    <div class="oct"><button class="chip-btn" id="octDown" aria-label="Oitava abaixo">◀</button><span id="octLabel" class="mono">C3</span><button class="chip-btn" id="octUp" aria-label="Oitava acima">▶</button></div>
+    <div id="keyboard" class="keyboard"></div>
+  </footer>
+
+  <!-- ================= menu ================= -->
+  <div id="menu" class="menu-pop" hidden>
+    <div class="menu-sec">TELAS</div>
+    <button data-go="limpo"><b>LIMPO</b><small>sample, synth e rack</small></button>
+    <button data-go="perform"><b>PERFORM</b><small>biblioteca, X/Y, macros</small></button>
+    <button data-go="palco"><b>PALCO</b><small>personagem na tela toda</small></button>
+    <button data-go="locker"><b>LOCKER</b><small>ateliê do personagem</small></button>
+    <button data-go="lab"><b>PATCH LAB</b><small>gerar e comparar patches</small></button>
+    <button data-go="captura"><b>CAPTURA</b><small>gravar uma fonte</small></button>
+    <div class="menu-sec">ARQUIVO</div>
+    <button id="mImport"><b>Importar áudio…</b></button>
+    <button id="mOpenSound"><b>Abrir patch · só som…</b></button>
+    <button id="mOpenFull"><b>Abrir patch · completo…</b></button>
+    <div class="menu-sec">OPÇÕES</div>
+    <button id="mReact"><b>Visual reactivity</b><small>luzes e movimento</small></button>
+    <button id="mKeys"><b>Teclado na tela</b><small id="mKeysState">desligado</small></button>
+    <button id="mHero" title="Personagem 3D em tempo real (protótipo) ou a arte pintada 2.5D. Só muda o visual."><b>Personagem</b><small id="mHeroState">3D (beta)</small></button>
+    <button id="langBtn"><b>Idioma</b><small id="langState">Português</small></button>
+    <div class="menu-row"><span>Animação</span><div class="seg seg-small" id="animSeg"><button data-anim="2">Completa</button><button data-anim="1">Reduzida</button><button data-anim="0">Off</button></div></div>
+    <div class="menu-row"><span>Jogo</span><div class="seg seg-small" id="gameSeg"><button data-game="1">Ligado</button><button data-game="0">Modo PRO</button></div></div>
+  </div>
+
+  <div id="toast" class="toast" role="status"></div>
+
+  <!-- ================= CAPTURA ================= -->
+  <div id="captureSheet" class="sheet" hidden>
+    <div class="sheet-card wide">
+      <div class="panel-head"><h2>CAPTURAR ÁUDIO</h2><button class="chip-btn" data-close id="capClose">FECHAR</button></div>
+      <ol class="cap-steps"><li>Fonte</li><li>Nível</li><li>Gravar</li><li>Revisar</li><li>Tocar no teclado</li></ol>
+      <div id="capDirect" class="cap-block" hidden>
+        <h3>ENTRADA DO APP</h3>
+        <p class="fine">Escolha a entrada (microfone, interface, guitarra), confira o nível e grave. Ao parar, a gravação vira o sample, pronta pra tocar no teclado.</p>
+        <div class="cap-row"><button id="capSettings" class="chip-btn">ESCOLHER ENTRADA…</button><div class="meter cap-meter"><div id="capMeter"></div></div><span id="capTime" class="mono">0,0 s</span></div>
+        <div class="cap-row"><button id="capRec" class="rec-btn">● GRAVAR</button><button id="capStop" class="chip-btn">■ PARAR</button><button id="capMon" class="toggle" title="Ouvir a entrada (−20 dB). Use fones para evitar microfonia.">MONITOR</button></div>
+        <div id="capStatus" class="fine"></div>
+      </div>
+      <div id="capPlugin" class="cap-block">
+        <h3>NO LOGIC (OU OUTRA DAW)</h3>
+        <ol class="fine steps">
+          <li>Instale também o <b>RASTRO Capture.component</b> (vem no mesmo pacote).</li>
+          <li>Numa <b>faixa de áudio</b> com a sua entrada (voz, guitarra), coloque <b>Audio FX → Gab Calisman → RASTRO Capture</b>.</li>
+          <li>Ative a monitoração de entrada (I) ou arme a faixa (R) para o áudio chegar no insert.</li>
+          <li>Ele aparece abaixo. Clique em <b>GRAVAR</b>, depois em <b>PARAR</b>, e use a tomada.</li>
+        </ol>
+        <p class="fine">Um instrumento no Logic não recebe áudio direto da entrada; por isso o gravador fica num insert separado, que conversa com o RASTRO Play pelo próprio computador.</p>
+        <div id="capLinks" class="cap-list"></div>
+      </div>
+      <div class="cap-block"><h3>TOMADAS GRAVADAS</h3><div id="capFiles" class="cap-list"></div></div>
+    </div>
+  </div>
+
+  <div id="addMenu" class="menu-pop small" hidden></div>
+</div>
+</div>
+<script src="bridge.js"></script>
+<script src="icons.js"></script>
+<script src="art.js"></script>
+<script src="alien.js"></script>
+<script src="puppet.js"></script>
+<script src="three.min.js"></script>
+<script src="hero3d.js"></script>
+<script src="factory.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

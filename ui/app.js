@@ -956,7 +956,7 @@
   const DEFAULT_STYLE = { bounce: 1, sway: 1, nod: 1, dip: 1, lean: .3, hop: 0, nodHit: 1, jitter: 0 };
   let charKind = "alien", rig = {}, charSvg = null, sceneKind = "", sc = {}, puppet = null;
   const motion = { squash: 0, squashV: 0, strike: 0, look: 0, energy: 0, shake: 0, shakeT: 9, alive: 0, lastSound: -1e9, nod: 0, nodV: 0, dark: 0, lfoPhase: 0, peak: .05, hit: false, pitch: .5, pad: 0, x: 240, y: 412, rot: 0 };
-  const look = { pose: "disco", dance: "groove", sync: 1, bpm: 110, strip: 1, knob: "kn_00", glow: "auto", react: 1, kb: 0 };
+  const look = { pose: "disco", dance: "groove", sync: 1, bpm: 110, strip: 1, knob: "kn_00", glow: "auto", react: 1, kb: 0, figure: Object.assign({}, AL.DEFAULT_LOOK) };
   let lookTimer = 0;
   function saveLook() { clearTimeout(lookTimer); lookTimer = setTimeout(function () { R.call("lookSet", JSON.stringify(look)); }, 300); }
   function readLook(json) {
@@ -969,6 +969,8 @@
         if (typeof o.knob === "number") look.knob = OLD_KNOB[clamp(Math.round(o.knob), 0, 23)];
         else if (typeof o.knob === "string" && KNOBS.some(function (k) { return k.id === o.knob; })) look.knob = o.knob;
         if (AL.GLOW[o.glow]) look.glow = o.glow;
+        // Migrate legacy saved looks to the articulated cartoon rig.
+        look.figure = o.figure && typeof o.figure === "object" ? AL.normalise(o.figure) : figureFromPose(look.pose);
         if (typeof o.react === "number") look.react = clamp(o.react, 0, 1.5);
         look.kb = o.kb ? 1 : 0;
       }
@@ -1096,8 +1098,11 @@
     if (charKind === "alien") {
       layer.innerHTML = '<g id="charPos"></g>';
       const pos = layer.querySelector("#charPos");
-      puppet = PUP.create(pos, look.pose);
-      rig = { puppet: true, pos: pos, pads: [], style: DEFAULT_STYLE };
+      puppet = AL.create(pos, look.figure);
+      puppet.articulated = true;
+      puppet.L = { hip: [0, 0], feet: 0 };
+      puppet.destroy = function () { if (puppet.root) puppet.root.remove(); };
+      rig = { puppet: true, articulated: true, pos: pos, pads: [], style: DEFAULT_STYLE };
     } else {
       const C = ART.characters[charKind]();
       layer.innerHTML = '<g id="charPos" transform="translate(240 412)"><g transform="scale(.86)">' + C.svg + '</g></g>';
@@ -1348,7 +1353,21 @@
     b.classList.add("soon"); b.insertAdjacentHTML("beforeend", '<span class="soon-tag">EM BREVE</span>'); return b;
   }
   function lookThumb(k) { const L = PUP.LOOKS[k]; return L.outfit ? '<img src="' + L.img + '.png" alt="" class="full">' : OUTFIT_ART[k] ? '<img src="' + OUTFIT_ART[k] + '.jpg" alt="">' : '<img src="' + L.img + '.png" alt="" class="full">'; }
-  function wearLook(k) { const L = PUP.LOOKS[k]; if (L.level > game.state.level) { toast("Libera no nível " + L.level + " (faltam " + game.xpTo(L.level) + " XP)."); return; } look.pose = k; if (charKind !== "alien") gesture("avatarCharacter", 6); saveLook(); applyLook(); }
+  function figureFromPose(k) {
+    const f = Object.assign({}, AL.DEFAULT_LOOK), key = String(k || "disco").toLowerCase(), L = PUP.LOOKS[key] || PUP.LOOKS.disco;
+    const preset = key === "guitar" ? { head:"none",phones:"chrome",eyes:"visor",hair:"spikes",top:"hoodie",bottom:"cargo",shoes:"chunky",acc:"gloves",face:"cool" } :
+      key === "bass" ? { head:"bucket",phones:"retro",eyes:"round",hair:"flame",top:"varsity",bottom:"flare",shoes:"platform",acc:"chain",face:"happy" } :
+      key === "pads" ? { head:"none",phones:"neon",eyes:"shield",hair:"tall",top:"bomber",bottom:"cargo",shoes:"glow",acc:"cape",face:"cool" } :
+      { head:"fedora",phones:"retro",eyes:"none",hair:"curls",top:"suit",bottom:"flare",shoes:"platform",acc:"scarf",face:"happy" };
+    Object.assign(f, preset);
+    if (L && AL.ITEMS.inst.some(function (it) { return it[0] === L.inst; })) f.inst = L.inst;
+    if (/verdeamarela/.test(key)) { f.top="jersey"; f.bottom="track"; f.shoes="chunky"; f.head="cap"; }
+    if (/college/.test(key)) { f.top="varsity"; f.bottom="cargo"; f.shoes="chunky"; f.head="beanie"; }
+    if (/chrome|neonwave|circuit/.test(key)) { f.top="bomber"; f.bottom="cargo"; f.shoes="glow"; f.eyes="visor"; }
+    if (/starpilot/.test(key)) { f.top="jumpsuit"; f.bottom="jumpsuit"; f.head="halo"; f.acc="cape"; }
+    return AL.normalise(f);
+  }
+  function wearLook(k) { const L = PUP.LOOKS[k]; if (L.level > game.state.level) { toast("Libera no nível " + L.level + " (faltam " + game.xpTo(L.level) + " XP)."); return; } look.pose = k; if (charKind === "alien") look.figure = figureFromPose(k); else gesture("avatarCharacter", 6); saveLook(); applyLook(); }
   function renderWardrobe() {
     const w = $("#lkWardrobe"); w.innerHTML = "";
     Object.keys(PUP.LOOKS).forEach(function (k) {
@@ -1516,11 +1535,11 @@
     $("#lookRandom").addEventListener("click", function () {
       const ok = Object.keys(PUP.LOOKS).filter(function (k) { return PUP.LOOKS[k].level <= game.state.level; });
       const ds = AL.DANCES.filter(function (d) { return d.level <= game.state.level; });
-      look.pose = ok[(Math.random() * ok.length) | 0]; look.dance = ds[(Math.random() * ds.length) | 0].id; saveLook(); applyLook();
+      look.pose = ok[(Math.random() * ok.length) | 0]; look.figure = figureFromPose(look.pose); look.dance = ds[(Math.random() * ds.length) | 0].id; saveLook(); applyLook();
     });
     $("#lookSave").addEventListener("click", function () {
       if (game.state.looks.length >= 12) { toast("Limite de 12 looks. Apague um para salvar outro."); return; }
-      game.state.looks.push({ name: "Look " + (game.state.looks.length + 1), pose: look.pose, dance: look.dance, glow: look.glow, knob: look.knob }); game.save(); toast("Look salvo em Meus looks.");
+      game.state.looks.push({ name: "Look " + (game.state.looks.length + 1), pose: look.pose, figure: Object.assign({}, look.figure), dance: look.dance, glow: look.glow, knob: look.knob }); game.save(); toast("Look salvo em Meus looks.");
       if (screen() === "locker") renderLocker();
     });
     $$("#lkModeSeg button").forEach(function (b) { b.addEventListener("click", function () { lkMode = b.dataset.lkm; renderLocker(); }); });
@@ -1700,16 +1719,17 @@
     if (stageOn && charSvg && animMode > 0) {
       const L0 = charPlace();
       if (puppet) {
-        const s = L0.s, L = puppet.L;
+        const s = L0.s, L = puppet.L, drawScale = s * (puppet.articulated ? 1.38 : 1);
         const X0 = L0.x || 240;
-        let ax = X0 - L.hip[0] * s + Math.sin(now / 260) * (wob + camWob * .4) * 5 * amp, ay = L0.y - L.feet * s;
+        let ax = puppet.articulated ? X0 : X0 - L.hip[0] * s + Math.sin(now / 260) * (wob + camWob * .4) * 5 * amp;
+        let ay = puppet.articulated ? L0.y : L0.y - L.feet * s;
         if (crush > .25) { const q = 2 + crush * 5; ax = Math.round(ax / q) * q; ay = Math.round(ay / q) * q; }
-        rig.pos.setAttribute("transform", "translate(" + ax.toFixed(2) + " " + ay.toFixed(2) + ") scale(" + s.toFixed(4) + ")");
+        rig.pos.setAttribute("transform", "translate(" + ax.toFixed(2) + " " + ay.toFixed(2) + ") scale(" + drawScale.toFixed(4) + ")");
         puppet.update({ alive: sc0 === "locker" ? Math.max(alive, .35) : alive, intensity: Math.max(sc0 === "locker" ? .45 : 0, [0, .8, 1.15][amtSel] * clamp(motion.energy / .6, 0, 1.25)) * Math.min(1.25, react), beats: beatClock, style: look.dance, playing: anyHeld || (T.playing && now - lastNoteAt < 700),
           pitch: motion.pitch, pad: motion.pad, hit: motion.hit && amp > 0, vel: motion.vel || .7, look: motion.look, amp: amp, glow: glow, glowAmt: glowAmt, bloom: bloom * react, wob: wob * react, wobRate: v("wRate") * 4,
           reflect: !!sc.world, ghost: ghostAct * react * (.6 + v("gFeedback") * .6), ghostSpacing: Math.round(3 + v("trail") * 6) }, dt);
         // centre of the body in stage units (for particles and auras)
-        const cx = X0, cy = L0.y - 330 * s, sz = 700 * s;
+        const cx = X0, cy = L0.y - (puppet.articulated ? 190 * 1.38 : 330) * s, sz = (puppet.articulated ? 420 * 1.38 : 700) * s;
         if (fx.bloom) { const bs = (.7 + bloom * .55 + (v("presence") - .5) * .2) * sz / 330; fx.bloom.setAttribute("transform", "translate(" + cx + " " + (cy + 10 * s) + ") scale(" + bs.toFixed(3) + ")"); bloomV += ((bloom * alive) - bloomV) * ease(bloom * alive > bloomV ? 6 : 1 / (.3 + v("bDecay") * 2.5)); fx.bloom.setAttribute("opacity", (bloomV * .9 * react).toFixed(2)); }
         // GHOST: afterimages follow the body with a delay; spacing from the RASTRO macro, strength from feedback
         stepParticles(dt, react, crumbleAct, dst, crush, cx, cy, sz);
@@ -1744,8 +1764,10 @@
       }
     } else if (stageOn && puppet && animMode === 0) {
       // animation off: still place everything correctly, lights steady
-      const L0 = charPlace(), s = L0.s, L = puppet.L;
-      rig.pos.setAttribute("transform", "translate(" + ((L0.x || 240) - L.hip[0] * s).toFixed(2) + " " + (L0.y - L.feet * s).toFixed(2) + ") scale(" + s.toFixed(4) + ")");
+      const L0 = charPlace(), s = L0.s, L = puppet.L, drawScale = s * (puppet.articulated ? 1.38 : 1);
+      const x = puppet.articulated ? (L0.x || 240) : (L0.x || 240) - L.hip[0] * s;
+      const y = puppet.articulated ? L0.y : L0.y - L.feet * s;
+      rig.pos.setAttribute("transform", "translate(" + x.toFixed(2) + " " + y.toFixed(2) + ") scale(" + drawScale.toFixed(4) + ")");
       if (sc.world) { stageCam(now, 0, 0, react, 0); stepWorld(now, 0, { glow: glow, react: Math.max(.6, react), beat: 0, onBeat: 0, groove: 0, energy: .3, alive: 0, env: 0, bloom: 0, lfo: 0, res: 0, cut: .5 }); }
       puppet.update({ alive: 0, amp: 0, glow: glow, glowAmt: .2 }, dt);
     }

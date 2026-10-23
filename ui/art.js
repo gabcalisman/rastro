@@ -233,7 +233,7 @@
       if (inst.pads) { // 4x4 pad grid: each note lights one pad
         const p = inst.pads;
         fx = '<g id="c-fx" transform="rotate(' + p.rot + ' ' + X(p.x) + ' ' + Y(p.y) + ')">';
-        for (let r = 0; r < 4; r++) for (let c = 0; c < 4; c++) fx += '<rect class="padLit" data-i="' + (r * 4 + c) + '" x="' + (ox + (p.x + (c - 2) * p.cell) * k + 1).toFixed(1) + '" y="' + (oy + (p.y + (r - 2) * p.cell) * k + 1).toFixed(1) + '" width="' + (p.cell * k - 2).toFixed(1) + '" height="' + (p.cell * k - 2).toFixed(1) + '" rx="1.5" fill="#ffc46b" opacity="0" style="mix-blend-mode:screen"/>';
+        for (let r = 0; r < 4; r++) for (let c = 0; c < 4; c++) fx += '<rect class="padLit" data-i="' + (r * 4 + c) + '" x="' + (ox + (p.x + (c - 2) * p.cell) * k + 1).toFixed(1) + '" y="' + (oy + (p.y + (r - 2) * p.cell) * k + 1).toFixed(1) + '" width="' + (p.cell * k - 2).toFixed(1) + '" height="' + (p.cell * k - 2).toFixed(1) + '" rx="1.5" fill="#ffc46b" opacity="0"/>';
         fx += '</g>';
       } else { // keyboard glow along the keys
         const g = inst.keys;
@@ -295,10 +295,10 @@
       '<radialGradient id="gShadow" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#0a0418" stop-opacity=".7"/><stop offset="1" stop-color="#0a0418" stop-opacity="0"/></radialGradient></defs>' +
       '<g id="room" transform="translate(' + roomOffset(kind).toFixed(1) + ' -18) scale(' + (488 / c.h).toFixed(4) + ')">' +
       '<image href="' + c.img + '" x="0" y="0" width="' + c.w + '" height="' + c.h + '"/>' +
-      '<rect id="winGlow" x="' + c.win[0] + '" y="' + c.win[1] + '" width="' + c.win[2] + '" height="' + c.win[3] + '" fill="' + c.tint + '" opacity="0" style="mix-blend-mode:screen"/>' +
-      '<rect id="arcadeGlow" x="' + c.screen[0] + '" y="' + c.screen[1] + '" width="' + c.screen[2] + '" height="' + c.screen[3] + '" rx="10" fill="' + c.screen[4] + '" opacity="0" style="mix-blend-mode:screen"/>' +
+      '<rect id="winGlow" x="' + c.win[0] + '" y="' + c.win[1] + '" width="' + c.win[2] + '" height="' + c.win[3] + '" fill="' + c.tint + '" opacity="0"/>' +
+      '<rect id="arcadeGlow" x="' + c.screen[0] + '" y="' + c.screen[1] + '" width="' + c.screen[2] + '" height="' + c.screen[3] + '" rx="10" fill="' + c.screen[4] + '" opacity="0"/>' +
       '<rect id="bedGlow" x="' + c.bed[0] + '" y="' + c.bed[1] + '" width="' + c.bed[2] + '" height="' + c.bed[3] + '" rx="15" fill="url(#gWarm)" opacity="0"/>' +
-      (c.strip ? '<path id="neonStrip" d="' + c.strip + '" stroke="#9ffcff" stroke-width="14" fill="none" stroke-linecap="round" opacity="0" style="mix-blend-mode:screen"/>' : "") +
+      (c.strip ? '<path id="neonStrip" d="' + c.strip + '" stroke="#9ffcff" stroke-width="14" fill="none" stroke-linecap="round" opacity="0"/>' : "") +
       glow("lampGlow", c.lamp) + glow("globeGlow", c.globe) + glow("lamp2Glow", c.lamp2) +
       '<g id="spkGlows">' + c.spk.map(function (s, i) { return '<circle class="spkGlow" data-i="' + i + '" cx="' + s[0] + '" cy="' + s[1] + '" r="' + s[2] + '" fill="url(#gCyan)" opacity="0"/>'; }).join("") + '</g>' +
       '</g>' +
@@ -306,7 +306,7 @@
       '<ellipse id="spot" cx="240" cy="410" rx="130" ry="30" fill="url(#gSpot)" opacity=".3"/>' +
       '<g id="ghosts"></g><g id="charLayer"></g><g id="notesP"></g><g id="dustP"></g>' +
       '<rect id="darkVeil" x="0" y="0" width="480" height="452" fill="' + c.veil + '" opacity="0" pointer-events="none"/>' +
-      '<rect id="bloomVeil" x="0" y="0" width="480" height="452" fill="' + c.tint + '" opacity="0" pointer-events="none" style="mix-blend-mode:screen"/>' +
+      '<rect id="bloomVeil" x="0" y="0" width="480" height="452" fill="' + c.tint + '" opacity="0" pointer-events="none"/>' +
       '</svg>';
   }
 
@@ -347,21 +347,20 @@
       glow("planetG", c.planet, "url(#gPink)") +
       '<g id="lampGs">' + c.lamps.map(function (l) { return glow("lampG", l, "url(#gWarm)"); }).join("") + '</g>' +
       glow("lavaG", c.lava, "url(#gWarm)") +
-      '<g id="stripGs" fill="none" stroke-linecap="round" style="mix-blend-mode:screen">' + c.strips.map(function (d) { return '<path class="stripG" d="' + d + '" stroke="#ffc46b" stroke-width="10" opacity="0"/>'; }).join("") + '</g>' +
+      '<g id="stripGs" fill="none" stroke-linecap="round">' + c.strips.map(function (d) { return '<path class="stripG" d="' + d + '" stroke="#ffc46b" stroke-width="10" opacity="0"/>'; }).join("") + '</g>' +
       '<g id="spkGlows">' + c.spk.map(function (s, i) { return '<circle class="spkGlow" data-i="' + i + '" cx="' + s[0] + '" cy="' + s[1] + '" r="' + s[2] + '" fill="url(#gCyan)" opacity="0"/>'; }).join("") + '</g>' +
       // light cones from the ceiling onto the platform (follow the glow colour, sway with the groove)
-      '<g id="cones" style="mix-blend-mode:screen" opacity="0"><path id="coneA" d="M560 -20 L620 -20 L900 690 L640 690Z" fill="url(#gCone)"/><path id="coneB" d="M1050 -20 L1110 -20 L1030 690 L770 690Z" fill="url(#gCone)"/></g>' +
+      '<g id="cones" opacity="0" display="none"><path id="coneA" d="M560 -20 L620 -20 L900 690 L640 690Z" fill="url(#gCone)"/><path id="coneB" d="M1050 -20 L1110 -20 L1030 690 L770 690Z" fill="url(#gCone)"/></g>' +
       '<ellipse id="platPool" cx="' + p[0] + '" cy="' + p[1] + '" rx="' + (p[2] - 30) + '" ry="' + (p[3] - 4) + '" fill="url(#gGlow)" opacity="0"/>' +
-      '<g clip-path="url(#platClip)"><use id="charRefl" href="#charPos" transform="translate(0 ' + (2 * c.feet[1] + 6) + ') scale(1 -1)" opacity=".24"/></g>' +
-      '<g id="platRings" stroke="#5fe3ff" style="mix-blend-mode:screen" opacity="0">' + ring(p[2], p[3], 5, "60 26") + ring(375, 40, 3.5, "") + ring(280, 30, 3, "18 14") + ring(170, 18, 2.5, "") + '</g>' +
-      '<g id="barGs" style="mix-blend-mode:screen">' + c.bars.map(function (b) { return '<rect class="barG" data-k="' + b[4] + '" x="' + (b[0] - 14) + '" y="' + (b[1] - 10) + '" width="' + (b[2] + 28) + '" height="' + (b[3] + 20) + '" rx="' + ((b[3] + 20) / 2) + '" fill="#ffb340" opacity="0"/>'; }).join("") + '</g>' +
+      '<g id="platRings" stroke="#5fe3ff" opacity="0">' + ring(p[2], p[3], 5, "60 26") + ring(375, 40, 3.5, "") + ring(280, 30, 3, "18 14") + ring(170, 18, 2.5, "") + '</g>' +
+      '<g id="barGs">' + c.bars.map(function (b) { return '<rect class="barG" data-k="' + b[4] + '" x="' + (b[0] - 14) + '" y="' + (b[1] - 10) + '" width="' + (b[2] + 28) + '" height="' + (b[3] + 20) + '" rx="' + ((b[3] + 20) / 2) + '" fill="#ffb340" opacity="0"/>'; }).join("") + '</g>' +
       '<g id="dotGs">' + c.dots.map(function (d) { return '<circle class="dotG" cx="' + d[0] + '" cy="' + d[1] + '" r="9" fill="#fff4d6" opacity="0"/>'; }).join("") + '</g>' +
       '<g id="ghosts"></g><g id="charLayer"></g><g id="notesP"></g><g id="dustP"></g>' +
       '</g>' +
       '<g id="bokeh"></g>' +
       '<rect x="-200" y="-200" width="880" height="852" fill="url(#gVig)" pointer-events="none"/>' +
       '<rect id="darkVeil" x="-200" y="-200" width="880" height="852" fill="#07030f" opacity="0" pointer-events="none"/>' +
-      '<rect id="bloomVeil" x="-200" y="-200" width="880" height="852" fill="#ff7ad9" opacity="0" pointer-events="none" style="mix-blend-mode:screen"/>' +
+      '<rect id="bloomVeil" x="-200" y="-200" width="880" height="852" fill="#ff7ad9" opacity="0" pointer-events="none"/>' +
       '</svg>';
   }
 

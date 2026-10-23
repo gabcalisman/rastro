@@ -1015,7 +1015,7 @@
     if (img) { sc.roomBg = document.createElement("div"); sc.roomBg.className = "room-bg"; sc.roomBg.style.backgroundImage = "url(" + img.getAttribute("href") + ")"; $("#stageArt").insertBefore(sc.roomBg, charSvg); img.remove(); }
     sc.worldT = "";
     sc.bk = [];
-    for (let i = 0; i < 16; i++) {
+    for (let i = 0; i < 0; i++) { // floating bokeh removed (looked fake over the painting)
       const c = document.createElementNS(NS, "circle"), r = 3 + Math.random() * 9;
       c.setAttribute("r", r.toFixed(1)); c.setAttribute("fill", ["#ffb340", "#ff4fd8", "#2fe0ff", "#b06bff"][i % 4]); c.setAttribute("opacity", "0");
       sc.bokeh.appendChild(c);
@@ -1095,6 +1095,7 @@
   }
   function buildCharacter() {
     const layer = $("#charLayer", charSvg);
+    if (puppet && puppet.destroy) puppet.destroy();
     puppet = null;
     if (charKind === "alien") {
       layer.innerHTML = '<g id="charPos"></g>';
@@ -1122,12 +1123,7 @@
       '<defs><radialGradient id="bloomG"><stop offset="0" stop-color="#ff4fd8" stop-opacity=".75"/><stop offset=".55" stop-color="#ff4fd8" stop-opacity=".25"/><stop offset="1" stop-color="#ff4fd8" stop-opacity="0"/></radialGradient></defs>' +
       '<g id="bloomFx" opacity="0"><ellipse rx="150" ry="170" fill="url(#bloomG)"/>' + Array.from({ length: 7 }, function (_, i) { const a = -90 + (i - 3) * 26; return '<path transform="rotate(' + a + ')" d="M0 0 C-26 -50 -20 -120 0 -150 C20 -120 26 -50 0 0Z" fill="none" stroke="#ff4fd8" stroke-width="3" opacity=".8" style=""/>'; }).join("") + '</g>';
     b.appendChild(g); fx.bloom = g.querySelector("#bloomFx");
-    // ghost afterimages = violet silhouettes of the puppet (reuse its glow mask: cheap, no filter)
-    if (puppet) for (let i = 0; i < 4; i++) {
-      const gg = document.createElementNS(NS, "g"); gg.setAttribute("opacity", "0");
-      gg.innerHTML = '<rect width="' + puppet.L.w + '" height="700" fill="#b06bff" mask="url(#' + puppet.id + 'mG)"/>';
-      b.appendChild(gg); fx.ghosts.push(gg);
-    }
+    // ghost afterimages are drawn by the puppet itself on its canvas
     fx.front = f;
   }
   let mouseX = 0, mouseY = 0, mx = 0, my = 0;
@@ -1683,18 +1679,12 @@
         if (crush > .25) { const q = 2 + crush * 5; ax = Math.round(ax / q) * q; ay = Math.round(ay / q) * q; }
         rig.pos.setAttribute("transform", "translate(" + ax.toFixed(2) + " " + ay.toFixed(2) + ") scale(" + s.toFixed(4) + ")");
         puppet.update({ alive: sc0 === "locker" ? Math.max(alive, .35) : alive, intensity: Math.max(sc0 === "locker" ? .45 : 0, [0, .8, 1.15][amtSel] * clamp(motion.energy / .6, 0, 1.25)) * Math.min(1.25, react), beats: beatClock, style: look.dance, playing: anyHeld || (T.playing && now - lastNoteAt < 700),
-          pitch: motion.pitch, pad: motion.pad, hit: motion.hit && amp > 0, vel: motion.vel || .7, look: motion.look, amp: amp, glow: glow, glowAmt: glowAmt, bloom: bloom * react, wob: wob * react, wobRate: v("wRate") * 4 }, dt);
+          pitch: motion.pitch, pad: motion.pad, hit: motion.hit && amp > 0, vel: motion.vel || .7, look: motion.look, amp: amp, glow: glow, glowAmt: glowAmt, bloom: bloom * react, wob: wob * react, wobRate: v("wRate") * 4,
+          reflect: !!sc.world, ghost: ghostAct * react * (.6 + v("gFeedback") * .6), ghostSpacing: Math.round(3 + v("trail") * 6) }, dt);
         // centre of the body in stage units (for particles and auras)
         const cx = X0, cy = L0.y - 330 * s, sz = 700 * s;
         if (fx.bloom) { const bs = (.7 + bloom * .55 + (v("presence") - .5) * .2) * sz / 330; fx.bloom.setAttribute("transform", "translate(" + cx + " " + (cy + 10 * s) + ") scale(" + bs.toFixed(3) + ")"); bloomV += ((bloom * alive) - bloomV) * ease(bloom * alive > bloomV ? 6 : 1 / (.3 + v("bDecay") * 2.5)); fx.bloom.setAttribute("opacity", (bloomV * .9 * react).toFixed(2)); }
         // GHOST: afterimages follow the body with a delay; spacing from the RASTRO macro, strength from feedback
-        fx.hist.unshift(puppet.body.getAttribute("transform")); if (fx.hist.length > 40) fx.hist.pop();
-        const spacing = Math.round(3 + v("trail") * 6);
-        fx.ghosts.forEach(function (g, i) {
-          const t = fx.hist[Math.min(fx.hist.length - 1, (i + 1) * spacing)] || "";
-          g.setAttribute("transform", "translate(" + (ax - (i + 1) * 9 * ghostAct) + " " + ay + ") scale(" + s.toFixed(4) + ") " + t);
-          g.setAttribute("opacity", Math.max(0, ghostAct * react * (.55 - i * .12) * (.6 + v("gFeedback") * .6)).toFixed(2));
-        });
         stepParticles(dt, react, crumbleAct, dst, crush, cx, cy, sz);
         motion.hit = false;
       } else if (rig.pos) {

@@ -167,3 +167,8 @@ Separe: o que já existia; o que mudou; o que ficou incompleto; testes que passa
 - Leve: um canvas pequeno sobre a plataforma, sem sombras em tempo real nem pós-processamento; o 2.5D pintado continua por baixo (invisível) para posicionar efeitos e volta sozinho se WebGL faltar. Menu → Personagem: 3D (beta) / pintado 2.5D.
 - Efeitos: luzes de contorno com a cor do som, GHOST = rastros violeta, CRUSH = resolução real mais baixa (pixels), WOBBLE = luz ciano que balança, reflexo na plataforma.
 - Limite: modelado em código, ele tem a forma e o estilo, não os detalhes das pinturas. O modelo final deve vir de um artista 3D (glTF) no mesmo esqueleto.
+## Layout (23/10/2026, 17h30) — como nas referências do Gab
+
+- Telas PLAY, SOM e RACK: o Estúdio Palco ocupa a janela inteira, o personagem fica **grande no meio**, em cima da plataforma; painéis nas colunas laterais (452 px cada) e teclado embaixo. Nada de palco numa caixa no canto.
+- PLAY: waveform + playback à esquerda, rack à direita. SOM: ADSR + MIDI/voz à esquerda, filtro/LFO + macros à direita. RACK: rack em coluna à esquerda, efeito selecionado + pad XY à direita.
+- Antes de mudar layout, abrir as referências (anexos do Gab) e comparar lado a lado.

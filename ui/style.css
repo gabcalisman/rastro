@@ -482,17 +482,22 @@ body[data-screen="limpo"] #rackPanel #fxLegend { position: absolute; right: 230p
 body[data-screen="limpo"] #rackPanel .switch { margin-left: 18px; }
 body[data-screen="limpo"] #rackPanel #addModule { margin-left: auto; }
 body[data-screen="limpo"] #rackPanel #topoHint { display: none; }
+/* PLAY: waveform + playback mode (capture button in the sample header) */
 body[data-screen="limpo"][data-etab="sample"] #samplePanel { display: block; left: 20px; top: 152px; width: 670px; height: 290px; }
 body[data-screen="limpo"][data-etab="sample"] #samplePanel .wave-box { height: 198px; }
-body[data-screen="limpo"][data-etab="sample"] #envPanel { display: block; left: 20px; top: 454px; width: 330px; height: 190px; }
-body[data-screen="limpo"][data-etab="sample"] #filterPanel { display: block; left: 360px; top: 454px; width: 330px; height: 190px; }
-body[data-screen="limpo"] #envPanel .env-body, body[data-screen="limpo"] #filterPanel .fl-body { flex-direction: column; align-items: stretch; }
-body[data-screen="limpo"] #envPanel .env-graph { display: none; }
-body[data-screen="limpo"] #envPanel .knob-row { margin-top: 18px; }
-body[data-screen="limpo"] #filterPanel .filter-graph { height: 52px; flex: none; }
-body[data-screen="limpo"][data-etab="instrument"] #playbackPanel { display: block; left: 20px; top: 152px; width: 670px; height: 196px; }
-body[data-screen="limpo"][data-etab="instrument"] #midiPanel { display: block; left: 20px; top: 360px; width: 330px; height: 284px; }
-body[data-screen="limpo"][data-etab="instrument"] #filterPanel { display: block; left: 360px; top: 360px; width: 330px; height: 284px; }
+body[data-screen="limpo"][data-etab="sample"] #playbackPanel { display: block; left: 20px; top: 454px; width: 670px; height: 190px; }
+/* SOM: big visible ADSR curve + filter/LFO curve, then voice/MIDI */
+body[data-screen="limpo"][data-etab="instrument"] #envPanel { display: block; left: 20px; top: 152px; width: 330px; height: 300px; }
+body[data-screen="limpo"][data-etab="instrument"] #filterPanel { display: block; left: 360px; top: 152px; width: 330px; height: 300px; }
+body[data-screen="limpo"][data-etab="instrument"] #midiPanel { display: block; left: 20px; top: 464px; width: 670px; height: 180px; }
+body[data-screen="limpo"] #envPanel .env-body, body[data-screen="limpo"] #filterPanel .fl-body { flex-direction: column; align-items: stretch; gap: 10px; }
+body[data-screen="limpo"] #envPanel .env-graph { display: block; flex: none; height: 140px; }
+body[data-screen="limpo"] #filterPanel .filter-graph { height: 120px; flex: none; }
+body[data-screen="limpo"] #midiPanel .seg-wide { display: inline-flex; width: calc(50% - 6px); margin-right: 8px; }
+body[data-screen="limpo"] #midiPanel .midi-row { display: flex; align-items: center; gap: 18px; }
+.cap-head { display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 10px; border-radius: 8px; border: 1.5px solid rgba(255, 79, 120, .6); color: #ff8aa8; font: 600 10.5px var(--f-ui); letter-spacing: .6px; background: rgba(255, 40, 90, .08); white-space: nowrap; }
+.cap-head i { width: 14px; height: 14px; color: #ff4f78; }
+.cap-head:hover { background: rgba(255, 40, 90, .2); }
 body[data-screen="limpo"][data-etab="fx"] #fxPanel { display: block; left: 20px; top: 152px; width: 670px; height: 196px; }
 body[data-screen="limpo"][data-etab="fx"] #xyPanel { display: block; left: 20px; top: 360px; width: 420px; height: 284px; }
 body[data-screen="limpo"][data-etab="fx"] #xyPanel .pad { height: 170px; }
@@ -691,3 +696,51 @@ body[data-screen="locker"] #popups, body[data-screen="locker"] #pausedBadge { di
 #heroLayer canvas { position: absolute; display: block; }
 #heroLayer .hero-refl { transform: scaleY(-1); -webkit-mask-image: linear-gradient(to top, rgba(0,0,0,.9), rgba(0,0,0,0) 22%); mask-image: linear-gradient(to top, rgba(0,0,0,.9), rgba(0,0,0,0) 22%); }
 body.anim-off #heroLayer .hero-trail { display: none; }
+body[data-screen="captura"] #editTabs { display: flex; left: 20px; top: 96px; width: 670px; }
+body[data-screen="captura"] #editTabs button { flex: 1; }
+body[data-screen="captura"] #captureSheet { top: 148px !important; }
+.room-bg { position: absolute; left: 0; top: 0; background-size: 100% 100%; will-change: transform; transform-origin: 0 0; pointer-events: none; }
+
+.synth-sw { margin-left: auto; display: inline-flex; align-items: center; gap: 7px; height: 26px; padding: 0 10px; border-radius: 13px; border: 1.5px solid var(--line2); font: 600 10px var(--f-ui); letter-spacing: .6px; color: var(--muted); }
+.synth-sw i { width: 9px; height: 9px; border-radius: 50%; background: rgba(255, 255, 255, .25); }
+.synth-sw.on { border-color: var(--gold); color: var(--gold2); box-shadow: 0 0 10px rgba(255, 179, 64, .35); }
+.synth-sw.on i { background: var(--gold); box-shadow: 0 0 6px var(--gold); }
+body[data-screen="limpo"] #midiPanel .meter { margin-top: 8px; }
+
+/* ===== Main screens as in Gab's references: the studio fills the window, the character stands big in the
+   middle on the platform, panels float in the side columns, keyboard along the bottom. ===== */
+body[data-screen="limpo"] #stage { left: 0; top: 0; width: 1440px; height: 900px; border: 0; border-radius: 0; z-index: 0; }
+body[data-screen="limpo"] #appBg { opacity: 0; }
+body[data-screen="limpo"] #app::before { content: ""; position: absolute; z-index: 1; left: 0; right: 0; top: 0; height: 96px; background: linear-gradient(#0c0416 30%, rgba(12, 4, 22, 0)); pointer-events: none; }
+body[data-screen="limpo"] .panel:not(#stage) { background: rgba(18, 7, 30, .82); }
+body[data-screen="limpo"] #hud { left: 470px; right: 470px; top: 150px; }
+body[data-screen="limpo"] #editTabs { left: 16px; top: 96px; width: 690px; }
+body[data-screen="limpo"] #keys { display: flex; left: 16px; right: 16px; top: 806px; height: 84px; z-index: 3; background: rgba(15, 6, 26, .82); border: 1.5px solid var(--line); border-radius: 14px; padding: 6px; }
+body[data-screen="limpo"] #samplePanel, body[data-screen="limpo"] #playbackPanel, body[data-screen="limpo"] #envPanel, body[data-screen="limpo"] #filterPanel,
+body[data-screen="limpo"] #midiPanel, body[data-screen="limpo"] #fxPanel, body[data-screen="limpo"] #xyPanel, body[data-screen="limpo"] #macroPanel, body[data-screen="limpo"] #rackPanel { display: none; }
+/* PLAY: waveform + playback on the left, effect rack on the right */
+body[data-screen="limpo"][data-etab="sample"] #samplePanel { display: block; left: 16px; top: 148px; width: 452px; height: 400px; }
+body[data-screen="limpo"][data-etab="sample"] #samplePanel .wave-box { height: 300px; }
+body[data-screen="limpo"][data-etab="sample"] #samplePanel #markSeg button { padding: 0 6px; }
+body[data-screen="limpo"][data-etab="sample"] #playbackPanel { display: block; left: 16px; top: 556px; width: 452px; height: 240px; }
+body[data-screen="limpo"][data-etab="sample"] #rackPanel { display: block; left: 972px; top: 148px; width: 452px; height: 648px; }
+/* SOM: envelope + voice on the left, filter/LFO + macros on the right */
+body[data-screen="limpo"][data-etab="instrument"] #envPanel { display: block; left: 16px; top: 148px; width: 452px; height: 320px; }
+body[data-screen="limpo"][data-etab="instrument"] #midiPanel { display: block; left: 16px; top: 476px; width: 452px; height: 320px; }
+body[data-screen="limpo"][data-etab="instrument"] #filterPanel { display: block; left: 972px; top: 148px; width: 452px; height: 320px; }
+body[data-screen="limpo"][data-etab="instrument"] #macroPanel { display: block; left: 972px; top: 476px; width: 452px; height: 320px; }
+body[data-screen="limpo"] #midiPanel .seg-wide { display: flex; width: 100%; margin: 0 0 8px; }
+/* RACK: the rack column on the left, selected effect + XY on the right */
+body[data-screen="limpo"][data-etab="fx"] #rackPanel { display: block; left: 16px; top: 148px; width: 452px; height: 648px; }
+body[data-screen="limpo"][data-etab="fx"] #fxPanel { display: block; left: 972px; top: 148px; width: 452px; height: 250px; }
+body[data-screen="limpo"][data-etab="fx"] #xyPanel { display: block; left: 972px; top: 406px; width: 452px; height: 390px; }
+body[data-screen="limpo"][data-etab="fx"] #xyPanel .pad { height: 260px; }
+body[data-screen="limpo"] #rackPanel #fxLegend, body[data-screen="limpo"] #rackPanel #topoHint, body[data-screen="limpo"] #rackPanel .chev { display: none; }
+body[data-screen="limpo"] #rackPanel .rack { overflow-y: auto; max-height: 560px; }
+body[data-screen="limpo"] #fxPanel .fx-body .knob { width: 62px; }
+body[data-screen="limpo"] #fxPanel .fx-tools { flex-wrap: wrap; }
+body[data-screen="limpo"] .panel:not(#stage) { background: rgba(16, 6, 28, .92); }
+body[data-screen="limpo"][data-etab] #macroPanel { display: none; }
+body[data-screen="limpo"][data-etab="instrument"] #macroPanel { display: block; }
+body[data-screen="limpo"][data-etab="fx"] #fxPanel { height: 250px; }
+body[data-screen="limpo"] #hud { left: 484px; right: 484px; top: 742px; }

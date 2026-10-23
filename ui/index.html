@@ -97,6 +97,7 @@
       <h2 class="perform-only">SAMPLE EDITOR</h2>
       <button id="sampleFav" class="icon-btn perform-only" data-ic="heart" title="Favoritar este sample"></button>
       <span id="sampleName" class="sample-name">Arraste um áudio aqui</span>
+      <button id="captureHead" class="cap-head" title="CAPTURA: gravar voz, guitarra ou o que chegar na entrada e tocar no teclado"><i data-ic="rec"></i>CAPTURA</button>
       <div class="seg seg-glow" id="markSeg" role="group" aria-label="O que arrastar">
         <button data-mark="snap" class="on" title="SNAP: os marcadores grudam em cruzamentos de zero">SNAP</button>
         <button data-mark="start" title="Mostrar e ajustar o início">START</button>
@@ -120,7 +121,7 @@
 
   <!-- ================= amp envelope ================= -->
   <section id="envPanel" class="panel">
-    <div class="panel-head"><button id="synthBtn" class="led" title="Liga o motor de synth: filtro, envelope de filtro e LFO. O ADSR também vale no disparo Gate."></button><h2>AMP ENVELOPE</h2></div>
+    <div class="panel-head"><h2>AMP ENVELOPE</h2><button id="synthBtn" class="synth-sw" title="Liga o motor de synth: ADSR, filtro, envelope de filtro e LFO passam a moldar o som. Desligado, o sample toca como foi gravado (o ADSR também vale no disparo GATE)."><i></i><span id="synthLbl">DESLIGADO</span></button></div>
     <div class="env-body">
       <div class="env-graph"><svg id="envSvg" viewBox="0 0 300 70" preserveAspectRatio="none"></svg></div>
       <div class="knob-row" id="envKnobs"></div>
@@ -166,7 +167,7 @@
     <div class="seg seg-small seg-wide" id="trigSeg" role="group" aria-label="Disparo"><button data-trig="0" title="Comportamento de cada modo">POR MODO</button><button data-trig="1" title="Ignora o soltar da tecla">ONE SHOT</button><button data-trig="2" title="Soltar a tecla inicia o release">GATE</button></div>
     <div class="midi-row"><div class="knob-row" id="voiceKnobs"></div><div class="knob-row" id="masterKnobs"></div></div>
     <div class="meter"><div id="masterMeter"></div></div>
-    <button id="captureBtn" class="rec-btn" title="Gravar voz, guitarra ou o que estiver na entrada"><i data-ic="rec"></i>RECORD</button>
+    <button id="captureBtn" class="rec-btn" hidden title="Gravar voz, guitarra ou o que estiver na entrada"><i data-ic="rec"></i>RECORD</button>
   </section>
 
   <!-- ================= XY ================= -->

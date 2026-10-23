@@ -1765,7 +1765,7 @@
     knobDefs(); setupOptions(); setupLocker();
     buildStage(); setupTopology();
     setupSample(); setupEnv(); setupSynth(); setupPad();
-    readPalette(); setEtab("sample"); setScreen("limpo"); fit(); buildKeys(); game.hud(); onSample(init.sample); updatePill(); applyLook(); history.commit();
+    readPalette(); setEtab("sample"); setScreen("perform"); fit(); buildKeys(); game.hud(); onSample(init.sample); updatePill(); applyLook(); history.commit();
     if (game.state.lang === "en") setLang("en"); else setLang("pt");
     refreshUserPatches();
     $("#undoJam").disabled = !init.canUndoJam;

@@ -1,0 +1,129 @@
+/* RASTRO PLAY — approved reference-led visual system. Presentation only; retain audio wiring. */
+:root {
+  --bg:#100817; --bg2:#1a0d23; --panel:rgba(18,10,27,.94); --panel-solid:#180d22;
+  --line:rgba(198,130,255,.20); --line2:rgba(198,130,255,.46);
+  --ink:#fff4e4; --muted:#bcaac8; --dim:#75627f;
+  --gold:#ffb947; --gold2:#ffd78a; --violet:#cf68ff; --pink:#ff68c9; --cyan:#4ae6ef; --orange:#ff9c48;
+  --wave-bg:#13091b; --wave:#cd63ff; --wave2:#ff7cce; --wave-off:rgba(205,184,218,.28);
+  --key-w:#302638; --key-b:#09070e; --accent:var(--gold); --accent2:var(--pink); --teal:var(--cyan); --hot-ink:#21102b;
+  --logo-cream:#ffe5bd; --logo-play:#e45aff; --logo-by:#f6ddc6;
+}
+body { background:var(--bg); color:var(--ink); }
+#app { background:radial-gradient(ellipse at 50% 43%,rgba(89,35,121,.20),transparent 46%),radial-gradient(ellipse at 82% 8%,rgba(253,114,53,.09),transparent 33%),linear-gradient(145deg,#100817,#180b20 55%,#100817); }
+#app::after { content:""; position:absolute; inset:0; pointer-events:none; z-index:1; opacity:.14; background:repeating-linear-gradient(0deg,transparent 0 3px,rgba(255,255,255,.018) 4px); }
+#top { z-index:8; left:20px; right:20px; top:10px; height:70px; gap:16px; }
+.logo img { height:56px; width:auto; filter:drop-shadow(0 2px 12px rgba(224,76,255,.24)); }
+.preset { min-width:240px; max-width:400px; height:44px; border-radius:24px; border-color:var(--line2); background:rgba(10,5,15,.72); }
+.pb-name { font-size:13px; }
+.hdr-actions { gap:8px; }
+.hbtn { height:38px; border-radius:12px; padding:0 12px; color:var(--muted); border:1px solid transparent; }
+.hbtn:hover,.hbtn.icon:hover { color:var(--ink); border-color:var(--line2); background:rgba(255,255,255,.04); }
+.jam-btn { min-height:40px; border-radius:22px; border:1px solid rgba(255,185,71,.76); color:var(--gold2); background:linear-gradient(180deg,rgba(255,185,71,.16),rgba(255,185,71,.045)); box-shadow:0 0 18px rgba(255,153,61,.16); }
+.gtransport { display:flex; gap:4px; padding:3px; border-radius:14px; border:1px solid var(--line); background:rgba(8,5,12,.8); }
+.tbtn { width:31px; height:30px; border-radius:9px; color:var(--muted); }
+.tbtn.on { color:var(--gold2); background:rgba(255,185,71,.15); }
+.nav-tabs,.edit-tabs { gap:6px; }
+.nav-tabs button,.main-tabs button { border-radius:12px; border:1px solid var(--line); background:rgba(20,11,29,.88); color:var(--muted); }
+.nav-tabs button.on,.main-tabs button.on { border-color:var(--gold); background:rgba(255,185,71,.12); color:var(--gold2); box-shadow:0 0 14px rgba(255,185,71,.12); }
+.panel { z-index:3; border:1px solid var(--line); border-radius:17px; padding:11px 13px; background:linear-gradient(145deg,rgba(31,18,42,.96),rgba(14,8,21,.95)); box-shadow:0 14px 30px rgba(0,0,0,.32),inset 0 1px 0 rgba(255,255,255,.035); }
+.panel-head { min-height:25px; margin-bottom:7px; }
+.panel-head h2 { color:var(--ink); font-size:12px; letter-spacing:1.15px; }
+.icon-btn,.chip-btn,.toggle { border-radius:9px; border-color:var(--line); background:rgba(255,255,255,.025); }
+.chip-btn.on,.toggle.on { border-color:var(--gold); color:var(--gold2); box-shadow:0 0 12px rgba(255,185,71,.16); }
+#browser .search { border:1px solid var(--line); border-radius:11px; background:rgba(7,5,11,.6); }
+#browser .br-body { gap:10px; }
+#browser .cats { border-right:1px solid var(--line); }
+#browser .cats li,#browser .lib-list li { border-radius:8px; }
+#browser .lib-list li:hover { background:rgba(211,125,255,.09); }
+#browser .lib-list li.on { border:1px solid var(--gold); background:rgba(255,185,71,.08); }
+#stage { overflow:hidden; border-color:rgba(206,116,255,.40); background:#160b1c; }
+#stageArt { inset:0; }
+#stage::after { content:""; position:absolute; inset:0; pointer-events:none; border-radius:inherit; background:linear-gradient(180deg,rgba(10,5,15,.10),transparent 42%,rgba(8,4,12,.14)); }
+#hud,#groove,#pausedBadge { z-index:5; }
+#rackPanel .rack { gap:6px; }
+#rackPanel .mod { min-height:49px; border-radius:12px; border:1px solid var(--mcb,var(--line)); background:linear-gradient(105deg,var(--mcg2,rgba(255,255,255,.03)),rgba(12,8,17,.93) 56%); box-shadow:inset 0 1px rgba(255,255,255,.035); }
+#rackPanel .mod.on { box-shadow:0 0 15px var(--mcg,rgba(255,255,255,.12)),inset 0 1px rgba(255,255,255,.06); }
+#rackPanel .mod-name { font-size:12px; letter-spacing:.9px; }
+#rackPanel .mod-sub { font-size:9px; opacity:.8; }
+#rackPanel .mod-viz { opacity:.92; }
+#rackPanel .pwr { color:var(--mc); }
+#rackPanel .mod-meter { height:2px; }
+#fxLegend { border-top:1px solid var(--line); padding-top:7px; }
+#samplePanel .wave-box { border-radius:12px; border:1px solid var(--line); background:var(--wave-bg); }
+#wave { border-radius:inherit; }
+#samplePanel .wave-foot { color:var(--muted); }
+.cap-head { border-color:rgba(255,95,120,.56); background:rgba(255,70,100,.08); }
+#envPanel .env-graph,#filterPanel .filter-graph { border-radius:10px; background:rgba(7,5,12,.48); border:1px solid rgba(255,255,255,.045); }
+#xyPanel .pad { border-radius:14px; border:1px solid rgba(74,230,239,.30); background:linear-gradient(rgba(74,230,239,.05) 1px,transparent 1px),linear-gradient(90deg,rgba(74,230,239,.05) 1px,transparent 1px),radial-gradient(circle at 50% 50%,rgba(82,50,112,.18),rgba(8,8,14,.76)); background-size:24px 24px,24px 24px,auto; }
+#keys { border:1px solid var(--line); border-radius:12px; background:rgba(10,6,15,.94); padding:4px; }
+#keyboard { background:#0a080d; border-radius:8px; overflow:hidden; }
+#keyboard .key.w { background:linear-gradient(180deg,#46374c,#251c2b 80%,#140f19); border:1px solid #0a070d; border-radius:0 0 4px 4px; }
+#keyboard .key.b { background:linear-gradient(180deg,#07060b,#17101d); border:1px solid #000; border-radius:0 0 3px 3px; box-shadow:0 2px 3px #000; }
+#keyboard .key.on { background:linear-gradient(180deg,#ffcc6d,#ff8e42); box-shadow:0 0 14px rgba(255,174,68,.55); }
+#keyboard .key.slice { box-shadow:inset 0 0 0 2px var(--cyan); }
+.knob .k-label { color:var(--muted); }
+.knob .k-value { color:var(--ink); }
+.menu-pop,.sheet-card { border-color:var(--line2); background:rgba(20,11,29,.98); }
+.toast { border-radius:13px; }
+
+/* Full studio home: browser + character + rack, then the waveform, sound controls and compact keyboard. */
+body[data-screen="perform"] #top { height:70px; }
+body[data-screen="perform"] #navTabs { display:flex; left:16px; top:88px; width:428px; height:42px; }
+body[data-screen="perform"] #navTabs button { flex:1; justify-content:center; }
+body[data-screen="perform"] #editTabs { display:none; }
+body[data-screen="perform"] #browser { display:block; left:16px; top:140px; width:428px; height:344px; }
+body[data-screen="perform"] #stage { display:block; left:456px; top:88px; width:466px; height:396px; }
+body[data-screen="perform"] #rackPanel { display:block; left:934px; top:88px; width:490px; height:396px; }
+body[data-screen="perform"] #rackPanel .rack { max-height:300px; overflow-y:auto; }
+body[data-screen="perform"] #rackPanel .mod { min-height:43px; }
+body[data-screen="perform"] #samplePanel { display:block; left:16px; top:496px; width:782px; height:168px; }
+body[data-screen="perform"] #samplePanel .wave-box { height:108px; }
+body[data-screen="perform"] #playbackPanel { display:block; left:810px; top:496px; width:300px; height:168px; }
+body[data-screen="perform"] #midiPanel { display:block; left:1122px; top:496px; width:302px; height:168px; }
+body[data-screen="perform"] #envPanel { display:block; left:16px; top:676px; width:344px; height:164px; }
+body[data-screen="perform"] #filterPanel { display:block; left:372px; top:676px; width:344px; height:164px; }
+body[data-screen="perform"] #xyPanel { display:block; left:728px; top:676px; width:344px; height:164px; }
+body[data-screen="perform"] #macroPanel { display:block; left:1084px; top:676px; width:340px; height:164px; }
+body[data-screen="perform"] #xyPanel .pad { height:79px; }
+body[data-screen="perform"] #envPanel .env-body,body[data-screen="perform"] #filterPanel .fl-body { gap:7px; }
+body[data-screen="perform"] #envPanel .env-graph,body[data-screen="perform"] #filterPanel .filter-graph { height:76px; }
+body[data-screen="perform"] #envPanel .knob,body[data-screen="perform"] #filterPanel .knob { width:45px; }
+body[data-screen="perform"] #macroPanel .knob-grid { grid-template-columns:repeat(4,1fr); gap:2px; }
+body[data-screen="perform"] #macroPanel .knob { width:48px; }
+body[data-screen="perform"] #keys { display:flex; left:16px; right:16px; top:848px; height:40px; z-index:7; }
+
+/* Focused SOUND and RACK screens keep full-size graphs and uncluttered editing controls. */
+body[data-screen="limpo"] #editTabs { left:16px; top:88px; width:690px; height:42px; }
+body[data-screen="limpo"] #stage { left:718px; top:88px; width:706px; height:552px; }
+body[data-screen="limpo"] #rackPanel { left:16px; top:654px; width:1408px; height:184px; }
+body[data-screen="limpo"][data-etab="sample"] #samplePanel { left:16px; top:144px; width:690px; height:300px; }
+body[data-screen="limpo"][data-etab="sample"] #samplePanel .wave-box { height:204px; }
+body[data-screen="limpo"][data-etab="sample"] #playbackPanel { left:16px; top:456px; width:690px; height:184px; }
+body[data-screen="limpo"][data-etab="instrument"] #envPanel { left:16px; top:144px; width:340px; height:300px; }
+body[data-screen="limpo"][data-etab="instrument"] #filterPanel { left:366px; top:144px; width:340px; height:300px; }
+body[data-screen="limpo"][data-etab="instrument"] #midiPanel { left:16px; top:456px; width:690px; height:184px; }
+body[data-screen="limpo"][data-etab="fx"] #fxPanel { left:16px; top:144px; width:690px; height:192px; }
+body[data-screen="limpo"][data-etab="fx"] #xyPanel { left:16px; top:348px; width:426px; height:292px; }
+body[data-screen="limpo"][data-etab="fx"] #xyPanel .pad { height:178px; }
+body[data-screen="limpo"][data-etab="fx"] #macroPanel { left:454px; top:348px; width:252px; height:292px; }
+body[data-screen="limpo"].kb-on #keys { display:flex; left:16px; right:16px; top:848px; height:40px; }
+
+/* PATCH LAB, wardrobe studio, JAM and capture share the same visual language. */
+body[data-screen="lab"] #navTabs { display:none; }
+body[data-screen="lab"] #editTabs { display:flex; left:16px; top:88px; width:690px; height:42px; }
+body[data-screen="lab"] #libPanel { display:block; left:16px; top:144px; width:344px; height:696px; }
+body[data-screen="lab"] #labPanel { display:block; left:372px; top:144px; width:690px; height:696px; }
+body[data-screen="lab"] #comparePanel { display:block; left:1074px; top:144px; width:350px; height:696px; }
+body[data-screen="locker"] #navTabs,body[data-screen="locker"] #editTabs { display:none; }
+body[data-screen="locker"] #stage { display:block; left:16px; top:88px; width:500px; height:748px; }
+body[data-screen="locker"] #lockerPanel { display:block; left:528px; top:88px; width:896px; height:748px; }
+body[data-screen="locker"] #lkRight { left:545px; top:145px; width:860px; height:676px; }
+body[data-screen="locker"] #lkLevel { left:545px; top:96px; width:860px; }
+body[data-screen="locker"] #lkCats,body[data-screen="locker"] #lkItems { position:static; width:auto; height:auto; }
+body[data-screen="locker"] #lkKnobs,body[data-screen="locker"] #lkPalettes,body[data-screen="locker"] #lkTake,body[data-screen="locker"] #lkInst { display:none; }
+body[data-screen="palco"] #stage { background:#100817; }
+body[data-screen="palco"] .palco-bar { border:1px solid var(--line2); border-radius:16px 16px 0 0; background:rgba(11,6,16,.9); }
+body[data-screen="palco"] #keys { display:flex; left:20px; right:20px; top:846px; height:42px; }
+body[data-screen="captura"] #top { opacity:.38; }
+body[data-screen="captura"] #captureSheet { background:rgba(8,4,13,.76); }
+body[data-screen="captura"] #captureSheet .sheet-card { border-radius:20px; box-shadow:0 24px 80px rgba(0,0,0,.65),0 0 40px rgba(255,80,105,.10); }

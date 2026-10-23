@@ -1620,10 +1620,11 @@
   let placeKey = "", placeVal = { y: 400, s: .5 };
   function charPlace() {
     if (sc.world) {
-      // ESTÚDIO: stand in the free part of the frame (screen x ≈ 468), whatever the camera clamp did
+      // Locker's stage is now a separate 500 px panel. Fit beside its summary card,
+      // using the panel width rather than an x coordinate from the old 1440 px stage.
       if (screen() === "locker" && cam && cam.visW) {
         const st = $("#stage"), k = Math.max(st.clientWidth / 480, st.clientHeight / 452);
-        return { x: (cam.vx0 + 468 / k - cam.tx) / cam.s, y: ART.stage.feet[1] + 2, s: 520 / 700, world: true };
+        return { x: (cam.vx0 + st.clientWidth * .74 / k - cam.tx) / cam.s, y: ART.stage.feet[1] + 2, s: 520 / 700, world: true };
       }
       return { x: ART.stage.feet[0], y: ART.stage.feet[1] + 2, s: 520 / 700, world: true };
     }

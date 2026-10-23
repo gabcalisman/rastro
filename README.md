@@ -2,12 +2,14 @@
 
 Instrumento MIDI baseado em samples, C++17 / JUCE 8.0.6 / CMake. Um sample, até 16 vozes e seis efeitos reordenáveis. Interface PT-BR/EN, paletas coordenadas, materiais de hardware, waveform estéreo e personagem vetorial reativo. O binário e os identificadores continuam **RASTRO** para preservar sessões.
 
-Protótipo para testes no [PR #1 em rascunho](https://github.com/gabcalisman/rastro/pull/1), branch `prepare-mac-testing`. Sem merge ou release. **RASTRO Capture** é um gravador complementar, não RASTRO FX.
+Versão de teste do [PR #5 em rascunho](https://github.com/gabcalisman/rastro/pull/5), branch `codex/rastro-official-visual-redesign`, sobre a base de áudio do [PR #4](https://github.com/gabcalisman/rastro/pull/4). Sem merge ou release. **RASTRO Capture** é um gravador complementar, não RASTRO FX.
+
+**Estado visual:** este download permite experimentar a primeira passagem do editor web. A personagem, o cenário e o guarda-roupa ainda não correspondem integralmente às [referências oficiais da NOVA](docs/REDESIGN-REFERENCE.md). Não é o redesign concluído. As seções abaixo sobre a interface vetorial JUCE descrevem o editor anterior, mantido como fallback; não são uma lista de controles já portados ao editor web. O motor de áudio e seus IDs permanecem os da base.
 
 ## Baixar e instalar no Mac — sem compilar
 
-1. Entre no GitHub com acesso ao repositório privado. Abra o [PR #1](https://github.com/gabcalisman/rastro/pull/1), selecione o check **macOS build** do commit mais recente e abra seus detalhes. O resultado precisa estar verde. Em **Artifacts**, baixe **RASTRO-macOS-universal**. [Lista dos builds](https://github.com/gabcalisman/rastro/actions). Artefatos expiram em 14 dias.
-2. Extraia o download e depois o ZIP interno `RASTRO-macOS-universal.zip`. Confira o commit em `BUILD-INFO.txt`. O pacote contém **AU**, **VST3**, **Standalone**, o gravador opcional e instruções. Os executáveis são universais **arm64 + x86_64**, macOS 12 ou posterior; o Logic pode exigir um macOS mais novo.
+1. Entre no GitHub com acesso ao repositório privado. Abra o [PR #5](https://github.com/gabcalisman/rastro/pull/5), selecione o check **macOS build** do commit mais recente e abra seus detalhes. O resultado precisa estar verde. Em **Artifacts**, baixe **RASTRO-PR5-macOS-universal**. [Lista dos builds](https://github.com/gabcalisman/rastro/actions). Artefatos expiram em 14 dias. O pacote do PR #4 não contém estas alterações.
+2. Extraia o download e depois o ZIP interno `RASTRO-PR5-macOS-universal.zip`. Confira branch e commit em `BUILD-INFO.txt`. O pacote contém **AU**, **VST3**, **Standalone**, o gravador opcional e instruções. Quando o workflow passa, ele verifica que os executáveis contêm **arm64 + x86_64**, macOS 12 ou posterior; o Logic pode exigir um macOS mais novo.
 3. Feche o Logic. No Finder, use **Ir → Ir para a pasta** e digite `~/Library/Audio/Plug-Ins/Components/`. Crie a pasta se necessário. Copie o bundle **inteiro** `AU/RASTRO.component` para ela. Mova uma versão antiga para fora antes de copiar; evite duplicatas em `/Library/Audio/Plug-Ins/Components/`.
 4. Opcional: copie `AU/RASTRO Capture.component` para a mesma pasta. Para outros hosts, os bundles VST3 vão em `~/Library/Audio/Plug-Ins/VST3/`. **Logic usa AU**. O app `Standalone/RASTRO.app` pode ficar em `~/Applications/`.
 5. Abra o Logic → Ajustes → Gerenciador de Plug-ins, procure **Gab Calisman / RASTRO** e faça uma nova verificação se necessário. Crie uma faixa de **Instrumento de Software**; no slot Instrumento, escolha **AU Instruments → Gab Calisman → RASTRO → Stereo**.
@@ -24,6 +26,8 @@ auval -v aufx Rcpt GbCa
 ```
 
 Compilar e passar testes no runner não comprova execução no Logic, áudio físico, instalação/Gatekeeper, Retina ou execução nativa em Apple silicon. O CI executa os testes no runner **Intel**, embora compile as duas arquiteturas.
+
+No pacote, abra `Previews/Web-PR5/ABRIR-PREVIAS.html` para ver a interface web desta primeira passagem. São capturas no Chromium/Linux com telemetria simulada, não testes de áudio nem capturas do Mac/WebKit. `Previews/Historical-JUCE/` contém apenas capturas históricas do editor anterior. Veja também a [galeria web com os limites da revisão](docs/previews-web/README.md).
 
 Esta rodada gera **somente o pacote Mac**. O workflow Windows fica manual e não foi executado para esta revisão.
 

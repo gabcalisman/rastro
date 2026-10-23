@@ -1,0 +1,56 @@
+{
+  "platform": "Linux / Chromium",
+  "simulated_bridge": true,
+  "plugin_or_dsp_test": false,
+  "page_errors": [],
+  "captures": [
+    {
+      "file": "pr5-studio-standard.png",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "screen": "perform"
+    },
+    {
+      "file": "pr5-studio-compact.png",
+      "viewport": {
+        "width": 1100,
+        "height": 760
+      },
+      "screen": "perform"
+    },
+    {
+      "file": "pr5-sample.png",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "screen": "limpo"
+    },
+    {
+      "file": "pr5-sample-compact.png",
+      "viewport": {
+        "width": 1100,
+        "height": 760
+      },
+      "screen": "limpo"
+    },
+    {
+      "file": "pr5-locker.png",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "screen": "locker"
+    },
+    {
+      "file": "pr5-locker-compact.png",
+      "viewport": {
+        "width": 1100,
+        "height": 760
+      },
+      "screen": "locker"
+    }
+  ]
+}

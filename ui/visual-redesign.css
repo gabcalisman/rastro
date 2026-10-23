@@ -95,7 +95,10 @@ body[data-screen="perform"] #keys { display:flex; left:16px; right:16px; top:848
 /* Focused SOUND and RACK screens keep full-size graphs and uncluttered editing controls. */
 body[data-screen="limpo"] #editTabs { left:16px; top:88px; width:690px; height:42px; }
 body[data-screen="limpo"] #stage { left:718px; top:88px; width:706px; height:552px; }
-body[data-screen="limpo"] #rackPanel { left:16px; top:654px; width:1408px; height:184px; }
+/* Match the older per-tab selector's specificity, so it cannot cover the stage. */
+body[data-screen="limpo"][data-etab] #rackPanel { display:block; left:16px; top:654px; width:1408px; height:184px; }
+body[data-screen="limpo"] #rackPanel .rack.rows { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:6px; max-height:124px; overflow-y:auto; }
+body[data-screen="limpo"] #rackPanel .rack.rows .mod { height:52px; min-height:52px; min-width:0; margin:0; }
 body[data-screen="limpo"][data-etab="sample"] #samplePanel { left:16px; top:144px; width:690px; height:300px; }
 body[data-screen="limpo"][data-etab="sample"] #samplePanel .wave-box { height:204px; }
 body[data-screen="limpo"][data-etab="sample"] #playbackPanel { left:16px; top:456px; width:690px; height:184px; }
@@ -106,7 +109,7 @@ body[data-screen="limpo"][data-etab="fx"] #fxPanel { left:16px; top:144px; width
 body[data-screen="limpo"][data-etab="fx"] #xyPanel { left:16px; top:348px; width:426px; height:292px; }
 body[data-screen="limpo"][data-etab="fx"] #xyPanel .pad { height:178px; }
 body[data-screen="limpo"][data-etab="fx"] #macroPanel { left:454px; top:348px; width:252px; height:292px; }
-body[data-screen="limpo"].kb-on #keys { display:flex; left:16px; right:16px; top:848px; height:40px; }
+body[data-screen="limpo"] #keys { display:flex; left:16px; right:16px; top:848px; height:40px; }
 
 /* PATCH LAB, wardrobe studio, JAM and capture share the same visual language. */
 body[data-screen="lab"] #navTabs { display:none; }

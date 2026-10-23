@@ -21,3 +21,12 @@ As referências são conceitos visuais, não sprites prontos para animação nem
 ## Escopo técnico
 
 Preservar o motor de áudio, IDs de parâmetros, sessões e automações existentes. A revisão visual deve ser aplicada sobre a interface funcional do PR #4; manter ajustes em etapa separada e validar a execução AU/macOS antes de oferecer um novo download.
+
+## Pacote experimental solicitado para o PR #5
+
+O Gab pediu para baixar o app/plugin no estado atual desta branch. O workflow Mac agora
+aceita a base empilhada do PR #5 e identifica o pacote pelo número do PR. Este pacote
+permite avaliar a implementação parcial; não altera o status de aprovação visual acima.
+A compilação, os testes e os validadores precisam passar antes de haver um download válido.
+A galeria `docs/previews-web/` separa a interface atual em Chromium/Linux com bridge
+simulado das referências de conceito e das capturas históricas do editor JUCE.

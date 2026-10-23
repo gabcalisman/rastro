@@ -30,7 +30,11 @@ juce::AudioProcessorValueTreeState::ParameterLayout RastroProcessor::layout()
     for (auto id : {"gTime", "gFeedback", "gTone", "gMix", "cRate", "cVariation", "cMix", "bSize",
                     "bTone", "bDecay", "bMix"})
         add(id, 0, 1, juce::String(id).endsWith("Mix") ? .25f : .5f);
-    for (auto id : {"gOn", "cOn", "bOn", "gPresent", "cPresent", "bPresent"})
+    // New instances start with every effect bypassed (Gab: "por padrão tudo desligado").
+    // Older sessions always store these values, and restoreState() migrates the rare missing ones.
+    for (auto id : {"gOn", "cOn", "bOn"})
+        add(id, 0, 1, 0, 1);
+    for (auto id : {"gPresent", "cPresent", "bPresent"})
         add(id, 0, 1, 1, 1);
     add("rackOrder", 0, 719, 0, 1);
     add("playX", 0, 1, .5f);
@@ -51,7 +55,9 @@ juce::AudioProcessorValueTreeState::ParameterLayout RastroProcessor::layout()
     add("dMix", 0, 1, .5f);
     add("kAmount", 0, 1, .3f);
     add("kMix", 0, 1, .3f);
-    for (auto id : {"wOn", "dOn", "kOn", "wPresent", "dPresent", "kPresent"})
+    for (auto id : {"wOn", "dOn", "kOn"})
+        add(id, 0, 1, 0, 1);
+    for (auto id : {"wPresent", "dPresent", "kPresent"})
         add(id, 0, 1, 1, 1);
     add("playMode", 0, 4, 0, 1);
     add("sliceCount", 2, 16, 8, 1);
@@ -68,7 +74,7 @@ juce::AudioProcessorValueTreeState::ParameterLayout RastroProcessor::layout()
     for (auto id : {"avatarHair", "avatarHorns", "avatarClothes", "avatarGlasses", "avatarTail",
                     "avatarWings", "avatarInstrument"})
         add(id, 0, 2, 0, 1);
-    add("colourSet", 0, 8, 0, 1);
+    add("colourSet", 0, 8, 8, 1); // 8 = night palette is the default look
     add("pitchMode", 0, 1, 0, 1);
     add("cosmicArcade", 0, 1, 0, 1);
     add("gTiming", 0, 2, 2, 1);
@@ -121,8 +127,8 @@ juce::AudioProcessorValueTreeState::ParameterLayout RastroProcessor::layout()
     for (auto id : rastro::jamLockIds)
         add(id, 0, 1, 0, 1);
     // Append-only, visual only (web interface): painted character and painted room choices.
-    add("avatarCharacter", 0, 15, 0, 1);
-    add("sceneRoom", 0, 7, 0, 1);
+    add("avatarCharacter", 0, 15, 6, 1); // 6 = main shadow alien (0..5 painted guests)
+    add("sceneRoom", 0, 7, 1, 1);        // 1 = night studio room
     // Sound parameter, appended: 0 serial (legacy default), 1 parallel.
     add("rackParallel", 0, 1, 0, 1);
     return l;
@@ -685,7 +691,7 @@ void RastroProcessor::resetEffects()
     set("kAmount", .3f);
     set("kMix", .3f);
     for (auto id : rastro::onIds)
-        set(id, 1);
+        set(id, 0); // "restaurar" returns to the defaults: every module bypassed
     set("presence", .5f);
     set("trail", .5f);
     set("mutation", .3f);
@@ -722,6 +728,7 @@ void RastroProcessor::getStateInformation(juce::MemoryBlock &dest)
     tree.addChild(undo, -1, nullptr);
     tree.setProperty("language", language.load(), nullptr);
     tree.setProperty("sampleName", loadedName, nullptr);
+    tree.setProperty("look", look, nullptr);
     tree.setProperty("sample", sampleBytes.toBase64Encoding(), nullptr);
     for (int j = 0; j < 5; ++j)
         tree.setProperty("cc" + juce::String(j), cc[j].load(), nullptr);
@@ -774,6 +781,12 @@ bool RastroProcessor::restoreState(const void *data, int n)
                     v = 0;
                 if (oldVersion && (id == "wOn" || id == "dOn" || id == "kOn"))
                     v = 0;
+                // Defaults changed later (effects off, night palette); a state that predates a
+                // parameter keeps the behaviour it had when it was saved.
+                if (id == "gOn" || id == "cOn" || id == "bOn")
+                    v = 1;
+                if (id == "colourSet")
+                    v = 0;
                 node.setProperty("value", v, nullptr);
                 tree.addChild(node, -1, nullptr);
             }
@@ -796,6 +809,8 @@ bool RastroProcessor::restoreState(const void *data, int n)
     language = juce::jlimit(0, 1, (int)tree["language"]);
     for (int j = 0; j < 5; ++j)
         cc[j] = juce::jlimit(-1, 127, (int)tree.getProperty("cc" + juce::String(j), -1));
+    setLook(tree.getProperty("look", {}).toString());
+    ++lookRevision;
     return true;
 }
 juce::AudioProcessorEditor *RastroProcessor::createEditor()
@@ -915,6 +930,7 @@ void RastroProcessor::patchFileAsync(juce::File file, bool save, std::function<v
                                                      nullptr);
                                 }
                             tree.setProperty("language", language.load(), nullptr);
+                            tree.setProperty("look", getLook(), nullptr);
                             for (int i = 0; i < 5; ++i)
                                 tree.setProperty("cc" + juce::String(i), cc[i].load(), nullptr);
                             copyXmlToBinary(*tree.createXml(), data);

@@ -27,6 +27,12 @@ const char *mimeFor(const juce::String &file)
         return "application/json";
     return "application/octet-stream";
 }
+juce::File progressFile()
+{
+    return juce::File::getSpecialLocation(juce::File::userApplicationDataDirectory)
+        .getChildFile("RASTRO")
+        .getChildFile("progress.json");
+}
 } // namespace
 
 RastroWebEditor::RastroWebEditor(RastroProcessor &processor)
@@ -53,6 +59,32 @@ RastroWebEditor::RastroWebEditor(RastroProcessor &processor)
                                     lastOrder.fill(-1);
                                     lastSample = p.source.load();
                                     done(initialState());
+                                })
+            .withNativeFunction("lookGet",
+                                [this](const Args &, Completion done) { done(p.getLook()); })
+            .withNativeFunction("lookSet",
+                                [this](const Args &a, Completion done)
+                                {
+                                    p.setLook(a.size() > 0 ? a[0].toString() : juce::String());
+                                    done(true);
+                                })
+            // Cosmetic progress (XP, unlocked items, saved looks): one small local JSON file per
+            // user, so it survives across sessions and projects. Never affects the sound.
+            .withNativeFunction("progressGet",
+                                [](const Args &, Completion done)
+                                { done(progressFile().loadFileAsString()); })
+            .withNativeFunction("progressSet",
+                                [](const Args &a, Completion done)
+                                {
+                                    auto text = a.size() > 0 ? a[0].toString() : juce::String();
+                                    bool ok = false;
+                                    if (text.length() < 262144)
+                                    {
+                                        auto f = progressFile();
+                                        f.getParentDirectory().createDirectory();
+                                        ok = f.replaceWithText(text);
+                                    }
+                                    done(ok);
                                 })
             .withNativeFunction("setParam",
                                 [this](const Args &a, Completion done)
@@ -564,6 +596,7 @@ void RastroWebEditor::timerCallback()
     t->setProperty("pos", engine.position.load());
     t->setProperty("playing", engine.playbackActive.load());
     t->setProperty("preview", engine.previewActive.load());
+    t->setProperty("lookRev", p.lookRevision.load());
     t->setProperty("vel", engine.noteVelocity.load());
     t->setProperty("serial", (double)engine.noteSerial.load());
     t->setProperty("bpm", p.hostBpm.load());

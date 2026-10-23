@@ -43,14 +43,14 @@
    ["regionLoop", 0, 1, 0, 1], ["loopRegionSet", 0, 1, 0, 1], ["loopStart", 0, .999, 0], ["loopEnd", .001, 1, 1], ["loopCrossfade", 0, 50, 5],
    ["synthEnable", 0, 1, 0, 1], ["ampAttack", .001, 4, .01], ["ampDecay", .001, 4, .2], ["ampSustain", 0, 1, .75], ["ampRelease", .001, 8, .2],
    ["filterCutoff", 20, 20000, 16000], ["filterResonance", 0, .95, .1], ["envAmount", -1, 1, 0], ["lfoRate", .05, 12, 1], ["lfoDepth", 0, 1, 0],
-   ["lfoTarget", 0, 1, 0, 1], ["voiceMode", 0, 2, 0, 1], ["glide", 0, 2, 0], ["triggerMode", 0, 2, 0, 1], ["colourSet", 0, 8, 0, 1], ["avatarSpecies", 0, 2, 1, 1],
+   ["lfoTarget", 0, 1, 0, 1], ["voiceMode", 0, 2, 0, 1], ["glide", 0, 2, 0], ["triggerMode", 0, 2, 0, 1], ["colourSet", 0, 8, 8, 1], ["avatarSpecies", 0, 2, 1, 1],
    ["gTime", 0, 1, .5], ["gFeedback", 0, 1, .5], ["gTone", 0, 1, .5], ["gMix", 0, 1, .25], ["cRate", 0, 1, .5], ["cVariation", 0, 1, .5], ["cMix", 0, 1, .25],
    ["bSize", 0, 1, .5], ["bTone", 0, 1, .5], ["bDecay", 0, 1, .5], ["bMix", 0, 1, .25], ["wDepth", 0, 1, .25], ["wRate", 0, 1, .3], ["wMix", 0, 1, .5],
    ["dLevel", 0, 1, .15], ["dCharacter", 0, 1, .5], ["dMix", 0, 1, .5], ["kAmount", 0, 1, .3], ["kMix", 0, 1, .3],
    ["gTiming", 0, 2, 2, 1], ["cTiming", 0, 2, 2, 1], ["wTiming", 0, 2, 1, 1], ["gDivision", 0, 3, 1, 1], ["cDivision", 0, 3, 1, 1], ["wDivision", 0, 3, 1, 1],
    ["gFreeMs", 5, 2000, 250], ["cFreeHz", .5, 40, 8], ["wFreeHz", .05, 12, 1.005]
   ].forEach(function (a) { add.apply(null, a); });
-  ["g", "c", "b", "w", "d", "k"].forEach(function (m) { add(m + "On", 0, 1, 1, 1); add(m + "Present", 0, 1, 1, 1); });
+  ["g", "c", "b", "w", "d", "k"].forEach(function (m) { add(m + "On", 0, 1, 0, 1); add(m + "Present", 0, 1, 1, 1); });
   for (let i = 1; i < 16; i++) add("slice" + i, 0, 1, Math.min(1, i / 8));
 
   // A synthetic electric-piano-ish sample so the waveform is not empty in previews.
@@ -66,8 +66,9 @@
   const voices = [];
   let held = [0, 0, 0, 0], serial = 0, lastVel = 0, meter = 0, pos = 0, canUndo = false, previewing = false;
   const search = { busy: false, paused: false, progress: 0, status: 0, revision: 0 }, cap = { state: 0, outcome: 0, frames: 0, seconds: 0, peak: 0, monitor: false };
-  let results = [];
-  add("avatarCharacter", 0, 15, 0, 1); add("sceneRoom", 0, 7, 0, 1);
+  let results = [], look = "", progress = "";
+  try { look = localStorage.getItem("rastro.preview.look") || ""; progress = localStorage.getItem("rastro.preview.progress") || ""; } catch (e) { /* storage off */ }
+  add("avatarCharacter", 0, 15, 6, 1); add("sceneRoom", 0, 7, 1, 1); add("rackParallel", 0, 1, 0, 1);
   ["knobDesign", "danceStyle", "danceAmount"].forEach(function (id, i) { add(id, 0, [4, 2, 2][i], [0, 0, 1][i], 1); });
   ["gJamLock", "cJamLock", "bJamLock", "wJamLock", "dJamLock", "kJamLock"].forEach(function (id) { add(id, 0, 1, 0, 1); });
   ["envTarget", "lfoTiming", "lfoDivision", "bendRange"].forEach(function (id, i) { add(id, 0, [1, 2, 3, 12][i], [0, 1, 0, 2][i], i === 3 ? 0 : 1); });
@@ -106,7 +107,7 @@
     fire("tick", {
       meter: meter, act: act, env: voices.length ? voices[voices.length - 1].e || 0 : 0, wob: act[3] * 10, dust: act[4] * 10, crush: act[5] * 10, bloom: act[2] * 10,
       pos: pos, playing: voices.length > 0, preview: previewing, vel: lastVel, serial: serial, bpm: 0, beat: -1, hostPlaying: false,
-      notes: held.slice(), canUndoJam: canUndo, order: order.slice(), search: Object.assign({}, search), capture: Object.assign({}, cap)
+      lookRev: 0, notes: held.slice(), canUndoJam: canUndo, order: order.slice(), search: Object.assign({}, search), capture: Object.assign({}, cap)
     });
     if (Object.keys(changed).length) { fire("params", Object.assign({}, changed)); for (const k in changed) delete changed[k]; }
   }, 1000 / 60);
@@ -143,6 +144,10 @@
     captureSettings: function () { return true; },
     capturePoll: function () { return { files: [{ path: "/x/take1.wav", name: "Tomada 21-14-03.wav", time: Date.now() - 600000 }], links: [{ id: "A7F2", state: 0, outcome: 0, outcomeText: "", frames: 0, rate: 48000, peak: .2, flow: true }] }; },
     captureRemote: function () { return true; },
+    lookGet: function () { return look; },
+    lookSet: function (j) { look = j; try { localStorage.setItem("rastro.preview.look", j); } catch (e) { /* ignore */ } return true; },
+    progressGet: function () { return progress; },
+    progressSet: function (j) { progress = j; try { localStorage.setItem("rastro.preview.progress", j); } catch (e) { /* ignore */ } return true; },
     captureLoad: function (p) { sample.name = p.split("/").pop(); fire("sample", sample); return { ok: true, message: "" }; }
   };
   window.Rastro = {

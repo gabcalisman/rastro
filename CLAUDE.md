@@ -80,6 +80,19 @@ Opcional, com **Modo PRO** que desliga tudo. Hoje: XP por tocar e criar, combo, 
 - **Síntese wavetable** entra no roadmap como pilar: o RASTRO PLAY deve ser sampler + synth de verdade, com ambição de ser revolucionário.
 - Ideias futuras: rede/nuvem de produtores para compartilhar patches e presets, tarefas diárias, customização infinita de personagens e sons.
 
+## Decisões (23/10/2026) — etapa 1 do redesenho
+
+- **Personagem principal: alien-sombra** desenhado em código (`ui/alien.js`) como rig 2D de verdade: pés, pernas (IK), quadril, tronco, ombros, braços (IK), mãos, cabeça. Roupas e itens são desenhados ao longo dos ossos (acompanham as juntas). Os personagens pintados viram **convidados** de visual fixo.
+- Danças: Groove 70s, Disco, Half-Time (livres), Funk Bounce (nível 2), Cosmic Flow (nível 4). SYNC segue o pulso do host; FREE usa BPM próprio. Notas e velocity são só acentos, com limite para rajadas.
+- Instrumentos visuais (keytar, guitarra, baixo, pads) mudam a pose e o jeito de tocar; nunca o som.
+- **Look** (roupa, dança, sync, knob) fica salvo na sessão (`look`, texto JSON no estado do plugin) e não muda o som. Patch "somente som" preserva o look atual.
+- **Progresso cosmético** (XP, looks salvos, desafios) fica em `~/Library/Application Support/RASTRO/progress.json`. XP só libera aparência.
+- Modos de tela: **Limpo** (abas SOM, PERFORM, RACK, PATCHES, ATELIÊ), **Palco** (personagem e quarto na janela toda, faixa de X/Y opcional) e **Captura** (página de gravação).
+- Transporte global ▶ ❚❚ ■ controla só a prévia interna. Pausa congela a animação; Stop volta ao início e à pose inicial.
+- Padrões novos: **tema noturno**, **todos os efeitos desligados**, alien e Quarto Neon. Sessões antigas mantêm o que tinham (migração em `restoreState`). O pad X/Y continua no centro porque o centro é o ponto neutro (X em 0 zeraria o WOBBLE).
+- Rack **Serial/Parallel** real (`rackParallel`, parâmetro de som novo).
+- Dado (GERAR PATCH) sorteia instrumento + efeitos em B, com A guardado; JAM continua só variando efeitos ativos.
+
 ## Próximos marcos
 
 1. **Visual (em andamento):** interface web, palco reativo, jogo inicial. Falta validar no Logic.

@@ -67,12 +67,15 @@
     st: function (x) { return Math.round(x) + " st"; }
   };
   function knobSvg(size) {
-    const c = size / 2, r = size / 2 - 4;
+    const c = size / 2, r = size / 2 - 4, rf = r - 6, flute = rf * 2 * Math.PI / 28;
     return '<svg width="' + size + '" height="' + size + '" viewBox="0 0 ' + size + ' ' + size + '">' +
       '<circle cx="' + c + '" cy="' + c + '" r="' + r + '" fill="none" stroke="var(--knob-track)" stroke-width="5" stroke-dasharray="' + (r * Math.PI * 1.5) + ' 999" transform="rotate(135 ' + c + ' ' + c + ')" stroke-linecap="round"/>' +
       '<circle class="arc k-arc" cx="' + c + '" cy="' + c + '" r="' + r + '" fill="none" stroke-width="5" stroke-linecap="round" transform="rotate(135 ' + c + ' ' + c + ')" stroke-dasharray="0 999"/>' +
-      '<circle class="k-face" cx="' + c + '" cy="' + c + '" r="' + (r - 6) + '"/><circle class="k-cap" cx="' + c + '" cy="' + c + '" r="' + Math.max(2, r - 12) + '"/>' +
-      '<line class="ptr k-ptr" x1="' + c + '" y1="' + (c - 2) + '" x2="' + c + '" y2="' + (c - r + 9) + '"/></svg>';
+      '<circle class="k-skirt" cx="' + c + '" cy="' + c + '" r="' + (rf + 2.5) + '"/>' +
+      '<circle class="k-face" cx="' + c + '" cy="' + c + '" r="' + rf + '"/>' +
+      '<circle class="k-flute" cx="' + c + '" cy="' + c + '" r="' + (rf - 1.6) + '" stroke-dasharray="' + (flute * .5).toFixed(2) + ' ' + (flute * .5).toFixed(2) + '"/>' +
+      '<circle class="k-cap" cx="' + c + '" cy="' + c + '" r="' + Math.max(2, r - 12) + '"/>' +
+      '<g class="ptr"><line class="k-ptr" x1="' + c + '" y1="' + (c - 2) + '" x2="' + c + '" y2="' + (c - r + 9) + '"/><circle class="k-dot" cx="' + c + '" cy="' + (c - r + 10) + '" r="2.6"/></g></svg>';
   }
   function knob(parent, id, label, opts) {
     opts = opts || {};
@@ -119,6 +122,15 @@
       '<linearGradient id="kdChrome" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ffffff"/><stop offset=".35" stop-color="#b9bdc7"/><stop offset=".55" stop-color="#eef0f4"/><stop offset="1" stop-color="#6e7380"/></linearGradient>' +
       '<radialGradient id="kdChromeCap" cx=".4" cy=".35" r=".7"><stop offset="0" stop-color="#ffffff" stop-opacity=".9"/><stop offset="1" stop-color="#9aa0ad" stop-opacity=".2"/></radialGradient>' +
       '<radialGradient id="kdRubber" cx=".4" cy=".3" r=".8"><stop offset="0" stop-color="#55505e"/><stop offset="1" stop-color="#1c1a22"/></radialGradient>' +
+      '<radialGradient id="kdAmp" cx=".38" cy=".3" r=".85"><stop offset="0" stop-color="#ffc27a"/><stop offset=".55" stop-color="#f07a1f"/><stop offset="1" stop-color="#a8460c"/></radialGradient>' +
+      '<radialGradient id="kdAmber" cx=".4" cy=".35" r=".8"><stop offset="0" stop-color="#ffd27a" stop-opacity=".95"/><stop offset=".6" stop-color="#e88a12" stop-opacity=".85"/><stop offset="1" stop-color="#7a3a05" stop-opacity=".95"/></radialGradient>' +
+      '<radialGradient id="kdIce" cx=".4" cy=".35" r=".8"><stop offset="0" stop-color="#d6fbff"/><stop offset=".5" stop-color="#3fc8f0" stop-opacity=".85"/><stop offset="1" stop-color="#0b4a7a"/></radialGradient>' +
+      '<radialGradient id="kdPurple" cx=".38" cy=".3" r=".85"><stop offset="0" stop-color="#d9b6ff"/><stop offset=".45" stop-color="#8a3cf0"/><stop offset="1" stop-color="#3b1173"/></radialGradient>' +
+      '<radialGradient id="kdRed" cx=".38" cy=".3" r=".85"><stop offset="0" stop-color="#ff9a7a"/><stop offset=".5" stop-color="#e5341f"/><stop offset="1" stop-color="#7d1206"/></radialGradient>' +
+      '<radialGradient id="kdBakelite" cx=".4" cy=".3" r=".85"><stop offset="0" stop-color="#7a4a35"/><stop offset=".6" stop-color="#3b1d14"/><stop offset="1" stop-color="#1b0b06"/></radialGradient>' +
+      '<linearGradient id="kdTeal" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#9ff0ee"/><stop offset=".35" stop-color="#138a8f"/><stop offset=".6" stop-color="#5fd0cf"/><stop offset="1" stop-color="#0b4e57"/></linearGradient>' +
+      '<radialGradient id="kdCosmos" cx=".45" cy=".4" r=".8"><stop offset="0" stop-color="#4b2c86"/><stop offset=".7" stop-color="#1d1040"/><stop offset="1" stop-color="#0b0618"/></radialGradient>' +
+      '<radialGradient id="kdPearl" cx=".35" cy=".3" r=".9"><stop offset="0" stop-color="#ffffff"/><stop offset=".4" stop-color="#f3e3ff"/><stop offset=".7" stop-color="#cfe9ff"/><stop offset="1" stop-color="#e8c9a8"/></radialGradient>' +
       '<linearGradient id="kdWood" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#8a4b25"/><stop offset=".3" stop-color="#b8693a"/><stop offset=".55" stop-color="#7c3f1c"/><stop offset=".8" stop-color="#a95c30"/><stop offset="1" stop-color="#6b3418"/></linearGradient></defs>';
     document.body.appendChild(d);
   }
@@ -256,14 +268,11 @@
     e.preventDefault(); e.stopPropagation();
   });
   /* transport: play from the cue point, pause keeps the position, stop returns to the trim start */
-  $("#tPlay").addEventListener("click", function () { if (!sample.loaded) { toast("Importe ou capture um sample primeiro."); return; } R.call("preview", true, cue >= 0 ? cue : v("start")); });
-  $("#tPause").addEventListener("click", function () { if (T.preview) { cue = T.pos; R.call("preview", false); markerInfo(); waveDirty = true; } });
-  $("#tStop").addEventListener("click", function () { R.call("preview", false); cue = -1; markerInfo(); waveDirty = true; });
 
   /* ---- import ---- */
   function importResult(r) {
     if (!r) return;
-    if (r.ok) { toast("Sample carregado. Toque no teclado!"); game.award(20, "import"); }
+    if (r.ok) { toast("Sample carregado. Toque no teclado!"); game.award(20, "import"); game.event("import"); }
     else toast(r.message || "Não foi possível importar.", 4500);
   }
   function doImport() { R.call("importDialog").then(importResult); }
@@ -401,12 +410,12 @@
 
   /* ================= rack ================= */
   const MOD = [
-    { k: "g", name: "Ghost", desc: "Eco filtrado", color: "#9ad8ff", ctl: ["T", "gFeedback", "gTone"], labels: ["TEMPO", "FEEDBACK", "TOM"], slot: 0 },
-    { k: "c", name: "Crumble", desc: "Fragmentos", color: "#f2b45a", ctl: ["T", "cVariation"], labels: ["TAXA", "VARIAÇÃO"], slot: 1 },
-    { k: "b", name: "Bloom", desc: "Cauda difusa", color: "#ff9ad5", ctl: ["bSize", "bTone", "bDecay"], labels: ["TAMANHO", "TOM", "DECAY"] },
-    { k: "w", name: "Wobble", desc: "Afinação viva", color: "#5fe3d6", ctl: ["wDepth", "T"], labels: ["PROFUND.", "TAXA"], slot: 2 },
-    { k: "d", name: "Dust", desc: "Textura viva", color: "#cbbcff", ctl: ["dLevel", "dCharacter"], labels: ["NÍVEL", "CARÁTER"] },
-    { k: "k", name: "Crush", desc: "Bits + taxa", color: "#ffd23f", ctl: ["kAmount"], labels: ["INTENS."] }
+    { k: "g", name: "Ghost", desc: "Eco filtrado", say: "Repete o som como um eco que vai escurecendo.", sayEn: "Echoes the sound, each repeat darker.", color: "#9ad8ff", ctl: ["T", "gFeedback", "gTone"], labels: ["TEMPO", "FEEDBACK", "TOM"], slot: 0 },
+    { k: "c", name: "Crumble", desc: "Fragmentos", say: "Picota o som em pedacinhos que se repetem.", sayEn: "Chops the sound into repeating crumbs.", color: "#f2b45a", ctl: ["T", "cVariation"], labels: ["TAXA", "VARIAÇÃO"], slot: 1 },
+    { k: "b", name: "Bloom", desc: "Cauda difusa", say: "Abre uma cauda difusa, como um espaço.", sayEn: "Opens a diffuse tail, like a room.", color: "#ff9ad5", ctl: ["bSize", "bTone", "bDecay"], labels: ["TAMANHO", "TOM", "DECAY"] },
+    { k: "w", name: "Wobble", desc: "Afinação viva", say: "Faz a afinação balançar como fita gasta.", sayEn: "Makes the pitch wobble like worn tape.", color: "#5fe3d6", ctl: ["wDepth", "T"], labels: ["PROFUND.", "TAXA"], slot: 2 },
+    { k: "d", name: "Dust", desc: "Textura viva", say: "Adiciona poeira e chiado que seguem o som.", sayEn: "Adds dust and hiss that follow the sound.", color: "#cbbcff", ctl: ["dLevel", "dCharacter"], labels: ["NÍVEL", "CARÁTER"] },
+    { k: "k", name: "Crush", desc: "Bits + taxa", say: "Reduz bits e taxa: som digital e áspero.", sayEn: "Lowers bits and rate: gritty digital sound.", color: "#ffd23f", ctl: ["kAmount"], labels: ["INTENS."] }
   ];
   const timeIds = [["gTime", "gFreeMs", "gDivision"], ["cRate", "cFreeHz", "cDivision"], ["wRate", "wFreeHz", "wDivision"]], timingIds = ["gTiming", "cTiming", "wTiming"], DIV = ["1/4", "1/8", "1/8.", "1/8T"];
   function timeParam(mi) { const slot = MOD[mi].slot; return timeIds[slot][Math.round(v(timingIds[slot]))]; }
@@ -423,8 +432,8 @@
       const M = MOD[mi];
       if (v(M.k + "Present") < .5) return;
       const card = document.createElement("div");
-      card.className = "card" + (big ? " big" : ""); card.style.setProperty("--mc", M.color); card.dataset.pos = pos;
-      card.innerHTML = '<div class="card-main">' + ART.icon(mi) + '<div><div class="card-title">' + M.name + '</div><div class="card-desc">' + M.desc + '</div></div><div class="card-tools"><button class="power" title="Ativar ou bypass" aria-label="Ativar ' + M.name + '"></button>' + (big ? '<button class="x" title="Remover do rack" aria-label="Remover ' + M.name + '">✕</button>' : "") + '</div></div>' + (big ? '<div class="knob-row"></div><div class="big-foot"><div class="timing"></div><button class="lock" title="Bloqueado: o JAM não mexe neste módulo">🔒 JAM</button></div>' : "") + '<div class="card-meter"></div>';
+      card.className = "card" + (big ? " big" : ""); card.style.setProperty("--mc", M.color); card.dataset.pos = pos; card.title = M.say + "\n" + M.sayEn;
+      card.innerHTML = '<div class="card-main">' + ART.icon(mi) + '<div><div class="card-title">' + M.name + '</div><div class="card-desc">' + (big ? M.say : M.desc) + '</div></div><div class="card-tools"><button class="power" title="Ativar ou bypass" aria-label="Ativar ' + M.name + '"></button>' + (big ? '<button class="x" title="Remover do rack" aria-label="Remover ' + M.name + '">✕</button>' : "") + '</div></div>' + (big ? '<div class="knob-row"></div><div class="big-foot"><div class="timing"></div><button class="lock" title="Bloqueado: o JAM não mexe neste módulo">🔒 JAM</button></div>' : "") + '<div class="card-meter"></div>';
       (big ? full : mini).appendChild(card);
       const tools = $(".card-tools", card);
       if (!big) {
@@ -468,7 +477,7 @@
       let target = visible.length - 1, best = 1e9;
       visible.forEach(function (el, i) { const r = el.getBoundingClientRect(), d = Math.hypot(e.clientX - (r.left + r.width / 2), e.clientY - (r.top + r.height / 2)); if (d < best) { best = d; target = i; } });
       const toPos = Number(visible[target].dataset.pos);
-      if (toPos !== pos) { R.call("moveModule", pos, toPos); const m = order.splice(pos, 1)[0]; order.splice(toPos, 0, m); renderRack(); game.award(3, "rack"); toast("Nova ordem: o som passa pelos cartões nessa sequência."); }
+      if (toPos !== pos) { R.call("moveModule", pos, toPos); const m = order.splice(pos, 1)[0]; order.splice(toPos, 0, m); renderRack(); game.award(3, "rack"); game.event("reorder"); toast("Nova ordem: o som passa pelos cartões nessa sequência."); }
     });
   }
   $("#addModule").addEventListener("click", function (e) {
@@ -589,7 +598,7 @@
         if (labPicked < 0) { ab.A = snapshot(); }
         labPicked = i; R.call("patchApply", r.values).then(function () { const root = Math.round(v("root")); R.call("note", root, .85, true); setTimeout(function () { R.call("note", root, 0, false); }, 450); });
         $$(".lab-card").forEach(function (c, j) { c.classList.toggle("on", j === i); });
-        patchName = "Patch Lab · opção " + (i + 1); updatePill(); toast("Opção " + (i + 1) + " aplicada. O patch anterior está em A."); game.award(4, "lab");
+        patchName = "Patch Lab · opção " + (i + 1); updatePill(); toast("Opção " + (i + 1) + " aplicada. O patch anterior está em A."); game.award(4, "lab"); game.event("lab");
       });
       box.appendChild(b);
     });
@@ -598,14 +607,15 @@
   /* ================= capture ================= */
   let capOpen = false, capTimer = 0;
   const CAPSTATE = ["pronto", "gravando", "salvando", "pronto", "exportando", "iniciando"];
-  $("#captureBtn").addEventListener("click", function () {
+  $("#captureBtn").addEventListener("click", function () { setMode("captura"); });
+  function openCapture() {
     $("#captureSheet").hidden = false; capOpen = true;
     R.call("captureInfo").then(function (info) { info = info || {}; $("#capDirect").hidden = !info.direct; $("#capSettings").hidden = !info.canOpenSettings; });
     pollCapture(); clearInterval(capTimer); capTimer = setInterval(pollCapture, 1000);
-  });
-  function closeCapture() { $("#captureSheet").hidden = true; capOpen = false; clearInterval(capTimer); }
+  }
+  function closeCapture() { $("#captureSheet").hidden = true; capOpen = false; clearInterval(capTimer); if (document.body.dataset.mode === "captura") setMode("limpo"); }
   $("#capSettings").addEventListener("click", function () { R.call("captureSettings"); });
-  $("#capRec").addEventListener("click", function () { R.call("captureRecord").then(function (ok) { if (ok) { toast("Gravação carregada como sample. Toque no teclado!"); game.award(15, "capture"); closeCapture(); } }); });
+  $("#capRec").addEventListener("click", function () { R.call("captureRecord").then(function (ok) { if (ok) { toast("Gravação carregada como sample. Toque no teclado!"); game.award(15, "capture"); game.event("capture"); closeCapture(); } }); });
   $("#capStop").addEventListener("click", function () { R.call("captureStop"); });
   $("#capMon").addEventListener("click", function () { const on = !$("#capMon").classList.contains("on"); R.call("captureMonitor", on); $("#capMon").classList.toggle("on", on); if (on) toast("Monitor ligado (−20 dB). Use fones."); });
   function pollCapture() {
@@ -642,22 +652,51 @@
   $$(".sheet").forEach(function (s) { s.addEventListener("click", function (e) { if (e.target === s || e.target.hasAttribute("data-close")) { s.hidden = true; if (s.id === "captureSheet") closeCapture(); } }); });
 
   /* ================= stage & character ================= */
+  const AL = window.RastroAlien;
   const CHARS = [
-    { key: "fuzz", name: "Fuzz", note: "arte pintada", species: 0, img: "fuzz_body.png" },
-    { key: "soul", name: "Soul", note: "arte pintada", species: 1, img: "soul_body.png" },
-    { key: "lua", name: "Lua", note: "arte pintada", species: 2, img: "lua_body.png" },
-    { key: "nova", name: "Nova", note: "arte pintada", species: 3, img: "nova_body.png" },
+    { key: "fuzz", name: "Fuzz", note: "convidado pintado", species: 0, img: "fuzz_body.png" },
+    { key: "soul", name: "Soul", note: "convidado pintado", species: 1, img: "soul_body.png" },
+    { key: "lua", name: "Lua", note: "convidada pintada", species: 2, img: "lua_body.png" },
+    { key: "nova", name: "Nova", note: "convidada pintada", species: 3, img: "nova_body.png" },
     { key: "sapo", name: "Sapo", note: "pads de beat", species: 5, img: "sapo_body.png" },
     { key: "fuzz2", name: "Fuzz Street", note: "visual extra", species: 4, img: "fuzz2_body.png", level: 3 }
   ];
-  const SPECIES = { 0: "fuzz", 1: "soul", 2: "lua", 3: "nova", 4: "fuzz2", 5: "sapo" };
+  const SPECIES = { 0: "fuzz", 1: "soul", 2: "lua", 3: "nova", 4: "fuzz2", 5: "sapo", 6: "alien" };
   const DEFAULT_STYLE = { bounce: 1, sway: 1, nod: 1, dip: 1, lean: .3, hop: 0, nodHit: 1, jitter: 0 };
-  let charKind = "fuzz", rig = {}, anchors = null, charSvg = null, sceneKind = "", sc = {};
-  const motion = { squash: 0, squashV: 0, strike: 0, look: 0, blink: 0, nextBlink: 2, energy: 0, shake: 0, shakeT: 9, hair: 0, hairV: 0, alive: 0, lastSound: -1e9, x: 240, y: 412, rot: 0, nod: 0, nodV: 0, dark: 0, lfoPhase: 0, lean: 0, leanV: 0, hop: 0, hopV: 0 };
+  let charKind = "alien", rig = {}, anchors = null, charSvg = null, sceneKind = "", sc = {}, alien = null, lockerRig = null;
+  const motion = { squash: 0, squashV: 0, strike: 0, look: 0, blink: 0, nextBlink: 2, energy: 0, shake: 0, shakeT: 9, hair: 0, hairV: 0, alive: 0, lastSound: -1e9, x: 240, y: 412, rot: 0, nod: 0, nodV: 0, dark: 0, lfoPhase: 0, lean: 0, leanV: 0, hop: 0, hopV: 0, peak: .05, hit: false, pitch: .5, pad: 0 };
+
+  /* ---- the look: outfit, dance and timing. Saved inside the session (never touches the sound). ---- */
+  const look = { outfit: Object.assign({}, AL.DEFAULT_LOOK), dance: "groove", sync: 1, bpm: 110, strip: 1, knob: -1 };
+  let lookTimer = 0, lookUndo = [];
+  function saveLook() { clearTimeout(lookTimer); lookTimer = setTimeout(function () { R.call("lookSet", JSON.stringify(look)); }, 300); }
+  function readLook(json) {
+    try {
+      const o = JSON.parse(json || "null");
+      if (o && o.outfit) {
+        look.outfit = AL.normalise(o.outfit); look.dance = AL.DANCES.some(function (d) { return d.id === o.dance; }) ? o.dance : "groove";
+        look.sync = o.sync === 0 ? 0 : 1; look.bpm = clamp(Math.round(o.bpm || 110), 60, 180); look.strip = o.strip === 0 ? 0 : 1; look.knob = typeof o.knob === "number" ? clamp(Math.round(o.knob), -1, 13) : -1;
+      }
+    } catch (e) { /* keep the current look */ }
+  }
+  function setOutfit(slot, id) {
+    lookUndo.push(JSON.stringify(look.outfit)); if (lookUndo.length > 30) lookUndo.shift();
+    const o = Object.assign({}, look.outfit); o[slot] = id;
+    if (slot === "top" && id !== "jumpsuit" && o.bottom === "jumpsuit") o.bottom = "swirl";
+    look.outfit = AL.normalise(o); applyLook(); saveLook();
+  }
+  function applyLook() {
+    if (alien) alien.setLook(look.outfit);
+    if (lockerRig) lockerRig.setLook(look.outfit);
+    $("#lookUndo").disabled = !lookUndo.length;
+    document.body.classList.toggle("strip-off", !look.strip); applyKnobClass();
+    if (document.body.dataset.tab === "character") renderAtelier();
+  }
+
   function setT(el, t) { if (el) el.setAttribute("transform", t); }
   function setA(el, k, val) { if (el) el.setAttribute(k, val); }
   function buildStage() {
-    sceneKind = ART.rooms[Math.round(v("sceneRoom"))] || "sunset";
+    sceneKind = ART.rooms[Math.round(v("sceneRoom"))] || "neon";
     $("#stageArt").innerHTML = ART.scene(sceneKind);
     charSvg = $("#stageArt svg"); sc = { scale: ART.roomScale(sceneKind), ox: ART.roomOffset(sceneKind) };
     ["pxSky", "pxCity", "fg", "spot", "vu", "bloomVeil", "darkVeil", "neon", "room", "winGlow", "arcadeGlow", "bedGlow", "neonStrip", "lampGlow", "lamp2Glow", "globeGlow",
@@ -666,39 +705,36 @@
     buildCharacter();
   }
   function buildCharacter() {
-    const C = ART.characters[charKind]();
-    anchors = C.anchors;
     const layer = $("#charLayer", charSvg);
-    layer.innerHTML = '<g id="charPos" transform="translate(240 412)"><g transform="scale(' + (.86) + ')">' + C.svg + '</g></g>';
-    rig = { painted: !!C.painted, pivot: C.pivot || [0, C.anchors.head[1] + 40], style: C.style || DEFAULT_STYLE };
-    ["c-root", "c-head", "c-hair", "c-eyes", "c-armL", "c-armR", "c-inst", "c-torso", "c-legL", "c-legR", "c-mouth", "c-mouthOpen"].forEach(function (id) { rig[id] = layer.querySelector("#" + id); });
-    rig.pos = layer.querySelector("#charPos"); rig.pupils = $$(".c-pupil", layer);
-    rig.keyGlow = layer.querySelector(".keyGlow"); rig.keySpot = layer.querySelector(".keySpot"); rig.pads = $$(".padLit", layer).map(function (el) { return { el: el, v: 0 }; });
-    rig.keyRx = rig.keyGlow ? Number(rig.keyGlow.getAttribute("rx")) : 0; rig.keyCx = rig.keyGlow ? Number(rig.keyGlow.getAttribute("cx")) : 0; rig.flash = 0;
-    wearItems();
+    alien = null;
+    if (charKind === "alien") {
+      layer.innerHTML = '<g id="charPos" transform="translate(240 380) scale(.74)"></g>';
+      const pos = layer.querySelector("#charPos");
+      alien = AL.create(pos, look.outfit);
+      rig = { alien: true, pos: pos, pads: [], style: DEFAULT_STYLE };
+      anchors = null;
+    } else {
+      const C = ART.characters[charKind]();
+      anchors = C.anchors;
+      layer.innerHTML = '<g id="charPos" transform="translate(240 412)"><g transform="scale(' + (.86) + ')">' + C.svg + '</g></g>';
+      rig = { painted: !!C.painted, pivot: C.pivot || [0, C.anchors.head[1] + 40], style: C.style || DEFAULT_STYLE };
+      ["c-root", "c-head", "c-hair", "c-eyes", "c-armL", "c-armR", "c-inst", "c-torso", "c-legL", "c-legR", "c-mouth", "c-mouthOpen"].forEach(function (id) { rig[id] = layer.querySelector("#" + id); });
+      rig.pos = layer.querySelector("#charPos"); rig.pupils = $$(".c-pupil", layer);
+      rig.keyGlow = layer.querySelector(".keyGlow"); rig.keySpot = layer.querySelector(".keySpot"); rig.pads = $$(".padLit", layer).map(function (el) { return { el: el, v: 0 }; });
+      rig.keyRx = rig.keyGlow ? Number(rig.keyGlow.getAttribute("rx")) : 0; rig.keyCx = rig.keyGlow ? Number(rig.keyGlow.getAttribute("cx")) : 0; rig.flash = 0;
+    }
     const gl = $("#ghosts", charSvg); gl.innerHTML = "";
     rig.ghosts = [0, 1, 2, 3].map(function () { const g = document.createElementNS("http://www.w3.org/2000/svg", "g"); g.setAttribute("class", "ghost"); g.setAttribute("opacity", "0"); gl.appendChild(g); return { el: g }; });
     rig.ghostClock = 0;
   }
-  function wearItems() {
-    if (!charSvg) return;
-    $$(".acc", charSvg).forEach(function (n) { n.remove(); });
-    (game.state.worn || []).forEach(function (id) {
-      const g = document.createElementNS("http://www.w3.org/2000/svg", "g");
-      g.setAttribute("class", "acc"); g.innerHTML = ART.accessory(id, anchors);
-      if (id === "halo") rig["c-head"].insertBefore(g, rig["c-head"].firstChild);
-      else if (ART.behind[id]) rig["c-root"].insertBefore(g, rig["c-root"].firstChild);
-      else if (id === "chain") rig["c-torso"].appendChild(g);
-      else rig["c-head"].appendChild(g);
-    });
-  }
   let mouseX = 0, mouseY = 0, mx = 0, my = 0;
   $("#stage").addEventListener("pointermove", function (e) { const r = e.currentTarget.getBoundingClientRect(); mouseX = (e.clientX - r.left) / r.width - .5; mouseY = (e.clientY - r.top) / r.height - .5; });
   $("#stage").addEventListener("pointerleave", function () { mouseX = mouseY = 0; });
-  $("#stage").addEventListener("pointerdown", function () { motion.squashV -= .25; motion.nodV += 3; spawnNotes(240, 250, 2, .6); });
+  $("#stage").addEventListener("pointerdown", function (e) { if (e.target.closest("button")) return; motion.squashV -= .25; motion.nodV += 3; spawnNotes(240, 250, 2, .6); });
   function spawnNotes(x, y, count, vel) {
-    if (animMode < 2 || !charSvg) return;
+    if (animMode < 2 || !charSvg || paused) return;
     const g = $("#notesP", charSvg), glyphs = ["♪", "♫", "★", "✦"];
+    if (!g) return;
     for (let i = 0; i < count; i++) {
       const t = document.createElementNS("http://www.w3.org/2000/svg", "text");
       t.textContent = glyphs[(Math.random() * glyphs.length) | 0];
@@ -715,46 +751,84 @@
     const g = charSvg && $("#dustP", charSvg); if (!g) return;
     if (animMode >= 1 && Math.random() < amount * 2.5 * dt * 60 && dust.length < 60) {
       const c = document.createElementNS("http://www.w3.org/2000/svg", "circle");
-      c.setAttribute("r", (Math.random() * 1.8 + .6).toFixed(1)); c.setAttribute("fill", Math.random() < .5 ? "#fff6dc" : "#17101f"); g.appendChild(c);
-      dust.push({ el: c, x: Math.random() * 480, y: Math.random() * 300 + 40, vx: (Math.random() - .5) * 12, vy: 8 + Math.random() * 14, life: 2 + Math.random() * 2 });
+      c.setAttribute("r", (Math.random() * 1.8 + .6).toFixed(1)); c.setAttribute("fill", Math.random() < .5 ? "#fff6dc" : "#cbbcff"); g.appendChild(c);
+      dust.push({ el: c, x: 140 + Math.random() * 200, y: Math.random() * 300 + 60, vx: (Math.random() - .5) * 12, vy: 8 + Math.random() * 14, life: 2 + Math.random() * 2 });
     }
     for (let i = dust.length - 1; i >= 0; i--) { const d = dust[i]; d.life -= dt; d.x += d.vx * dt; d.y += d.vy * dt; if (d.life <= 0) { d.el.remove(); dust.splice(i, 1); continue; } d.el.setAttribute("cx", d.x.toFixed(1)); d.el.setAttribute("cy", d.y.toFixed(1)); d.el.setAttribute("opacity", Math.min(1, d.life).toFixed(2)); }
   }
   function crumbleGlitch(amount) {
     if (animMode < 2 || Math.random() > amount * .5) return;
     const s = document.createElement("span");
-    s.style.left = (Math.random() * 90) + "%"; s.style.top = (Math.random() * 85) + "%"; s.style.width = (10 + Math.random() * 60) + "px"; s.style.height = (4 + Math.random() * 18) + "px";
+    s.style.left = (30 + Math.random() * 40) + "%"; s.style.top = (Math.random() * 85) + "%"; s.style.width = (10 + Math.random() * 60) + "px"; s.style.height = (4 + Math.random() * 18) + "px";
     $("#fx-crumble").appendChild(s); setTimeout(function () { s.remove(); }, 90 + Math.random() * 120);
   }
 
-  /* ================= game layer ================= */
+  /* ================= game layer: XP unlocks looks only, never sound ================= */
+  const KNOBS = [["Marfim canelado", "vintage", 1], ["Chrome escovado", "metal", 2], ["Digital", "futurista", 4], ["Console escuro", "borracha", 1], ["Laranja amp", "amplificador", 3],
+    ["Âmbar vidro", "translúcido", 2], ["Cristal ciano", "brilho", 5], ["Roxo gloss", "serrilhado", 3], ["Vermelho 70s", "canelado", 2], ["Baquelite", "marrom", 4],
+    ["Teal anodizado", "metal", 5], ["Cósmico", "órbitas", 6], ["Madeira & metal", "studio", 6], ["Pérola", "iridescente", 7]];
+  const KNOB_COUNT = KNOBS.length;
+  function knobFamily() { return look.knob >= 0 ? look.knob : Math.round(v("knobDesign")); }
+  function applyKnobClass() { const k = knobFamily(); for (let i = 0; i < KNOB_COUNT; i++) document.body.classList.toggle("kd-" + i, k === i); }
+  const PALETTES = [
+    { id: 8, name: "Orbit Night", note: "noite neon", level: 1, cls: ["theme-night"], sw: ["#0e0820", "#221a44", "#ff7a3d", "#39e3d2"] },
+    { id: 0, name: "Solar Dusk", note: "sunset creme", level: 1, cls: ["theme-sunset"], sw: ["#2a1a24", "#f7ead2", "#f07a3a", "#2a9d93"] },
+    { id: 2, name: "Cosmos", note: "azul cósmico", level: 2, cls: ["theme-night", "pal-cosmic"], sw: ["#060c22", "#101c40", "#39e3d2", "#ffb347"] },
+    { id: 3, name: "Vinho", note: "vinho e âmbar", level: 3, cls: ["theme-night", "pal-wine"], sw: ["#1a0710", "#3a1222", "#ffb347", "#ff8fa3"] },
+    { id: 1, name: "Sunrise", note: "claro, manhã", level: 2, cls: ["theme-sunset", "pal-sunrise"], sw: ["#f3d9b4", "#fff8ea", "#ff8a3d", "#2a9d93"] }
+  ];
+  function paletteFor(x) { x = Math.round(x); for (let i = 0; i < PALETTES.length; i++) if (PALETTES[i].id === x) return PALETTES[i]; return [2, 5, 6, 8].indexOf(x) >= 0 ? PALETTES[0] : PALETTES[1]; }
+  const CHALLENGES = [
+    { id: "voice", name: "Da gravação ao patch", text: "Capture ou importe um som e aplique uma opção do Patch Lab.", xp: 40 },
+    { id: "parallel", name: "Textura em paralelo", text: "Rack em PARALLEL com DUST e BLOOM ligados, e toque 8 notas.", xp: 30 },
+    { id: "order", name: "A ordem importa", text: "Em SERIAL, troque a ordem de dois módulos e toque 4 notas.", xp: 25 },
+    { id: "degrade", name: "Desce pro degradado", text: "Com CRUSH ou CRUMBLE ligados, leve o Y do pad acima de 80% tocando.", xp: 25 },
+    { id: "dice", name: "Dado da sorte", text: "Gere um patch com o dado e fique com ele.", xp: 20 },
+    { id: "loop", name: "Loop costurado", text: "Ligue o LOOP com crossfade acima de 10 ms e segure uma nota por 2 s.", xp: 25 }
+  ];
   const game = {
-    state: { xp: 0, level: 1, worn: [], on: 1 }, combo: 0, lastNote: 0,
-    load: function () { try { const s = JSON.parse(localStorage.getItem("rastro.game") || "null"); if (s) this.state = Object.assign(this.state, s); } catch (e) { /* storage unavailable: session only */ } },
-    save: function () { try { localStorage.setItem("rastro.game", JSON.stringify(this.state)); } catch (e) { /* ignore */ } },
+    state: { xp: 0, level: 1, on: 1, looks: [], done: {}, seen: {} }, combo: 0, lastNote: 0, flags: {}, notesSince: {},
+    load: function (json) {
+      let s = null;
+      try { s = JSON.parse(json || "null"); } catch (e) { s = null; }
+      if (!s) { try { s = JSON.parse(localStorage.getItem("rastro.game") || "null"); } catch (e) { s = null; } } // older builds kept it in the web view
+      if (s) { this.state.lang = s.lang || "pt"; this.state.xp = s.xp || 0; this.state.level = Math.max(1, s.level || 1); this.state.on = s.on === 0 ? 0 : 1; this.state.looks = s.looks || []; this.state.done = s.done || {}; this.state.seen = s.seen || {}; }
+    },
+    save: function () { clearTimeout(this._t); const st = this.state; this._t = setTimeout(function () { R.call("progressSet", JSON.stringify(st)); }, 400); },
     need: function (lvl) { return 60 + lvl * 40; },
-    next: function () { return ART.items.filter(function (it) { return it.level > game.state.level; })[0]; },
+    xpTo: function (lvl) { let n = this.need(this.state.level) - this.state.xp; for (let l = this.state.level + 1; l < lvl; l++) n += this.need(l); return Math.max(0, Math.ceil(n)); },
+    unlocksAt: function (lvl) {
+      const out = [];
+      AL.SLOTS.forEach(function (sl) { (AL.ITEMS[sl.id] || []).forEach(function (it) { if (it[3] === lvl) out.push(it[1]); }); });
+      AL.DANCES.forEach(function (d) { if (d.level === lvl) out.push("dança " + d.pt); });
+      KNOBS.forEach(function (k) { if (k[2] === lvl) out.push("knob " + k[0]); });
+      PALETTES.forEach(function (p) { if (p.level === lvl) out.push("cores " + p.name); });
+      CHARS.forEach(function (c) { if (c.level === lvl) out.push(c.name); });
+      return out;
+    },
+    nextLevelWithItems: function () { for (let l = this.state.level + 1; l < 12; l++) if (this.unlocksAt(l).length) return l; return 0; },
     award: function (xp, why) {
       if (!this.state.on) return;
       this.state.xp += xp;
       while (this.state.xp >= this.need(this.state.level)) {
         this.state.xp -= this.need(this.state.level); this.state.level++;
-        const item = ART.items.filter(function (it) { return it.level === game.state.level; })[0];
         popup("NÍVEL " + this.state.level + "!", 240, 150, "#ffd23f");
-        const ch = CHARS.filter(function (c) { return c.level === game.state.level; })[0];
-        toast(ch ? "Desbloqueou o visual " + ch.name + "! Escolha na aba CHARACTER." : item ? "Desbloqueou: " + item.name + "! Vista na aba CHARACTER." : "Nível " + this.state.level + "!", 4000);
+        const got = this.unlocksAt(this.state.level);
+        toast(got.length ? "Liberou: " + got.join(", ") + ". Veja no ATELIÊ." : "Nível " + this.state.level + "!", 5000);
       }
       this.save(); this.hud();
       if (why && why !== "note" && why !== "tweak") popup("+" + xp + " XP", 240, 300, "#39e3d2");
     },
     hud: function () {
-      const need = this.need(this.state.level), nx = this.next();
+      const need = this.need(this.state.level), nl = this.nextLevelWithItems();
       $("#lvlBadge").textContent = "NV " + this.state.level;
       $("#xpFill").style.width = Math.min(100, this.state.xp / need * 100) + "%";
-      $("#nextReward").textContent = nx ? "próximo: " + nx.name + " · " + Math.ceil(need - this.state.xp) + " XP" : "coleção completa!";
-      $("#collectionCount").textContent = ART.items.filter(function (it) { return it.level <= game.state.level; }).length + "/" + ART.items.length;
+      $("#nextReward").textContent = nl ? "próximo: " + this.unlocksAt(nl)[0] + " · " + this.xpTo(nl) + " XP" : "tudo liberado!";
+      let total = 0, have = 0;
+      AL.SLOTS.forEach(function (sl) { (AL.ITEMS[sl.id] || []).forEach(function (it) { total++; if (it[3] <= game.state.level) have++; }); });
+      $("#collectionCount").textContent = have + "/" + total;
       document.body.classList.toggle("game-off", !this.state.on);
-      if (document.body.dataset.tab === "character") renderReward();
+      $("#lockerXp").innerHTML = this.state.on ? '<span class="lvl-badge">NV ' + this.state.level + '</span><div class="bar"><div style="width:' + Math.min(100, this.state.xp / need * 100) + '%"></div></div><span>' + (nl ? "faltam " + this.xpTo(nl) + " XP para: " + this.unlocksAt(nl).slice(0, 3).join(", ") : "coleção completa") + '</span>' : '<span>Modo PRO: XP desligado. Tudo que já foi liberado continua disponível.</span>';
     },
     note: function (vel, now) {
       if (!this.state.on) return;
@@ -765,76 +839,234 @@
       if (this.combo % 8 === 0) { const words = ["GROOVY!", "QUE RASTRO!", "ON FIRE!", "LENDÁRIO!"]; popup(words[Math.min(3, this.combo / 8 - 1 | 0)] + " ×" + this.combo, 240, 170, "#ff7a3d"); xp += 4; }
       this.award(xp, "note");
       const c = $(".hud-combo"); $("#comboNum").textContent = this.combo; c.classList.add("bump"); setTimeout(function () { c.classList.remove("bump"); }, 90);
+      for (const k in this.notesSince) this.notesSince[k]++;
+      this.check();
     },
-    tick: function (now) { if (this.combo && now - this.lastNote > 2200) { this.combo = 0; $("#comboNum").textContent = "0"; } }
+    tick: function (now) { if (this.combo && now - this.lastNote > 2200) { this.combo = 0; $("#comboNum").textContent = "0"; } },
+    // optional creative challenges: each one rewards exploring a real feature, once
+    event: function (name) { this.flags[name] = performance.now(); if (name === "reorder" || name === "parallel") this.notesSince[name] = 0; this.check(); },
+    complete: function (id) {
+      if (this.state.done[id] || !this.state.on) return;
+      const c = CHALLENGES.filter(function (x) { return x.id === id; })[0];
+      this.state.done[id] = Date.now(); popup("DESAFIO!", 240, 200, "#ffd23f"); toast("Desafio concluído: " + c.name + " (+" + c.xp + " XP)", 4000);
+      this.award(c.xp, "challenge"); if (document.body.dataset.tab === "character") renderAtelier();
+    },
+    check: function () {
+      const f = this.flags, on = function (m) { return v(m + "On") > .5 && v(m + "Present") > .5; };
+      if ((f.import || f.capture) && f.lab) this.complete("voice");
+      if (v("rackParallel") > .5 && on("d") && on("b") && (this.notesSince.parallel || 0) >= 8) this.complete("parallel");
+      if (v("rackParallel") < .5 && f.reorder && (this.notesSince.reorder || 0) >= 4) this.complete("order");
+      if (f.diceKeep) this.complete("dice");
+      if (v("playY") > .8 && (on("k") || on("c")) && anyNoteHeld()) this.complete("degrade");
+      if (v("regionLoop") > .5 && v("loopCrossfade") > 10 && heldFor > 2) this.complete("loop");
+    }
   };
+  let heldFor = 0;
+  function anyNoteHeld() { for (let w = 0; w < 4; w++) if (T.notes[w]) return true; return false; }
   function popup(text, x, y, color) {
-    if (!game.state.on) return;
+    if (!game.state.on || paused) return;
     const st = $("#stage"), sx = st.clientWidth / 480;
     const p = document.createElement("div"); p.className = "pop"; p.textContent = text; p.style.left = (x * sx - 60) + "px"; p.style.top = y + "px"; p.style.color = color || "#fff";
     $("#popups").appendChild(p); setTimeout(function () { p.remove(); }, 950);
   }
-  const fakeAnchors = { head: [0, 0], headW: 60, chest: [0, 0], back: [0, -10], top: [0, -6] };
-  function renderReward() {
-    const nx = game.next(), need = game.need(game.state.level);
-    $("#rewardBox").innerHTML = nx ? '<svg viewBox="-70 -60 140 110">' + ART.accessory(nx.id, fakeAnchors) + '</svg><div style="flex:1"><b>Próximo prêmio: ' + nx.name + '</b><div class="fine" style="margin:2px 0">Nível ' + nx.level + ' · faltam ' + Math.ceil(need - game.state.xp) + ' XP. Toque, faça combos, acerte o tempo, mexa no som, use o Patch Lab e capture sons.</div><div class="bar"><div style="width:' + Math.min(100, game.state.xp / need * 100) + '%"></div></div></div>' : "<b>Coleção completa!</b>";
-    const grid = $("#collectionGrid"); grid.innerHTML = "";
-    ART.items.forEach(function (it) {
-      const ok = it.level <= game.state.level, worn = game.state.worn.indexOf(it.id) >= 0;
-      const b = document.createElement("button"); b.className = "item" + (ok ? "" : " locked") + (worn ? " worn" : ""); b.disabled = !ok;
-      b.innerHTML = '<svg viewBox="-70 -60 140 110">' + ART.accessory(it.id, fakeAnchors) + '</svg>' + (ok ? it.name + (worn ? " ✓" : "") : "🔒 Nível " + it.level);
-      b.addEventListener("click", function () { const i = game.state.worn.indexOf(it.id); if (i >= 0) game.state.worn.splice(i, 1); else game.state.worn.push(it.id); game.save(); wearItems(); renderReward(); });
-      grid.appendChild(b);
+  $("#collectionBtn").addEventListener("click", function () { if (document.body.dataset.mode !== "limpo") setMode("limpo"); setTab("character"); });
+
+  /* ================= ATELIÊ ================= */
+  let animMode = 2, slotSel = "head", subSel = "items";
+  const NS = "http://www.w3.org/2000/svg";
+  const SLOT_POS = { hair: [-250, -300], head: [-262, -232], phones: [-268, -164], eyes: [-262, -96], face: [-250, -28], glow: [250, -300], top: [262, -232], inst: [268, -164], acc: [262, -96], bottom: [250, -28], shoes: [180, 10] };
+  const CROP = { head: "-90 -320 180 180", phones: "-90 -260 180 140", eyes: "-80 -250 160 120", hair: "-90 -330 180 190", face: "-70 -240 140 110", glow: "-120 -320 240 330",
+    top: "-80 -190 160 140", bottom: "-70 -100 140 110", shoes: "-70 -40 140 50", inst: "-120 -170 240 150", acc: "-90 -200 180 200" };
+  const slotName = function (id) { const s = AL.SLOTS.filter(function (x) { return x.id === id; })[0]; return s ? (lang === "en" ? s.en : s.pt) : id; };
+  function buildLocker() {
+    const svg = $("#lockerSvg"); svg.innerHTML = "";
+    svg.setAttribute("viewBox", "-330 -350 660 390");
+    svg.innerHTML = '<defs><radialGradient id="lkFloor"><stop offset="0" stop-color="#7b5cff" stop-opacity=".55"/><stop offset="1" stop-color="#7b5cff" stop-opacity="0"/></radialGradient></defs>' +
+      '<ellipse class="locker-floor" cx="0" cy="0" rx="190" ry="36"/><ellipse cx="0" cy="0" rx="120" ry="18" fill="none" stroke="rgba(255,255,255,.25)" stroke-width="2"/><g id="lkLines"></g><g id="lkChar"></g><g id="lkSlots"></g>';
+    lockerRig = AL.create($("#lkChar", svg), look.outfit); lockerLines = null;
+    const lines = $("#lkLines", svg), slots = $("#lkSlots", svg);
+    AL.SLOTS.forEach(function (sl) {
+      const p = SLOT_POS[sl.id];
+      const ln = document.createElementNS(NS, "path"); ln.setAttribute("class", "slot-line"); ln.dataset.slot = sl.id; lines.appendChild(ln);
+      const g = document.createElementNS(NS, "g"); g.setAttribute("class", "slot-b"); g.dataset.slot = sl.id; g.setAttribute("transform", "translate(" + p[0] + " " + p[1] + ")"); g.setAttribute("tabindex", "0"); g.setAttribute("role", "button");
+      g.innerHTML = '<circle class="ring" r="31"/><text y="-2">' + slotName(sl.id).toUpperCase() + '</text><text y="11" class="sub" style="font-size:8px;opacity:.75"></text>';
+      g.addEventListener("click", function () { slotSel = sl.id; setSub("items"); renderAtelier(); });
+      g.addEventListener("keydown", function (e) { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); slotSel = sl.id; setSub("items"); renderAtelier(); } });
+      slots.appendChild(g);
     });
   }
-  $("#collectionBtn").addEventListener("click", function () { setTab("character"); setTimeout(function () { $("#rewardBox").scrollIntoView({ behavior: "smooth" }); }, 50); });
-
-  /* ================= CHARACTER tab ================= */
-  let animMode = 2;
-  const KNOBS = [["Creme", "baquelite"], ["Cromado", "metal"], ["Neon", "brilho"], ["Borracha", "macio"], ["Madeira", "anos 70"]];
-  function renderCustom() {
+  function itemThumb(slot, id) {
+    const o = Object.assign({}, look.outfit); o[slot] = id;
+    if (slot === "top" && id !== "jumpsuit" && o.bottom === "jumpsuit") o.bottom = "swirl";
+    if (slot !== "inst" && ["top", "acc", "bottom", "glow"].indexOf(slot) >= 0) o.inst = "none";
+    const svg = document.createElementNS(NS, "svg"); svg.setAttribute("viewBox", CROP[slot] || "-120 -320 240 330"); svg.setAttribute("aria-hidden", "true");
+    const r = AL.create(svg, o); r.pose(r);
+    if (slot === "glow") r.update({ alive: 0, glow: AL.GLOW[id], glowAmt: .8 }, 0);
+    return svg;
+  }
+  function renderAtelier() {
+    if (!lockerRig) buildLocker();
+    $$("#lkSlots .slot-b").forEach(function (g) {
+      const sl = g.dataset.slot, info = AL.itemInfo(sl, look.outfit[sl]);
+      g.classList.toggle("on", sl === slotSel);
+      $(".sub", g).textContent = info ? (lang === "en" ? info.en : info.pt).slice(0, 14) : "";
+    });
+    $$("#lkLines .slot-line").forEach(function (l) { l.classList.toggle("on", l.dataset.slot === slotSel); });
+    $("#lookUndo").disabled = !lookUndo.length;
+    if (subSel === "items") {
+      $("#slotTitle").textContent = slotName(slotSel).toUpperCase();
+      const sl = AL.SLOTS.filter(function (x) { return x.id === slotSel; })[0];
+      $("#slotNote").textContent = slotSel === "bottom" && look.outfit.top === "jumpsuit" ? "O macacão já inclui a calça. Troque a roupa para escolher uma calça." :
+        slotSel === "head" ? "Um item de cabeça por vez: chapéu, gorro e boné ocupam o mesmo espaço." : slotSel === "inst" ? "O instrumento muda a pose e o jeito de tocar. Ele não muda o som." :
+        slotSel === "glow" ? "\"Cor dos efeitos\" mistura as cores dos módulos que estão soando. As outras fixam uma cor de base." : (sl && sl.note ? sl.note : "Toque numa peça para vestir.");
+      const grid = $("#itemGrid"); grid.innerHTML = "";
+      (AL.ITEMS[slotSel] || []).forEach(function (it) {
+        const id = it[0], lvl = it[3], locked = game.state.on ? lvl > game.state.level : lvl > game.state.level, worn = look.outfit[slotSel] === id;
+        const b = document.createElement("button"); b.className = "it" + (worn ? " worn" : "") + (locked ? " locked" : "") + (!locked && lvl > 1 && !game.state.seen[slotSel + ":" + id] ? " new" : "");
+        b.appendChild(itemThumb(slotSel, id));
+        b.insertAdjacentHTML("beforeend", "<b>" + (lang === "en" ? it[2] : it[1]) + "</b><small>" + (locked ? "🔒 nível " + lvl + " · faltam " + game.xpTo(lvl) + " XP" : worn ? "equipado" : "liberado") + "</small>");
+        b.addEventListener("click", function () {
+          if (locked) { toast("Bloqueado: libera no nível " + lvl + " (faltam " + game.xpTo(lvl) + " XP). Toque, crie e complete desafios."); return; }
+          game.state.seen[slotSel + ":" + id] = 1; game.save();
+          if (slotSel === "bottom" && look.outfit.top === "jumpsuit") { toast("Troque o macacão primeiro."); return; }
+          setOutfit(slotSel, id);
+        });
+        grid.appendChild(b);
+      });
+      renderGuests();
+    } else if (subSel === "dance") renderDance();
+    else if (subSel === "knobs") renderKnobs();
+    else if (subSel === "world") renderWorld();
+    else if (subSel === "looks") renderLooks();
+    else if (subSel === "game") renderGame();
+  }
+  function renderGuests() {
     const cg = $("#charChoices"); cg.innerHTML = "";
-    CHARS.forEach(function (c) {
+    const all = [{ key: "alien", name: "Alien (principal)", note: "customizável", species: 6 }].concat(CHARS);
+    all.forEach(function (c) {
       const locked = c.level && game.state.level < c.level;
-      const b = document.createElement("button"); b.className = "choice" + (c.key === charKind ? " on" : "") + (locked ? " locked" : ""); b.disabled = !!c.disabled || locked;
-      let art;
+      const b = document.createElement("button"); b.className = "choice" + (c.key === charKind ? " on" : "") + (locked ? " locked" : ""); b.disabled = locked;
       const ps = ART.paintedSize[c.key];
-      if (c.img && ps) art = '<span class="pc" style="aspect-ratio:' + ps[0] + '/760"><img src="' + c.key + '_body.png" alt=""><img src="' + c.key + '_head.png" alt="" style="height:' + (ps[1] / 760 * 100).toFixed(2) + '%"></span>';
-      else if (c.disabled) art = '<svg viewBox="-60 -60 120 120"><circle r="44" fill="var(--knob-track)"/><text y="22" text-anchor="middle" font-size="60" font-weight="900" fill="var(--muted)">?</text></svg>';
-      else art = '<svg viewBox="-90 -340 180 350">' + ART.characters[c.key]().svg.replace(/ id="[^"]+"/g, "") + '</svg>';
+      let art;
+      if (c.key === "alien") { const svg = document.createElementNS(NS, "svg"); svg.setAttribute("viewBox", "-110 -300 220 310"); const r = AL.create(svg, look.outfit); r.pose(r); art = svg.outerHTML; }
+      else if (c.img && ps) art = '<span class="pc" style="aspect-ratio:' + ps[0] + '/760"><img src="' + c.key + '_body.png" alt=""><img src="' + c.key + '_head.png" alt="" style="height:' + (ps[1] / 760 * 100).toFixed(2) + '%"></span>';
       b.innerHTML = art + '<b>' + c.name + '</b><small>' + (locked ? "🔒 nível " + c.level : c.note) + '</small>';
-      if (!c.disabled) b.addEventListener("click", function () { gesture("avatarCharacter", c.species); });
+      b.addEventListener("click", function () { gesture("avatarCharacter", c.species); });
       cg.appendChild(b);
     });
+  }
+  function renderDance() {
+    const g = $("#danceGrid"); g.innerHTML = "";
+    AL.DANCES.forEach(function (d) {
+      const locked = d.level > game.state.level, on = look.dance === d.id;
+      const b = document.createElement("button"); b.className = "it" + (on ? " worn" : "") + (locked ? " locked" : "");
+      b.innerHTML = '<b style="font-size:13px;margin-top:6px">' + (lang === "en" ? d.en : d.pt) + '</b><small>' + (locked ? "🔒 nível " + d.level + " · faltam " + game.xpTo(d.level) + " XP" : (lang === "en" ? d.tipEn : d.tip)) + '</small>';
+      b.addEventListener("click", function () { if (locked) { toast("Libera no nível " + d.level + "."); return; } look.dance = d.id; saveLook(); renderDance(); });
+      g.appendChild(b);
+    });
+    $$("#danceSyncSeg button").forEach(function (b) { b.classList.toggle("on", Number(b.dataset.sync) === look.sync); });
+    $("#bpmVal").textContent = look.bpm + " BPM";
+    $("#bpmVal").parentNode.style.opacity = look.sync ? .45 : 1;
+    $("#danceInfo").textContent = (look.sync ? "SYNC: segue o pulso do Logic quando ele está tocando" + (T.bpm > 0 ? " (" + Math.round(T.bpm) + " BPM)" : "") + "; parado, usa o TEMPO do plugin (" + Math.round(v("tempo")) + " BPM). " : "FREE: dança a " + look.bpm + " BPM, sem depender do host. ") + "Notas e velocity viram acentos; agudo ou grave não muda a velocidade. Sem som, volta ao repouso.";
+  }
+  function knobPreview(i) { return '<div class="kd-' + i + '" style="display:flex;gap:4px;justify-content:center">' + [.25, .7].map(function (t) { return knobSvg(50).replace('stroke-dasharray="0 999"', 'stroke-dasharray="' + (t * 21 * Math.PI * 1.5).toFixed(1) + ' 999"').replace('<g class="ptr">', '<g class="ptr" transform="rotate(' + (-135 + t * 270) + ' 25 25)">'); }).join("") + '</div>'; }
+  function renderKnobs() {
     const kg = $("#knobChoices"); kg.innerHTML = "";
     KNOBS.forEach(function (k, i) {
-      const b = document.createElement("button"); b.className = "choice kd-" + i + (Math.round(v("knobDesign")) === i ? " on" : "");
-      b.innerHTML = '<span style="display:block;height:60px">' + knobSvg(56).replace('stroke-dasharray="0 999"', 'stroke-dasharray="' + (24 * Math.PI) + ' 999"').replace('class="ptr k-ptr"', 'class="ptr k-ptr" transform="rotate(60 28 28)"') + '</span><b>' + k[0] + '</b><small>' + k[1] + '</small>';
-      b.addEventListener("click", function () { gesture("knobDesign", i); });
+      const locked = k[2] > game.state.level;
+      const b = document.createElement("button"); b.className = "choice" + (knobFamily() === i ? " on" : "") + (locked ? " locked" : "");
+      b.innerHTML = knobPreview(i) + '<b>' + k[0] + '</b><small>' + (locked ? "🔒 nível " + k[2] : k[1]) + '</small>';
+      b.addEventListener("click", function () { if (locked) { toast("Libera no nível " + k[2] + " (faltam " + game.xpTo(k[2]) + " XP)."); return; } look.knob = i; if (i < 5) gesture("knobDesign", i); applyKnobClass(); saveLook(); renderKnobs(); });
       kg.appendChild(b);
     });
-    $$("#sceneChoices .choice").forEach(function (b) { b.classList.toggle("on", Number(b.dataset.room) === Math.round(v("sceneRoom"))); });
-    renderReward();
   }
+  function renderWorld() {
+    $$("#sceneChoices .choice").forEach(function (b) { b.classList.toggle("on", Number(b.dataset.room) === Math.round(v("sceneRoom"))); });
+    const pg = $("#paletteChoices"); pg.innerHTML = "";
+    const cur = paletteFor(v("colourSet"));
+    PALETTES.forEach(function (p) {
+      const locked = p.level > game.state.level;
+      const b = document.createElement("button"); b.className = "choice" + (cur === p ? " on" : "") + (locked ? " locked" : "");
+      b.innerHTML = '<span class="pal">' + p.sw.map(function (c) { return '<i style="background:' + c + '"></i>'; }).join("") + '</span><b>' + p.name + '</b><small>' + (locked ? "🔒 nível " + p.level : p.note) + '</small>';
+      b.addEventListener("click", function () { if (locked) { toast("Libera no nível " + p.level + "."); return; } gesture("colourSet", p.id); });
+      pg.appendChild(b);
+    });
+  }
+  function renderLooks() {
+    const box = $("#lookList"); box.innerHTML = "";
+    if (!game.state.looks.length) box.innerHTML = '<p class="fine">Nenhum look salvo ainda.</p>';
+    game.state.looks.forEach(function (lk, i) {
+      const c = document.createElement("div"); c.className = "look-card";
+      const svg = document.createElementNS(NS, "svg"); svg.setAttribute("viewBox", "-110 -300 220 310"); const r = AL.create(svg, lk.outfit); r.pose(r);
+      c.appendChild(svg);
+      c.insertAdjacentHTML("beforeend", "<b>" + lk.name + "</b>");
+      const row = document.createElement("div"); row.className = "row";
+      const use = document.createElement("button"); use.className = "btn btn-small btn-hot"; use.textContent = "VESTIR";
+      use.addEventListener("click", function () {
+        lookUndo.push(JSON.stringify(look.outfit));
+        const o = AL.normalise(lk.outfit), lvl = game.state.level; let skipped = 0;
+        for (const k in o) { const info = AL.itemInfo(k, o[k]); if (info && info.level > lvl) { o[k] = look.outfit[k]; skipped++; } }
+        look.outfit = AL.normalise(o); if (lk.dance) look.dance = lk.dance; applyLook(); saveLook();
+        toast(skipped ? "Look vestido (algumas peças ainda bloqueadas ficaram de fora)." : "Look vestido: " + lk.name);
+      });
+      const del = document.createElement("button"); del.className = "btn btn-small"; del.textContent = "APAGAR";
+      del.addEventListener("click", function () { game.state.looks.splice(i, 1); game.save(); renderLooks(); });
+      row.appendChild(use); row.appendChild(del); c.appendChild(row); box.appendChild(c);
+    });
+  }
+  function renderGame() {
+    const nl = game.nextLevelWithItems(), need = game.need(game.state.level);
+    $("#rewardBox").innerHTML = '<div style="flex:1"><b>Nível ' + game.state.level + '</b><div class="fine" style="margin:2px 0">' + (nl ? "Próximos prêmios (nível " + nl + ", faltam " + game.xpTo(nl) + " XP): " + game.unlocksAt(nl).join(", ") : "Tudo liberado!") + '</div><div class="bar"><div style="width:' + Math.min(100, game.state.xp / need * 100) + '%"></div></div><div class="fine">XP vem de tocar, combos, acertar o tempo com o Logic, mexer no som, salvar patches, usar o Patch Lab, capturar sons e desafios.</div></div>';
+    const list = $("#challengeList"); list.innerHTML = "";
+    CHALLENGES.forEach(function (c) {
+      const done = !!game.state.done[c.id];
+      const d = document.createElement("div"); d.className = "ch" + (done ? " done" : "");
+      d.innerHTML = '<div style="flex:1"><b>' + c.name + '</b>' + c.text + '</div><span class="xp">' + (done ? "✓ feito" : "+" + c.xp + " XP") + '</span>';
+      list.appendChild(d);
+    });
+  }
+  function setSub(name) {
+    subSel = name;
+    $$("#atelierTabs button").forEach(function (b) { b.classList.toggle("on", b.dataset.sub === name); });
+    $$("#customPanel .sub").forEach(function (s) { s.hidden = s.dataset.sub !== name; });
+  }
+  function renderCustom() { renderAtelier(); }
   function setupCustom() {
+    $$("#atelierTabs button").forEach(function (b) { b.addEventListener("click", function () { setSub(b.dataset.sub); renderAtelier(); }); });
     $$("#sceneChoices .choice").forEach(function (b) { b.addEventListener("click", function () { gesture("sceneRoom", Number(b.dataset.room)); }); });
-    watch("sceneRoom", function (x) { if (charSvg && sceneKind !== ART.rooms[Math.round(x)]) buildStage(); if (document.body.dataset.tab === "character") renderCustom(); });
-    seg("#themeSeg", "theme", function () { return 0; }, function (x) { gesture("colourSet", x ? 8 : 0); });
+    watch("sceneRoom", function (x) { if (charSvg && sceneKind !== ART.rooms[Math.round(x)]) buildStage(); if (document.body.dataset.tab === "character") renderAtelier(); });
     watch("colourSet", function (x) {
-      const night = [2, 5, 6, 8].indexOf(Math.round(x)) >= 0;
-      document.body.classList.remove("theme-night", "theme-sunset"); document.body.classList.add("theme-" + (night ? "night" : "sunset"));
-      $$("#themeSeg button").forEach(function (b) { b.classList.toggle("on", (Number(b.dataset.theme) === 1) === night); });
-      readPalette();
+      const p = paletteFor(x);
+      document.body.classList.remove("theme-night", "theme-sunset", "pal-cosmic", "pal-wine", "pal-sunrise");
+      p.cls.forEach(function (c) { document.body.classList.add(c); });
+      readPalette(); if (document.body.dataset.tab === "character") renderAtelier();
     });
     watch("avatarCharacter", function (x) {
-      const k = SPECIES[Math.round(x)] || "fuzz";
+      const k = SPECIES[Math.round(x)] || "alien";
       if (k !== charKind || !rig.pos) { charKind = k; if (charSvg) buildCharacter(); }
-      if (document.body.dataset.tab === "character") renderCustom();
+      if (document.body.dataset.tab === "character") renderAtelier();
     });
-    watch("knobDesign", function (x) { for (let i = 0; i < 5; i++) document.body.classList.toggle("kd-" + i, Math.round(x) === i); if (document.body.dataset.tab === "character") renderCustom(); });
-    bindSeg("#danceStyleSeg", "ds", "danceStyle"); bindSeg("#danceAmtSeg", "da", "danceAmount");
+    watch("knobDesign", function () { applyKnobClass(); if (document.body.dataset.tab === "character") renderAtelier(); });
+    bindSeg("#danceAmtSeg", "da", "danceAmount");
     bindSeg("#animSeg", "anim", "animation");
     watch("animation", function (x) { animMode = Math.round(x); document.body.classList.toggle("anim-off", animMode === 0); });
+    $$("#danceSyncSeg button").forEach(function (b) { b.addEventListener("click", function () { look.sync = Number(b.dataset.sync); saveLook(); renderDance(); }); });
+    $("#bpmDown").addEventListener("click", function () { look.bpm = clamp(look.bpm - 2, 60, 180); saveLook(); renderDance(); });
+    $("#bpmUp").addEventListener("click", function () { look.bpm = clamp(look.bpm + 2, 60, 180); saveLook(); renderDance(); });
+    $("#lookUndo").addEventListener("click", function () { const prev = lookUndo.pop(); if (!prev) return; look.outfit = AL.normalise(JSON.parse(prev)); applyLook(); saveLook(); });
+    $("#lookRandom").addEventListener("click", function () {
+      lookUndo.push(JSON.stringify(look.outfit));
+      const o = {};
+      AL.SLOTS.forEach(function (sl) { const ok = (AL.ITEMS[sl.id] || []).filter(function (it) { return it[3] <= game.state.level; }); o[sl.id] = ok[(Math.random() * ok.length) | 0][0]; });
+      look.outfit = AL.normalise(o); applyLook(); saveLook();
+    });
+    $("#lookSave").addEventListener("click", function () {
+      if (game.state.looks.length >= 12) { toast("Limite de 12 looks. Apague um para salvar outro."); return; }
+      game.state.looks.push({ name: "Look " + (game.state.looks.length + 1), outfit: Object.assign({}, look.outfit), dance: look.dance }); game.save(); renderLooks(); toast("Look salvo.");
+    });
+    $("#lookDefault").addEventListener("click", function () { lookUndo.push(JSON.stringify(look.outfit)); look.outfit = Object.assign({}, AL.DEFAULT_LOOK); applyLook(); saveLook(); });
+    const kl = $("#knobLive");
+    knob(kl, "level", "SAÍDA", { size: 54 }); knob(kl, "presence", "PRESENÇA", { size: 54, color: "var(--teal)" }); knob(kl, "trail", "RASTRO", { size: 54, color: "var(--violet)" });
     const gameRefresh = seg("#gameSeg", "game", function () { return game.state.on ? 1 : 0; }, function (x) { game.state.on = x; game.save(); game.hud(); gameRefresh(); });
     gameRefresh();
   }
@@ -846,16 +1078,107 @@
     $("#undoJam").addEventListener("click", function () { R.call("undoJam").then(function (can) { $("#undoJam").disabled = !can; }); toast("Voltou à combinação anterior."); });
   }
 
+  /* ================= modes, transport, dice, topology, language ================= */
+  let paused = false, lang = "pt";
+  function setMode(m) {
+    document.body.dataset.mode = m;
+    $$(".modes button").forEach(function (b) { b.classList.toggle("on", b.dataset.mode === m); });
+    if (m === "captura") openCapture(); else if (capOpen && document.body.dataset.mode !== "captura") closeCapture();
+    if (m === "limpo" && document.body.dataset.tab === "character") renderAtelier();
+    setTimeout(function () { sizeCanvas(); buildKeys(); }, 0);
+  }
+  $$(".modes button").forEach(function (b) { b.addEventListener("click", function () { setMode(b.dataset.mode); }); });
+  $("#stripBtn").addEventListener("click", function () { look.strip = look.strip ? 0 : 1; document.body.classList.toggle("strip-off", !look.strip); saveLook(); });
+  function setPaused(p) { paused = p; document.body.classList.toggle("paused", p); $("#pausedBadge").hidden = !p; }
+  $("#tPlay").addEventListener("click", function () {
+    if (!sample.loaded) { toast("Importe ou capture um sample primeiro."); return; }
+    setPaused(false); R.call("preview", true, cue >= 0 ? cue : v("start"));
+  });
+  $("#tPause").addEventListener("click", function () {
+    if (paused) { $("#tPlay").click(); return; }
+    if (T.preview) { cue = T.pos; R.call("preview", false); markerInfo(); waveDirty = true; }
+    R.call("allNotesOff"); setPaused(true);
+  });
+  $("#tStop").addEventListener("click", function () {
+    R.call("preview", false); R.call("allNotesOff");
+    if (T.capture && T.capture.state === 1) R.call("captureStop");
+    cue = -1; markerInfo(); waveDirty = true; setPaused(false);
+    motion.alive = 0; motion.lastSound = -1e9; motion.energy = 0;
+    if (alien) { alien.springs = {}; alien.update({ alive: 0 }, 0); }
+  });
+  const DICE_IDS = ["synthEnable", "ampAttack", "ampDecay", "ampSustain", "ampRelease", "filterCutoff", "filterResonance", "envAmount", "lfoRate", "lfoDepth", "lfoTarget", "voiceMode", "glide",
+    "gOn", "cOn", "bOn", "wOn", "dOn", "kOn", "gMix", "cMix", "bMix", "wMix", "dMix", "kMix", "gFeedback", "gTone", "cVariation", "bSize", "bTone", "bDecay", "wDepth", "dLevel", "dCharacter", "kAmount", "rackParallel"];
+  let diceArmed = false;
+  function rollDice() {
+    if (!diceArmed) { if (ab.cur !== "A") switchAB("A"); ab.A = snapshot(); }
+    const rnd = Math.random, pick = function (a) { return a[(rnd() * a.length) | 0]; };
+    const val = {
+      synthEnable: rnd() < .8 ? 1 : 0, ampAttack: Math.pow(rnd(), 3) * 1.2 + .001, ampDecay: .05 + rnd() * 1.6, ampSustain: rnd(), ampRelease: .05 + Math.pow(rnd(), 2) * 3,
+      filterCutoff: 200 * Math.pow(80, rnd()), filterResonance: rnd() * .8, envAmount: rnd() * 1.6 - .6, lfoRate: .1 * Math.pow(80, rnd()), lfoDepth: rnd() < .5 ? 0 : rnd() * .6, lfoTarget: rnd() < .7 ? 0 : 1,
+      voiceMode: pick([0, 0, 0, 1, 2]), glide: rnd() < .6 ? 0 : rnd() * .4, rackParallel: rnd() < .3 ? 1 : 0
+    };
+    ["g", "c", "b", "w", "d", "k"].forEach(function (m) { val[m + "On"] = rnd() < .5 ? 1 : 0; val[m + "Mix"] = .15 + rnd() * .6; });
+    ["gFeedback", "gTone", "cVariation", "bSize", "bTone", "bDecay", "wDepth", "dLevel", "dCharacter", "kAmount"].forEach(function (id) { val[id] = .1 + rnd() * .8; });
+    ab.B = null; ab.cur = "B"; $("#abA").classList.remove("on"); $("#abB").classList.add("on");
+    quietXP = true; DICE_IDS.forEach(function (id) { if (P[id] && val[id] !== undefined) gesture(id, val[id]); }); quietXP = false;
+    diceArmed = true; $("#diceKeep").disabled = false; $("#diceBack").disabled = false;
+    patchName = "Dado #" + (1 + (Math.random() * 999 | 0)); updatePill();
+    const root = Math.round(v("root")); R.call("note", root, .85, true); setTimeout(function () { R.call("note", root, 0, false); }, 500);
+    toast("Patch novo tocando em B. O anterior está em A: alterne para comparar, FICAR para manter ou VOLTAR.");
+    motion.nodV += 4; popup("🎲", 240, 190, "#b57bff");
+  }
+  $("#dice").addEventListener("click", function () { if (!sample.loaded) { toast("Importe ou capture um sample primeiro."); return; } rollDice(); });
+  $("#diceKeep").addEventListener("click", function () { ab.A = snapshot(); ab.B = null; ab.cur = "A"; $("#abA").classList.add("on"); $("#abB").classList.remove("on"); diceArmed = false; $("#diceKeep").disabled = true; $("#diceBack").disabled = true; updatePill(); toast("Ficou com o patch do dado. Salve em SALVAR se quiser guardar."); game.award(4, "dice"); game.event("diceKeep"); });
+  $("#diceBack").addEventListener("click", function () { if (ab.A) restore(ab.A); ab.B = null; ab.cur = "A"; $("#abA").classList.add("on"); $("#abB").classList.remove("on"); diceArmed = false; $("#diceKeep").disabled = true; $("#diceBack").disabled = true; patchName = "Novo patch"; updatePill(); toast("Voltou ao patch de antes do dado."); });
+  function setupTopology() {
+    const refresh = seg("#topoSeg", "topo", function () { return v("rackParallel") > .5 ? 1 : 0; }, function (x) { gesture("rackParallel", x); if (x) game.event("parallel"); });
+    watch("rackParallel", function (x) {
+      refresh();
+      $("#topoHint").textContent = x > .5 ? "PARALLEL: cada módulo recebe o som original e as diferenças são somadas; a ordem não muda o som" : "SERIAL: a ordem dos cartões é a ordem do som · arraste para reordenar";
+      document.body.classList.toggle("rack-parallel", x > .5);
+    });
+  }
+  function renderLegend() {
+    const box = $("#fxLegend"); box.innerHTML = "";
+    MOD.forEach(function (m, i) { const s = document.createElement("span"); s.dataset.mi = i; s.title = m.name + ": " + m.desc; s.innerHTML = '<i style="background:' + m.color + ';color:' + m.color + '"></i>' + m.name.toUpperCase(); box.appendChild(s); });
+  }
+  const I18N = {
+    en: { "mode.limpo": "CLEAN", "mode.palco": "STAGE", "mode.captura": "CAPTURE", "tab.sound": "SOUND", "tab.perform": "PERFORM", "tab.rack": "RACK", "tab.patches": "PATCHES", "tab.atelier": "LOCKER", "save": "SAVE", "sub.items": "ITEMS", "sub.dance": "DANCE", "sub.knobs": "KNOBS", "sub.world": "COLOURS & ROOM", "sub.looks": "LOOKS", "sub.game": "GAME" },
+    pt: { "mode.limpo": "LIMPO", "mode.palco": "PALCO", "mode.captura": "CAPTURA", "tab.sound": "SOM", "tab.perform": "PERFORM", "tab.rack": "RACK", "tab.patches": "PATCHES", "tab.atelier": "ATELIÊ", "save": "SALVAR", "sub.items": "PEÇAS", "sub.dance": "DANÇA", "sub.knobs": "KNOBS", "sub.world": "CORES & QUARTO", "sub.looks": "LOOKS", "sub.game": "JOGO" }
+  };
+  function setLang(l) {
+    lang = l; document.body.classList.toggle("lang-en", l === "en"); document.documentElement.lang = l === "en" ? "en" : "pt-BR";
+    $$("[data-i18n]").forEach(function (el) { const t = I18N[l][el.dataset.i18n]; if (t) el.textContent = t; });
+    $("#langBtn").textContent = l === "en" ? "EN" : "PT";
+    if (lockerRig) { lockerRig = null; if (document.body.dataset.tab === "character") renderAtelier(); }
+  }
+  $("#langBtn").addEventListener("click", function () { setLang(lang === "pt" ? "en" : "pt"); game.state.lang = lang; game.save(); if (lang === "en") toast("English: main screens and the Locker are translated; some help texts are still Portuguese.", 4200); });
+
   /* ================= frame loop (all motion is smoothed and frame-rate independent) ================= */
   let lastSerial = -1, lastFrame = performance.now(), midiFlash = 0, beatClock = 0;
   function noteHeld(n) { return ((T.notes[n >> 5] >>> 0) & (1 << (n & 31))) !== 0; }
+  let lastNoteAt = -1e9, lockerLines = null;
+  function hexRgb(h) { const n = parseInt(h.slice(1), 16); return [n >> 16 & 255, n >> 8 & 255, n & 255]; }
+  function rgbHex(c) { return "#" + c.map(function (x) { const h = Math.round(clamp(x, 0, 255)).toString(16); return h.length < 2 ? "0" + h : h; }).join(""); }
+  const MODRGB = [];
+  function glowColour(base, acts) {
+    // "Cor dos efeitos": mix the colours of the modules that are really sounding (bypassed ones weigh zero)
+    let sum = 0; const mix = [0, 0, 0];
+    acts.forEach(function (a, i) { if (a <= 0) return; const c = MODRGB[i] || (MODRGB[i] = hexRgb(MOD[i].color)); sum += a; for (let k = 0; k < 3; k++) mix[k] += c[k] * a; });
+    if (sum < .02) return base;
+    const b = hexRgb(base), t = clamp(sum * 1.6, 0, 1);
+    return rgbHex([0, 1, 2].map(function (k) { return b[k] + (mix[k] / sum - b[k]) * t; }));
+  }
   function frame(now) {
     const dt = Math.min(.05, (now - lastFrame) / 1000); lastFrame = now;
+    if (document.hidden) { requestAnimationFrame(frame); return; } // nothing to draw while the window is hidden
     const amp = animMode === 2 ? 1 : animMode === 1 ? .5 : 0;
     const ease = function (rate) { return 1 - Math.exp(-rate * dt); };
     if (T.serial !== lastSerial) {
       if (lastSerial >= 0) {
+        if (paused) setPaused(false); // a new note means the music is back
         const vel = T.vel || .7;
+        lastNoteAt = now; motion.hit = true;
         const st = rig.style || DEFAULT_STYLE;
         motion.squashV -= (.35 + vel * .45) * amp * st.dip; motion.strike = 1; motion.shake = vel * 2.5 * amp; motion.shakeT = 0; motion.nodV += (2 + vel * 4) * amp * st.nodHit; midiFlash = 1;
         motion.leanV += vel * vel * 26 * amp * st.lean; motion.hopV += (6 + vel * 10) * amp * st.hop;
@@ -863,6 +1186,7 @@
         let lastN = -1; for (let n = 0; n < 128; n++) if (noteHeld(n)) lastN = n;
         if (lastN < 0) lastN = 60;
         rig.flash = 1; rig.flashPos = ((lastN - base) / 48);
+        motion.pitch = clamp((lastN - 36) / 48, 0, 1); motion.pad = ((lastN % 16) + 16) % 16;
         if (rig.pads.length) { const p = rig.pads[(lastN % 16 + 16) % 16]; if (p) p.v = .6 + vel * .4; }
         spawnNotes(240 + (Math.random() - .5) * 60, 250, 1 + Math.round(vel * 3), vel);
         game.note(vel, now);
@@ -874,13 +1198,23 @@
     $("#masterMeter").style.width = Math.min(100, T.meter * 100) + "%";
     // only real sound moves the stage
     let anyHeld = false; for (let w = 0; w < 4; w++) if (T.notes[w]) anyHeld = true;
+    heldFor = anyHeld ? heldFor + dt : 0; if (anyHeld && heldFor > 2 && heldFor - dt <= 2) game.check();
+    if (paused) { legendTick(); requestAnimationFrame(frame); return; } // Pause freezes every movement where it is
     if (anyHeld || T.playing || T.preview) motion.lastSound = now;
     const aliveTarget = now - motion.lastSound < 900 ? 1 : 0;
-    motion.alive += (aliveTarget - motion.alive) * ease(aliveTarget ? 10 : 2.5);
-    const alive = motion.alive, meterT = clamp(T.meter * 1.6, 0, 1) * alive;
-    motion.energy += (meterT - motion.energy) * ease(meterT > motion.energy ? 14 : 4);
-    const bpm = T.bpm > 0 ? T.bpm : v("tempo"), style = Math.round(v("danceStyle")), amtSel = Math.round(v("danceAmount"));
-    if (T.beat >= 0 && style !== 2) beatClock = T.beat; else beatClock = (beatClock + dt * bpm / 60 * (style === 2 ? .5 : 1)) % 4;
+    motion.alive += (aliveTarget - motion.alive) * ease(aliveTarget ? 6 : 1.6);
+    // The plugin's meter is much quieter than a browser preview, so energy is normalised against a slow
+    // peak follower: any real sound gives a solid groove, louder passages push it further.
+    motion.peak = Math.max(.02, Math.max(T.meter, motion.peak * Math.exp(-dt / 6)));
+    const alive = motion.alive, meterN = clamp(T.meter / motion.peak, 0, 1);
+    const energyT = alive * (.6 + .4 * meterN);
+    motion.energy += (energyT - motion.energy) * ease(energyT > motion.energy ? 5 : 1.5);
+    const syncHost = look.sync && T.hostPlaying && T.beat >= 0;
+    const bpm = look.sync ? (T.bpm > 0 ? T.bpm : v("tempo")) : look.bpm, amtSel = Math.round(v("danceAmount"));
+    if (syncHost) { let d = T.beat - (beatClock % 4); if (d < -2) d += 4; if (d > 2) d -= 4; beatClock += d; } // follow the host pulse, never jump
+    else beatClock += dt * bpm / 60;
+    if (beatClock > 4096) beatClock -= 4096;
+    const style = look.dance === "disco" ? 1 : look.dance === "half" ? 2 : 0;
     const phase = beatClock % 1, onBeat = Math.pow(1 - phase, 4), groove = motion.energy > .02 ? motion.energy : 0;
     const dance = groove * amp * [0, .75, 1.3][amtSel];
     motion.squashV += (-motion.squash * 90 - motion.squashV * 15) * dt; motion.squash = clamp(motion.squash + motion.squashV * dt, -.06, .06);
@@ -907,8 +1241,46 @@
     const lfo = synthOn ? Math.sin(motion.lfoPhase) * v("lfoDepth") * alive : 0, res = synthOn ? v("filterResonance") : 0;
     const wobOn = v("wOn") > .5 && v("wPresent") > .5, degOn = ["c", "d", "k"].some(function (m) { return v(m + "On") > .5 && v(m + "Present") > .5; });
     const camWob = (wobOn ? Math.max(0, v("playX") - .5) * 2 : 0) * alive, degrade = (degOn ? Math.max(0, v("playY") - .5) * 2 : 0) * alive;
-    const stageOn = document.body.dataset.tab === "sound" || document.body.dataset.tab === "character";
-    if (rig.pos && animMode > 0 && stageOn) {
+    const tab = document.body.dataset.tab, mode = document.body.dataset.mode;
+    const stageOn = mode === "palco" || (mode === "limpo" && (tab === "sound" || tab === "perform"));
+    const actsLive = MOD.map(function (m, i) { return v(m.k + "On") > .5 && v(m.k + "Present") > .5 ? clamp((T.act[i] || 0) * 14, 0, 1) * alive : 0; });
+    const playingNow = anyHeld || (T.playing && now - lastNoteAt < 700);
+    const glowBase = AL.GLOW[look.outfit.glow] || AL.GLOW.cyan;
+    const alienState = {
+      alive: alive, intensity: [0, .75, 1.1][amtSel] * clamp(motion.energy / .6, 0, 1.25), beats: beatClock, style: look.dance, playing: playingNow,
+      pitch: motion.pitch, pad: motion.pad, hit: motion.hit && amp > 0, vel: T.vel || .7, env: T.env, look: motion.look, amp: amp,
+      glow: look.outfit.glow === "auto" ? glowColour(glowBase, actsLive) : glowBase, glow2: "#ff9a2e",
+      glowAmt: clamp(motion.energy * .55 + (T.env || 0) * .35 + (synthOnGlow() ? .1 : 0), 0, 1), bloom: actsLive[2]
+    };
+    motion.hit = false;
+    if (lockerRig && tab === "character" && mode === "limpo") {
+      lockerRig.update(Object.assign({}, alienState, { look: mx * 1.2 }), dt);
+      if (!lockerLines) lockerLines = $$("#lkLines .slot-line");
+      if (lockerRig.points) lockerLines.forEach(function (l) {
+        const b = SLOT_POS[l.dataset.slot], q = lockerRig.points[l.dataset.slot]; if (!b || !q) return;
+        const sx = b[0] + (b[0] < 0 ? 31 : -31);
+        l.setAttribute("d", "M" + sx + " " + b[1] + " C" + (sx + (q[0] - sx) * .5) + " " + b[1] + " " + (sx + (q[0] - sx) * .5) + " " + q[1].toFixed(1) + " " + q[0].toFixed(1) + " " + q[1].toFixed(1));
+      });
+    }
+    if (alien && animMode > 0 && stageOn) {
+      const wobX = Math.sin(now / 260) * (wob + camWob * .4) * 5 * amp;
+      const L0 = charPlace();
+      let ax = 240 + wobX, ay = L0.y;
+      if (crush > .25) { const q = 2 + crush * 5; ax = Math.round(ax / q) * q; ay = Math.round(ay / q) * q; }
+      rig.pos.setAttribute("transform", "translate(" + ax.toFixed(2) + " " + ay.toFixed(2) + ") scale(" + L0.s.toFixed(3) + ")");
+      alien.update(alienState, dt);
+      rig.ghostClock += dt;
+      if (ghostAct > .04 && amp > 0 && rig.ghostClock > .09) {
+        rig.ghostClock = 0;
+        const last = rig.ghosts.pop(); rig.ghosts.unshift(last);
+        const snap = rig.pos.cloneNode(true); snap.removeAttribute("id"); $$("[id]", snap).forEach(function (n) { n.removeAttribute("id"); });
+        last.el.innerHTML = ""; last.el.appendChild(snap);
+      }
+      rig.ghosts.forEach(function (gh, i) { gh.el.setAttribute("opacity", Math.max(0, ghostAct * amp * (.5 - i * .11)).toFixed(2)); gh.el.setAttribute("transform", "translate(" + (-(i + 1) * 16 * ghostAct).toFixed(1) + " " + (-(i + 1) * 3 * ghostAct).toFixed(1) + ")"); });
+    } else if (alien && animMode === 0 && stageOn) {
+      alien.update(Object.assign({}, alienState, { alive: 0, amp: 0 }), dt);
+    }
+    if (rig.pos && !alien && animMode > 0 && stageOn) {
       const jit = ST.jitter ? (Math.sin(now / 47) * Math.sin(now / 131)) * ST.jitter * dance * 2 : 0;
       const tx = 240 + sway * 8 * dance * ST.sway + jit + Math.sin(now / 260) * (wob + camWob * .4) * 5 * amp, ty = 412 - bounce * 8 * dance * ST.bounce - Math.max(0, motion.hop);
       motion.x += (tx - motion.x) * ease(ST.smooth ? 7 : 16); motion.y += (ty - motion.y) * ease(ST.smooth ? 10 : 22);
@@ -1000,27 +1372,54 @@
       if (c.mi === 4) { art.querySelector(".spin").style.transform = "rotate(" + (t * 160 * (.15 + a)).toFixed(1) + "deg)"; art.querySelector(".specks").style.opacity = .3 + a * .7; }
       if (c.mi === 5) art.querySelector(".px").style.transform = "translate(" + (Math.round(Math.sin(t * 13) * a * 3)) + "px,0)";
     });
+    legendTick(actsLive);
     for (const n in keyEls) keyEls[n].classList.toggle("on", noteHeld(Number(n)));
     $("#tPlay").classList.toggle("on", !!T.preview);
     if (waveDirty || T.playing || T.preview) { drawWave(); waveDirty = false; }
     requestAnimationFrame(frame);
   }
 
+  // The room is drawn with "slice" scaling, so the visible part of the scene depends on the stage
+  // shape (SOM, PERFORM and PALCO differ). Keep the character standing above the groove bar and sized
+  // to the visible height.
+  let placeKey = "", placeVal = { y: 380, s: .74 };
+  function charPlace() {
+    const st = $("#stage"), W = st.clientWidth, H = st.clientHeight, key = W + "x" + H;
+    if (key === placeKey || !W || !H) return placeVal;
+    const k = Math.max(W / 480, H / 452), visH = H / k, bottom = 226 + visH / 2;
+    placeKey = key; placeVal = { y: bottom - 62 / k - 6, s: clamp(visH * .66 / 300, .42, .8) };
+    return placeVal;
+  }
+  function synthOnGlow() { return v("synthEnable") > .5 && v("lfoDepth") > 0; }
+  let legendEls = null;
+  function legendTick(acts) {
+    if (!legendEls) legendEls = $$("#fxLegend span");
+    legendEls.forEach(function (el, i) {
+      const on = v(MOD[i].k + "On") > .5 && v(MOD[i].k + "Present") > .5;
+      el.classList.toggle("on", on);
+      el.style.opacity = on ? (.7 + (acts ? acts[i] : 0) * .3).toFixed(2) : ".35";
+      el.title = MOD[i].name + (on ? " ligado" : " desligado (sem reação visual)");
+    });
+  }
+
   /* ================= boot ================= */
   function boot(init) {
     (init.params || []).forEach(function (p) { P[p.id] = p; });
-    game.load(); knobDefs();
+    knobDefs(); renderLegend();
     $("#grooveBars").innerHTML = new Array(19).join("<i></i>");
     $("#leaves").innerHTML = ART.cornerLeaves();
-    setupCustom(); buildStage();
+    readLook(init.look); charKind = SPECIES[Math.round(v("avatarCharacter"))] || "alien";
+    setupCustom(); buildStage(); setupTopology();
     setupHeader(); setupSample(); setupEnv(); setupSynth(); setupPad();
-    readPalette(); setTab("sound"); fit(); buildKeys(); game.hud(); onSample(init.sample); updatePill();
+    readPalette(); setTab("sound"); setMode("limpo"); fit(); buildKeys(); game.hud(); onSample(init.sample); updatePill(); applyLook();
+    if (game.state.lang === "en") setLang("en");
     $("#undoJam").disabled = !init.canUndoJam;
     if (R.simulated) toast("Prévia no navegador com motor simulado. No plugin, tudo usa o áudio real.", 4200);
     requestAnimationFrame(frame);
   }
   R.on("tick", function (t) {
-    T = Object.assign(T, t);
+    const lr = T.lookRev; T = Object.assign(T, t);
+    if (lr !== undefined && t.lookRev !== undefined && t.lookRev !== lr) R.call("lookGet").then(function (j) { if (j) { readLook(j); applyLook(); } }); // session or patch restored
     if (t.order) { const changed = t.order.join() !== order.join(); order = t.order.slice(); if (changed) renderRack(); }
     $("#undoJam").disabled = !t.canUndoJam;
     labTick(t.search); capTick(t.capture);
@@ -1031,5 +1430,8 @@
     if (rack) renderRack();
   });
   R.on("sample", onSample);
-  R.call("ready").then(boot);
+  // The look and the cosmetic progress load before the first frame so nothing flashes.
+  R.call("ready").then(function (init) {
+    Promise.all([R.call("lookGet"), R.call("progressGet")]).then(function (r) { init.look = r[0]; game.load(r[1]); boot(init); });
+  });
 })();

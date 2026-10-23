@@ -30,6 +30,19 @@ class RastroProcessor : public juce::AudioProcessor, private juce::MidiKeyboardS
     std::atomic<int> previewRequest{0};
     // Optional start point (0..1 of the sample) for the next preview; -1 starts at the trim.
     std::atomic<float> previewFrom{-1.f};
+    // Visual-only "look" of the web interface (character outfit, dance, palette) as JSON text.
+    // Saved inside the session so Logic reopens it exactly; never read by the audio thread.
+    juce::String getLook() const
+    {
+        juce::ScopedLock lock(stateLock);
+        return look;
+    }
+    void setLook(const juce::String &json)
+    {
+        juce::ScopedLock lock(stateLock);
+        look = json.substring(0, 65536);
+    }
+    std::atomic<int> lookRevision{0};
     const juce::String getName() const override { return "RASTRO"; }
     void prepareToPlay(double, int) override;
     void releaseResources() override {}
@@ -163,5 +176,6 @@ class RastroProcessor : public juce::AudioProcessor, private juce::MidiKeyboardS
     size_t ownedBytes = 0;
     juce::MemoryBlock sampleBytes;
     juce::String loadedName;
+    juce::String look;
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(RastroProcessor)
 };

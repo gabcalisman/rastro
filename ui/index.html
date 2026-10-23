@@ -6,7 +6,7 @@
 <title>RASTRO Play</title>
 <link rel="stylesheet" href="style.css">
 </head>
-<body class="theme-sunset kd-0" data-tab="sound">
+<body class="theme-night kd-0" data-tab="sound" data-mode="limpo">
 <div id="frame">
 <div id="app">
   <div id="leaves" aria-hidden="true"></div>
@@ -16,11 +16,17 @@
       <span class="logo-main">RASTRO</span><span class="logo-play">Play</span>
       <span class="logo-by">by Gab Calisman</span>
     </div>
+    <div class="modes" role="group" aria-label="Modo de tela">
+      <button data-mode="limpo" data-i18n="mode.limpo" title="Waveform, synth, rack e performance">LIMPO</button>
+      <button data-mode="palco" data-i18n="mode.palco" title="O personagem e o quarto ocupam a janela. O som não para.">PALCO</button>
+      <button data-mode="captura" data-i18n="mode.captura" title="Gravar uma fonte e transformar em sample">CAPTURA</button>
+    </div>
     <nav class="tabs" role="tablist">
-      <button role="tab" data-tab="sound">SOUND</button>
-      <button role="tab" data-tab="rack">RACK</button>
-      <button role="tab" data-tab="patches">PATCHES</button>
-      <button role="tab" data-tab="character">CHARACTER</button>
+      <button role="tab" data-tab="sound" data-i18n="tab.sound">SOM</button>
+      <button role="tab" data-tab="perform" data-i18n="tab.perform">PERFORM</button>
+      <button role="tab" data-tab="rack" data-i18n="tab.rack">RACK</button>
+      <button role="tab" data-tab="patches" data-i18n="tab.patches">PATCHES</button>
+      <button role="tab" data-tab="character" data-i18n="tab.atelier">ATELIÊ</button>
     </nav>
     <div class="pill" id="patchPill" title="Patch atual">
       <span class="pill-name" id="patchName">Novo patch</span>
@@ -30,7 +36,13 @@
       <button id="abA" class="on" title="Configuração A">A</button>
       <button id="abB" title="Configuração B (começa como cópia da A)">B</button>
     </div>
-    <button id="saveBtn" class="btn btn-dark" title="Salvar patch .rastro com o áudio embutido">SALVAR</button>
+    <button id="saveBtn" class="btn btn-dark" data-i18n="save" title="Salvar patch .rastro com o áudio embutido">SALVAR</button>
+    <div class="gtransport" role="group" aria-label="Transporte interno do RASTRO (não controla o Logic)">
+      <button id="tPlay" class="tbtn" title="Tocar a prévia do sample (ou retomar)" aria-label="Tocar">▶</button>
+      <button id="tPause" class="tbtn" title="Pausar: para o som da prévia e congela a animação, guardando a posição" aria-label="Pausar">❚❚</button>
+      <button id="tStop" class="tbtn" title="Parar: volta ao início do trecho, encerra gravação e devolve o personagem à pose inicial" aria-label="Parar">■</button>
+    </div>
+    <button id="langBtn" class="btn btn-mini lang" title="Idioma / Language">PT</button>
     <span id="midiDot" class="dot" title="Atividade MIDI"></span>
   </header>
 
@@ -57,10 +69,7 @@
       </div>
     </div>
     <div class="transport">
-      <button id="tPlay" class="tbtn" title="Tocar a partir do ponto marcado (ou do início do trecho)" aria-label="Tocar">▶</button>
-      <button id="tPause" class="tbtn" title="Pausar e guardar a posição" aria-label="Pausar">❚❚</button>
-      <button id="tStop" class="tbtn" title="Parar e voltar ao início do trecho" aria-label="Parar">■</button>
-      <span id="cueInfo" class="cue mono">clique na onda para escolher de onde tocar</span>
+      <span class="cue-ico">▶</span><span id="cueInfo" class="cue mono">clique na onda para escolher de onde tocar · ▶ ❚❚ ■ ficam no topo</span>
     </div>
     <div class="mode-row">
       <div class="seg seg-wide" id="modeSeg" role="group" aria-label="Modo de reprodução">
@@ -88,8 +97,11 @@
     </div>
   </section>
 
-  <section id="stage" class="panel stage tab-sound tab-character" aria-label="Palco do personagem">
+  <section id="stage" class="panel stage tab-sound tab-perform" aria-label="Palco do personagem">
     <div id="stageArt"></div>
+    <div id="fxLegend" class="fx-legend" aria-label="Cores dos efeitos no personagem"></div>
+    <button id="stripBtn" class="chip strip-btn" title="Mostrar ou esconder a faixa de macros e X/Y">FAIXA</button>
+    <div id="pausedBadge" class="paused-badge" hidden>❚❚ PAUSADO</div>
     <div id="fx-pixels" class="fx-layer"></div>
     <div id="fx-crumble" class="fx-layer"></div>
     <div id="hud">
@@ -152,14 +164,19 @@
   <!-- ================= RACK ================= -->
   <section id="rackFullPanel" class="panel tab-rack">
     <div class="panel-head">
-      <h2>EFFECT RACK</h2><span class="hint">a ordem dos cartões é a ordem do som · arraste para reordenar</span>
+      <h2>EFFECT RACK</h2>
+      <div class="seg seg-small" id="topoSeg" role="group" aria-label="Topologia do rack">
+        <button data-topo="0" title="SERIAL: a saída de cada módulo alimenta o próximo. A ordem muda o som.">SERIAL</button>
+        <button data-topo="1" title="PARALLEL: cada módulo processa o sinal original e as diferenças são somadas. A ordem não muda o som.">PARALLEL</button>
+      </div>
+      <span class="hint" id="topoHint">a ordem dos cartões é a ordem do som · arraste para reordenar</span>
       <button id="addModule" class="btn btn-small" title="Adicionar módulo removido">+ MÓDULO</button>
       <button id="resetFx" class="btn btn-small" title="Volta os efeitos aos valores padrão">RESTAURAR</button>
     </div>
     <div id="rackFull" class="rack-full"></div>
   </section>
-  <section id="playPanel" class="panel tab-rack">
-    <div class="panel-head"><h2>PLAY</h2><span id="padInfo" class="hint mono">X 50% · Y 50%</span></div>
+  <section id="playPanel" class="panel tab-perform">
+    <div class="panel-head"><h2>PERFORM</h2><span id="padInfo" class="hint mono">X 50% · Y 50%</span></div>
     <div id="pad" class="pad" tabindex="0" aria-label="Pad PLAY: X estável para wobble, Y limpo para degradado">
       <span class="pad-l pad-tl">DEGRADADO</span><span class="pad-l pad-bl">LIMPO · ESTÁVEL</span><span class="pad-l pad-br">WOBBLE</span>
       <div id="padTrail"></div><div id="padDot" class="pad-dot"></div>
@@ -170,6 +187,12 @@
       <button id="jam" class="btn btn-hot btn-big" title="JAM: cria uma variação dos efeitos ativos. Não mexe no sample, raiz, cortes, pitch nem modo. Bloqueie módulos no cartão.">JAM</button>
       <button id="undoJam" class="btn" disabled title="Volta à combinação anterior ao JAM">DESFAZER</button>
     </div>
+    <div class="dice-row">
+      <button id="dice" class="btn btn-big dice" title="GERAR PATCH: sorteia um patch novo mais amplo (envelope, filtro, LFO, voz e efeitos). O atual fica guardado em A; o novo toca em B para comparar.">🎲 GERAR PATCH</button>
+      <button id="diceKeep" class="btn" disabled title="Ficar com o patch sorteado (vira o A)">FICAR</button>
+      <button id="diceBack" class="btn" disabled title="Voltar ao patch de antes do dado">VOLTAR</button>
+    </div>
+    <p class="fine" id="diceNote">JAM varia só os efeitos ativos. O dado gera um instrumento novo (não mexe no sample, raiz, trims nem modo).</p>
   </section>
 
   <!-- ================= PATCHES ================= -->
@@ -198,40 +221,69 @@
     <div id="fileStatus" class="fine"></div>
   </section>
 
-  <!-- ================= CHARACTER ================= -->
+  <!-- ================= ATELIÊ ================= -->
+  <section id="lockerPanel" class="panel tab-character" aria-label="Ateliê: personagem e peças">
+    <svg id="lockerSvg" viewBox="-300 -330 600 360" preserveAspectRatio="xMidYMid meet"></svg>
+    <div id="lockerXp" class="locker-xp"></div>
+    <div class="locker-actions">
+      <button id="lookUndo" class="btn btn-small" disabled title="Desfazer a última troca">↶ DESFAZER</button>
+      <button id="lookRandom" class="btn btn-small" title="Sortear um visual com as peças liberadas (não mexe no som)">SORTEAR VISUAL</button>
+    </div>
+  </section>
   <section id="customPanel" class="panel tab-character">
+    <nav class="subtabs" id="atelierTabs">
+      <button data-sub="items" class="on" data-i18n="sub.items">PEÇAS</button><button data-sub="dance" data-i18n="sub.dance">DANÇA</button><button data-sub="knobs" data-i18n="sub.knobs">KNOBS</button><button data-sub="world" data-i18n="sub.world">CORES &amp; QUARTO</button><button data-sub="looks" data-i18n="sub.looks">LOOKS</button><button data-sub="game" data-i18n="sub.game">JOGO</button>
+    </nav>
     <div class="custom-scroll">
-      <div class="c-block">
-        <h3>PERSONAGEM</h3>
+      <div class="sub" data-sub="items">
+        <h3 id="slotTitle">CABEÇA</h3>
+        <p class="fine" id="slotNote">Clique numa bolinha ao lado do personagem para trocar aquela parte.</p>
+        <div class="item-grid" id="itemGrid"></div>
+        <h3>CONVIDADOS</h3>
+        <p class="fine">Personagens pintados com visual fixo. As peças do ateliê valem para o alien.</p>
         <div class="choice-grid" id="charChoices"></div>
       </div>
-      <div class="c-block">
-        <h3>CENÁRIO</h3>
-        <div class="choice-grid" id="sceneChoices">
-          <button data-room="0" class="choice"><span class="sw" style="background:url(room_sunset.jpg) center/cover"></span><b>Sunset Loft</b><small>pôr do sol, anos 70</small></button>
-          <button data-room="1" class="choice"><span class="sw" style="background:url(room_neon.jpg) center/cover"></span><b>Quarto Neon</b><small>noite, fliperama</small></button>
-          <button data-room="2" class="choice"><span class="sw" style="background:url(room_lofi.jpg) center/cover"></span><b>Lo-fi</b><small>noite, aconchego</small></button>
-          <button data-room="3" class="choice"><span class="sw" style="background:url(room_lunar.jpg) center/cover"></span><b>Base Lunar</b><small>futuro, planeta</small></button>
-          <button data-room="4" class="choice"><span class="sw" style="background:url(room_orbital.jpg) center/cover"></span><b>Estúdio Orbital</b><small>dia, espaço</small></button>
-        </div>
-        <div class="c-row"><span>Cores da interface</span><div class="seg seg-small" id="themeSeg"><button data-theme="0">☀︎ Sunset</button><button data-theme="1">☾ Noite</button></div></div>
-      </div>
-      <div class="c-block">
-        <h3>DANÇA</h3>
-        <div class="c-row"><span>Estilo</span><div class="seg seg-small" id="danceStyleSeg"><button data-ds="0">Soul step</button><button data-ds="1">Disco</button><button data-ds="2">Half-time</button></div></div>
+      <div class="sub" data-sub="dance" hidden>
+        <h3>ESTILO</h3>
+        <div class="item-grid" id="danceGrid"></div>
         <div class="c-row"><span>Intensidade</span><div class="seg seg-small" id="danceAmtSeg"><button data-da="0">Parado</button><button data-da="1">Groove</button><button data-da="2">Expressivo</button></div></div>
+        <div class="c-row"><span>Tempo da dança</span><div class="seg seg-small" id="danceSyncSeg"><button data-sync="1" title="Segue o BPM do Logic (ou o TEMPO do plugin quando o Logic está parado)">SYNC</button><button data-sync="0" title="Usa o BPM abaixo, sem depender do host">FREE</button></div></div>
+        <div class="c-row"><span>BPM livre</span><div class="bpm-ctl"><button class="btn btn-mini" id="bpmDown">−</button><span id="bpmVal" class="mono">110</span><button class="btn btn-mini" id="bpmUp">+</button></div></div>
         <div class="c-row"><span>Animação</span><div class="seg seg-small" id="animSeg"><button data-anim="2">Completa</button><button data-anim="1">Reduzida</button><button data-anim="0">Desligada</button></div></div>
-        <p class="fine">Sem som, ninguém dança. A animação nunca muda o áudio.</p>
+        <p class="fine" id="danceInfo">A dança segue o pulso; notas e velocity viram acentos. Notas agudas ou graves não mudam a velocidade. Sem som, ele volta ao repouso. A animação nunca muda o áudio.</p>
       </div>
-      <div class="c-block">
+      <div class="sub" data-sub="knobs" hidden>
         <h3>KNOBS</h3>
-        <div class="choice-grid four" id="knobChoices"></div>
+        <p class="fine">Muda o desenho de todos os knobs reais. Só aparência.</p>
+        <div class="row-label">Teste nos controles de verdade</div>
+        <div class="knob-row" id="knobLive"></div>
+        <div class="choice-grid five" id="knobChoices"></div>
       </div>
-      <div class="c-block">
+      <div class="sub" data-sub="world" hidden>
+        <h3>QUARTO</h3>
+        <div class="choice-grid" id="sceneChoices">
+          <button data-room="1" class="choice"><span class="sw" style="background:url(room_neon.jpg) center/cover"></span><b>Quarto Neon</b><small>estúdio noturno</small></button>
+          <button data-room="4" class="choice"><span class="sw" style="background:url(room_orbital.jpg) center/cover"></span><b>Estúdio Orbital</b><small>espaço</small></button>
+          <button data-room="2" class="choice"><span class="sw" style="background:url(room_lofi.jpg) center/cover"></span><b>Lo-fi</b><small>noite, aconchego</small></button>
+          <button data-room="3" class="choice"><span class="sw" style="background:url(room_lunar.jpg) center/cover"></span><b>Base Lunar</b><small>futuro</small></button>
+          <button data-room="0" class="choice"><span class="sw" style="background:url(room_sunset.jpg) center/cover"></span><b>Sunset Loft</b><small>pôr do sol, 70s</small></button>
+        </div>
+        <h3>CORES DA INTERFACE</h3>
+        <div class="choice-grid" id="paletteChoices"></div>
+      </div>
+      <div class="sub" data-sub="looks" hidden>
+        <h3>MEUS LOOKS</h3>
+        <p class="fine">Guarde combinações de peças, dança e cores. Ficam no seu Mac e valem em qualquer projeto.</p>
+        <div class="c-row"><button id="lookSave" class="btn btn-hot">SALVAR LOOK ATUAL</button><button id="lookDefault" class="btn" title="Volta ao visual inicial do alien">VISUAL INICIAL</button></div>
+        <div class="looks" id="lookList"></div>
+      </div>
+      <div class="sub" data-sub="game" hidden>
         <h3>JOGO</h3>
         <div class="c-row"><span>Camada de jogo</span><div class="seg seg-small" id="gameSeg"><button data-game="1">Ligada</button><button data-game="0">Modo PRO</button></div></div>
         <div class="reward" id="rewardBox"></div>
-        <div id="collectionGrid" class="collection-grid"></div>
+        <h3>DESAFIOS (OPCIONAIS)</h3>
+        <div id="challengeList" class="challenges"></div>
+        <p class="fine">XP só libera aparência: roupas, instrumentos visuais, knobs, cores, quartos e danças extras. Nenhum som, efeito ou controle fica bloqueado. Sem tarefas diárias, sem conta online.</p>
       </div>
     </div>
   </section>
@@ -250,7 +302,8 @@
 
   <div id="captureSheet" class="sheet" hidden>
     <div class="sheet-card wide">
-      <div class="panel-head"><h2>CAPTURAR ÁUDIO</h2><button class="btn btn-small" data-close>FECHAR</button></div>
+      <div class="panel-head"><h2>CAPTURAR ÁUDIO</h2><button class="btn btn-small" data-close id="capClose">FECHAR</button></div>
+      <ol class="cap-steps"><li>Fonte</li><li>Nível</li><li>Gravar</li><li>Revisar</li><li>Tocar no teclado</li></ol>
       <div id="capDirect" class="cap-block" hidden>
         <h3>ENTRADA DO APP</h3>
         <p class="fine">Escolha a entrada (microfone, interface, guitarra), confira o nível e grave. Ao parar, a gravação vira o sample, pronta pra tocar no teclado.</p>
@@ -289,6 +342,7 @@
 </div>
 <script src="bridge.js"></script>
 <script src="art.js"></script>
+<script src="alien.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

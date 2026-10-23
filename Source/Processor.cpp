@@ -123,6 +123,8 @@ juce::AudioProcessorValueTreeState::ParameterLayout RastroProcessor::layout()
     // Append-only, visual only (web interface): painted character and painted room choices.
     add("avatarCharacter", 0, 15, 0, 1);
     add("sceneRoom", 0, 7, 0, 1);
+    // Sound parameter, appended: 0 serial (legacy default), 1 parallel.
+    add("rackParallel", 0, 1, 0, 1);
     return l;
 }
 RastroProcessor::RastroProcessor(bool directCaptureForTests)
@@ -223,6 +225,7 @@ rastro::Settings RastroProcessor::settings() const
     for (int m = 0; m < rastro::moduleCount; ++m)
         p.enabled[m] = value(rastro::onIds[m]) > .5f && value(rastro::presentIds[m]) > .5f;
     int legacy = juce::jlimit(0, 5, (int)value("order"));
+    p.parallel = value("rackParallel") > .5f;
     auto permutation = rastro::decodeOrder((int)value("rackOrder"));
     for (int i = 0; i < rastro::moduleCount; ++i)
     {

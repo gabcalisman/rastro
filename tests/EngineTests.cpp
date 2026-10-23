@@ -3,6 +3,7 @@
 #include <iostream>
 #include <new>
 #include <stdexcept>
+#include <vector>
 static bool audio = false;
 void *operator new(std::size_t n)
 {
@@ -102,6 +103,59 @@ int main()
         }
         audio = false;
     }
+    // Serial vs parallel rack: parallel must sound different, stay bounded, and not depend on order.
+    {
+        const double sr = 48000;
+        rastro::Sample sample;
+        sample.rate = sr;
+        for (int c = 0; c < 2; ++c)
+        {
+            sample.data[c].resize((size_t)sr);
+            for (int i = 0; i < (int)sr; ++i)
+                sample.data[c][i] = .5f * std::sin(float(i * 220 * 6.283185307 / sr));
+        }
+        auto render = [&](bool parallel, rastro::Order order, std::vector<float> &out)
+        {
+            rastro::Engine engine;
+            engine.prepare(sr);
+            rastro::Settings s;
+            s.loop = 1;
+            s.level = 1;
+            s.parallel = parallel;
+            s.order = order;
+            s.enabled = {true, false, true, false, false, true}; // GHOST, BLOOM, CRUSH
+            s.ghost[3] = .8f;
+            s.bloom[3] = .8f;
+            s.crush[0] = .8f;
+            s.crush[1] = .8f;
+            engine.noteOn(60, 1, &sample, s);
+            out.resize(24000);
+            audio = true;
+            for (auto &v : out)
+            {
+                float l, r;
+                engine.frame(l, r, &sample, s);
+                check(std::isfinite(l) && std::abs(l) <= 1.5f, "rack bounded");
+                v = l;
+            }
+            audio = false;
+        };
+        std::vector<float> serialA, serialB, parallelA, parallelB;
+        render(false, {{0, 1, 2, 3, 4, 5}}, serialA);
+        render(false, {{5, 4, 3, 2, 1, 0}}, serialB);
+        render(true, {{0, 1, 2, 3, 4, 5}}, parallelA);
+        render(true, {{5, 4, 3, 2, 1, 0}}, parallelB);
+        double serialOrderDiff = 0, parallelOrderDiff = 0, topologyDiff = 0;
+        for (size_t i = 4800; i < serialA.size(); ++i)
+        {
+            serialOrderDiff += std::abs(serialA[i] - serialB[i]);
+            parallelOrderDiff += std::abs(parallelA[i] - parallelB[i]);
+            topologyDiff += std::abs(serialA[i] - parallelA[i]);
+        }
+        check(serialOrderDiff > 1, "serial order changes the sound");
+        check(parallelOrderDiff < 1e-3, "parallel does not depend on order");
+        check(topologyDiff > 1, "parallel differs from serial");
+    }
     std::cout << "PASS: sample playback, release, all effects, extreme trims, polyphony, 4 sample "
-                 "rates; no allocations in frame\n";
+                 "rates, serial/parallel rack; no allocations in frame\n";
 }

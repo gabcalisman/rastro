@@ -20,6 +20,7 @@ class EffectRack
     float smoothing = .001f;
     Settings sm;
     bool initialized = false;
+    bool activeParallel = false;
     Order activeOrder = defaultOrder;
     CharacterEffects character;
     float displayPeak = 0, peakRelease = .999f;
@@ -97,15 +98,20 @@ class EffectRack
         {
             sm = p;
             activeOrder = p.order;
+            activeParallel = p.parallel;
             for (int m = 0; m < moduleCount; ++m)
                 activation[m] = p.enabled[m] ? 1.f : 0.f;
             initialized = true;
         }
-        if (activeOrder != p.order)
+        if (activeOrder != p.order || activeParallel != p.parallel)
         {
+            // Topology changes fade out, switch, then fade back in (no clicks).
             topologyGain = std::max(0.f, topologyGain - float(1 / (sr * .005)));
             if (topologyGain == 0)
+            {
                 activeOrder = p.order;
+                activeParallel = p.parallel;
+            }
         }
         else
             topologyGain = std::min(1.f, topologyGain + float(1 / (sr * .005)));
@@ -200,10 +206,19 @@ class EffectRack
             smooth(activation[m], p.enabled[m] ? 1.f : 0.f);
         for (auto &v : activityPeaks)
             v *= peakRelease;
+        // Parallel: every module processes the dry input and the changes are summed, scaled so
+        // several active modules do not simply add up in level.
+        const bool par = activeParallel;
+        float activeCount = 0;
+        for (int m = 0; m < moduleCount; ++m)
+            activeCount += activation[m];
+        const float parallelNorm = 1.f / std::sqrt(std::max(1.f, activeCount));
+        float acc[2]{0, 0};
         for (int module : activeOrder)
             for (int c = 0; c < 2; ++c)
             {
-                float wet = x[c];
+                const float in = par ? original[c] : x[c];
+                float wet = in;
                 if (module == 0)
                 {
                     float read = write - delayTime;
@@ -216,18 +231,18 @@ class EffectRack
                         delay[c][a] + (read - a) * (delay[c][(a + 1) % delaySize] - delay[c][a]);
                     ghostTone[c] += (.02f + .7f * sm.ghost[2]) * (z - ghostTone[c]);
                     delay[c][write] = std::tanh(
-                        x[c] + ghostTone[c] * std::min(.88f, sm.ghost[1] * (.5f + sm.trail)));
+                        in + ghostTone[c] * std::min(.88f, sm.ghost[1] * (.5f + sm.trail)));
                     wet = ghostTone[c];
                 }
                 if (module == 1)
                 {
-                    grain[c][grainWrite] = x[c];
+                    grain[c][grainWrite] = in;
                     float w = .5f - .5f * std::cos(6.2831853f * (phase % fragmentLength) /
                                                    fragmentLength);
                     wet = grain[c][(fragment + phase % fragmentLength) % grainSize] * w;
                     if (clocked && !p.transportPlaying)
                     {
-                        wet = x[c];
+                        wet = in;
                         grainOutput[c] = wet;
                     }
                     else if (p.timingMode[1] > 0)
@@ -257,7 +272,7 @@ class EffectRack
                         float z = reverb[c][k][a] +
                                   (read - a) * (reverb[c][k][(a + 1) % len] - reverb[c][k][a]);
                         reverb[c][k][idx] =
-                            std::tanh(x[c] * .3f + z * std::min(.94f, .3f + .6f * sm.bloom[2] +
+                            std::tanh(in * .3f + z * std::min(.94f, .3f + .6f * sm.bloom[2] +
                                                                           .04f * sm.trail));
                         idx = (idx + 1) % len;
                         sum += z * .25f;
@@ -266,11 +281,11 @@ class EffectRack
                     wet = bloomTone[c];
                 }
                 if (module == 3)
-                    wet = character.wobble(x[c], c, depth);
+                    wet = character.wobble(in, c, depth);
                 if (module == 4)
-                    wet = character.dust(x[c], c, dustLevel, sm.dust[1]);
+                    wet = character.dust(in, c, dustLevel, sm.dust[1]);
                 if (module == 5)
-                    wet = character.crush(x[c], c, crushAmount);
+                    wet = character.crush(in, c, crushAmount);
                 const float mixes[]{sm.ghost[3],  sm.crumble[2], sm.bloom[3],
                                     sm.wobble[2], sm.dust[2],    sm.crush[1]};
                 float mix = mixes[module];
@@ -279,10 +294,17 @@ class EffectRack
                 // Bypass crossfades instead of abruptly switching the signal.
                 float &active = activation[module];
                 mix *= active;
+                const float delta = (wet - in) * mix;
                 activityPeaks[module] =
-                    std::max(activityPeaks[module], std::abs((wet - x[c]) * mix) * sm.drywet);
-                x[c] += (wet - x[c]) * mix;
+                    std::max(activityPeaks[module], std::abs(delta) * sm.drywet);
+                if (par)
+                    acc[c] += delta;
+                else
+                    x[c] += delta;
             }
+        if (par)
+            for (int c = 0; c < 2; ++c)
+                x[c] = original[c] + acc[c] * parallelNorm;
         character.finish();
         write = (write + 1) % delaySize;
         grainWrite = (grainWrite + 1) % grainSize;

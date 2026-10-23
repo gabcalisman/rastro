@@ -413,12 +413,12 @@
   function drawEnv() {
     const a = tPos(v("ampAttack"), 4, seg1), d = tPos(v("ampDecay"), 4, seg2), s = v("ampSustain"), r = tPos(v("ampRelease"), 8, seg4);
     const y0 = EH - 6, top = 8, sy = y0 - (y0 - top) * s, live = envLive();
-    const p1 = [4 + a, top], p2 = [p1[0] + d, sy], p3 = [p2[0] + hold, sy], p4 = [p3[0] + r, y0], col = live ? "#ffb340" : "rgba(255,255,255,.35)";
+    const p1 = [4 + a, top], p2 = [p1[0] + d, sy], p3 = [p2[0] + hold, sy], p4 = [p3[0] + r, y0], col = live ? "#ffb340" : "rgba(255,179,64,.55)";
     envSvg.innerHTML = '<defs><linearGradient id="envG" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffb340" stop-opacity=".35"/><stop offset="1" stop-color="#ffb340" stop-opacity="0"/></linearGradient></defs>' +
       '<path d="M4 ' + y0 + ' L' + p1 + ' L' + p2 + ' L' + p3 + ' L' + p4 + ' Z" fill="' + (live ? "url(#envG)" : "rgba(255,255,255,.05)") + '"/>' +
-      '<path d="M4 ' + y0 + ' L' + p1 + ' L' + p2 + ' L' + p3 + ' L' + p4 + '" fill="none" stroke="' + col + '" stroke-width="2.4" stroke-linejoin="round" vector-effect="non-scaling-stroke" style="filter:drop-shadow(0 0 3px ' + col + ')"/>' +
+      '<path d="M4 ' + y0 + ' L' + p1 + ' L' + p2 + ' L' + p3 + ' L' + p4 + '" fill="none" stroke="' + col + '" stroke-width="2.4" stroke-linejoin="round" vector-effect="non-scaling-stroke" style=""/>' +
       [["A", p1], ["D", p2], ["S", p3], ["R", p4]].map(function (q) { return '<circle data-h="' + q[0] + '" cx="' + q[1][0] + '" cy="' + q[1][1] + '" r="4" fill="' + col + '" stroke="#1a0b24" stroke-width="1.5" vector-effect="non-scaling-stroke"/>'; }).join("");
-    $("#envNote").textContent = live ? "" : "ADSR inativo: acenda o ponto (motor de synth) ou use o disparo GATE.";
+    $("#envNote").textContent = live ? "" : "Para o ADSR moldar o som, clique em LIGAR SYNTH (ou use o disparo GATE em MIDI / VOZ).";
     $$("#envKnobs .knob").forEach(function (kk) { kk.classList.toggle("disabled", !live); });
   }
   function setupEnv() {
@@ -429,6 +429,7 @@
     knob(k, "ampRelease", "R", { format: fmt.ms, curve: "log", size: 40, color: "#2fe0ff" });
     ["ampAttack", "ampDecay", "ampSustain", "ampRelease", "synthEnable", "triggerMode"].forEach(function (id) { watch(id, drawEnv); });
     bindToggle($("#synthBtn"), "synthEnable");
+    watch("synthEnable", function (x) { $("#synthLbl").textContent = x > .5 ? "SYNTH LIGADO" : "LIGAR SYNTH"; });
     let h = null; const ids = function () { return h === "A" ? ["ampAttack"] : h === "D" || h === "S" ? ["ampDecay", "ampSustain"] : ["ampRelease"]; };
     envSvg.addEventListener("pointerdown", function (e) { const t = e.target.getAttribute && e.target.getAttribute("data-h"); if (!t) return; h = t; envSvg.setPointerCapture(e.pointerId); ids().forEach(function (id) { R.call("setParam", id, null, 1); }); });
     envSvg.addEventListener("pointermove", function (e) {
@@ -442,14 +443,14 @@
     envSvg.addEventListener("pointerup", function () { if (!h) return; ids().forEach(function (id) { R.call("setParam", id, null, 2); tweaked(id); }); h = null; });
   }
   function drawFilter() {
-    const c = Math.log(Math.max(20, v("filterCutoff")) / 20) / Math.log(1000), q = v("filterResonance"), x = 8 + c * 210, live = v("synthEnable") > .5, col = live ? "#b06bff" : "rgba(255,255,255,.35)";
+    const c = Math.log(Math.max(20, v("filterCutoff")) / 20) / Math.log(1000), q = v("filterResonance"), x = 8 + c * 210, live = v("synthEnable") > .5, col = live ? "#b06bff" : "rgba(176,107,255,.6)";
     $("#filterSvg").innerHTML = '<path d="M0 12 H' + (x - 24) + ' C' + (x - 8) + ' 12 ' + (x - 6) + ' ' + (12 - q * 10) + ' ' + x + ' ' + (12 - q * 9) + ' S' + (x + 20) + ' 44 ' + (x + 36) + ' 46 L240 46 L0 46 Z" fill="' + (live ? "rgba(176,107,255,.18)" : "rgba(255,255,255,.04)") + '"/>' +
-      '<path d="M0 12 H' + (x - 24) + ' C' + (x - 8) + ' 12 ' + (x - 6) + ' ' + (12 - q * 10) + ' ' + x + ' ' + (12 - q * 9) + ' S' + (x + 20) + ' 44 ' + (x + 36) + ' 46" fill="none" stroke="' + col + '" stroke-width="2.6" vector-effect="non-scaling-stroke" style="filter:drop-shadow(0 0 3px ' + col + ')"/>';
+      '<path d="M0 12 H' + (x - 24) + ' C' + (x - 8) + ' 12 ' + (x - 6) + ' ' + (12 - q * 10) + ' ' + x + ' ' + (12 - q * 9) + ' S' + (x + 20) + ' 44 ' + (x + 36) + ' 46" fill="none" stroke="' + col + '" stroke-width="2.6" vector-effect="non-scaling-stroke" style=""/>';
   }
   function drawLfo() {
-    const live = v("synthEnable") > .5 && v("lfoDepth") > 0, cyc = clamp(v("lfoRate") / 2, .5, 6), dep = .2 + v("lfoDepth") * .8, col = live ? "#2fe0ff" : "rgba(255,255,255,.35)";
+    const live = v("synthEnable") > .5 && v("lfoDepth") > 0, cyc = clamp(v("lfoRate") / 2, .5, 6), dep = .2 + v("lfoDepth") * .8, col = live ? "#2fe0ff" : "rgba(47,224,255,.55)";
     let d = "M0 23"; for (let i = 0; i <= 120; i++) { const t = i / 120; d += " L" + (t * 240).toFixed(1) + " " + (23 - Math.sin(t * cyc * Math.PI * 2) * 18 * dep).toFixed(1); }
-    $("#lfoSvg").innerHTML = '<path d="' + d + '" fill="none" stroke="' + col + '" stroke-width="2.6" vector-effect="non-scaling-stroke" style="filter:drop-shadow(0 0 3px ' + col + ')"/>';
+    $("#lfoSvg").innerHTML = '<path d="' + d + '" fill="none" stroke="' + col + '" stroke-width="2.6" vector-effect="non-scaling-stroke" style=""/>';
   }
   function setupSynth() {
     const f = $("#filterKnobs");
@@ -867,7 +868,7 @@
   function miniPatch(vals, color) {
     const a = 4 + Math.min(1, Math.log(Math.max(vals[1], .001) / .001) / Math.log(4000)) * 60, d = Math.min(1, Math.log(Math.max(vals[2], .001) / .001) / Math.log(4000)) * 60, s = vals[3], r = Math.min(1, Math.log(Math.max(vals[4], .001) / .001) / Math.log(8000)) * 60;
     const y0 = 64, top = 8, sy = y0 - (y0 - top) * s, p1 = [a, top], p2 = [a + d, sy], p3 = [a + d + 40, sy], p4 = [a + d + 40 + r, y0];
-    return '<svg class="env" viewBox="0 0 240 70" preserveAspectRatio="none"><path d="M4 64 L' + p1 + ' L' + p2 + ' L' + p3 + ' L' + p4 + '" fill="none" stroke="' + color + '" stroke-width="2.4" vector-effect="non-scaling-stroke" style="filter:drop-shadow(0 0 3px ' + color + ')"/></svg>';
+    return '<svg class="env" viewBox="0 0 240 70" preserveAspectRatio="none"><path d="M4 64 L' + p1 + ' L' + p2 + ' L' + p3 + ' L' + p4 + '" fill="none" stroke="' + color + '" stroke-width="2.4" vector-effect="non-scaling-stroke" style=""/></svg>';
   }
   function renderLab(res) {
     labRes = res;
@@ -878,7 +879,7 @@
     $("#labBubble").textContent = "Escolha uma e compare!";
     res.results.forEach(function (r, i) {
       const col = LABC[i % 6], x = (i % 3) * 200 + 100;
-      if (i < 3) tree.insertAdjacentHTML("beforeend", '<path d="M300 0 C300 30 ' + x + ' 20 ' + x + ' 56" stroke="' + col + '" style="filter:drop-shadow(0 0 3px ' + col + ')"/>');
+      if (i < 3) tree.insertAdjacentHTML("beforeend", '<path d="M300 0 C300 30 ' + x + ' 20 ' + x + ' 56" stroke="' + col + '" style=""/>');
       const b = document.createElement("button"); b.className = "lab-card" + (labPicked === i ? " on" : ""); b.style.setProperty("--lc", col);
       b.innerHTML = "<b>" + LABN[i % 6] + "</b><div class='art' style='" + artFor(LABN[i % 6] + i) + "'></div>" + miniPatch(r.values, col) + "<small>distância " + r.distance.toFixed(3) + (r.values[0] > .5 ? " · synth" : "") + "</small>";
       b.addEventListener("click", function () {
@@ -906,6 +907,7 @@
   let capOpen = false, capTimer = 0;
   const CAPSTATE = ["pronto", "gravando", "salvando", "pronto", "exportando", "iniciando"];
   $("#captureBtn").addEventListener("click", function () { setScreen("captura"); });
+  $("#captureHead").addEventListener("click", function () { setScreen("captura"); });
   function openCapture() {
     $("#captureSheet").hidden = false; capOpen = true;
     R.call("captureInfo").then(function (info) { info = info || {}; $("#capDirect").hidden = !info.direct; $("#capSettings").hidden = !info.canOpenSettings; });
@@ -1009,6 +1011,9 @@
     sc.strips = q(".stripG"); sc.bars = q(".barG"); sc.dots = q(".dotG"); sc.ringEls = q("#platRings ellipse");
     ["platRings", "platPool", "cones", "coneA", "coneB", "gGlow0", "gGlow1", "gCone0", "gCone1", "gCone2", "bokeh", "charRefl"].forEach(function (id) { sc[id] = charSvg.getElementById(id); });
     sc.planet = $(".planetG", charSvg); sc.lava = $(".lavaG", charSvg);
+    const img = sc.world.querySelector("image");
+    if (img) { sc.roomBg = document.createElement("div"); sc.roomBg.className = "room-bg"; sc.roomBg.style.backgroundImage = "url(" + img.getAttribute("href") + ")"; $("#stageArt").insertBefore(sc.roomBg, charSvg); img.remove(); }
+    sc.worldT = "";
     sc.bk = [];
     for (let i = 0; i < 16; i++) {
       const c = document.createElementNS(NS, "circle"), r = 3 + Math.random() * 9;
@@ -1027,51 +1032,65 @@
     const S = ART.stage, yTop = 150, yBot = 805;
     let s = (visH - bottomPad - topPad) / (yBot - yTop);
     s = Math.max(s, visW / (S.w - 60), visH / (S.h - 40));
-    const life = 1 + .006 * groove * onBeat * react * amp + jamBurst * .01; // the room stays still: no drifting painting
+    const life = 1; // the room stays still: the camera only changes with the window size or the tab
     s *= 1.03 * life;
     let tx = 240 - S.feet[0] * s;
     let ty = vy0 + topPad - yTop * s;
     if (scr === "locker") {
       // fitting room: the character stands between the side panels, about 450 px tall on screen, feet near y 640
       // ESTÚDIO: the character stands in the left frame (centre x 361 px), about 620 px tall, feet near y 850
-      s = Math.max(620 / (520 * k), visW / (S.w - 60), visH / (S.h - 40)) * life;
-      tx = 240 + (361 - 720) / k - S.feet[0] * s; ty = vy0 + 850 / k - S.feet[1] * s;
+      // whole painting must fit inside the frame, to the right of the RASTRO card (x 290..700 on screen)
+      s = Math.max(470 / (520 * k), visW / (S.w - 60), visH / (S.h - 40)) * life;
+      tx = 240 + (468 - 720) / k - S.feet[0] * s; ty = vy0 + 850 / k - S.feet[1] * s;
     }
     tx = Math.min(vx0, Math.max(vx0 + visW - S.w * s, tx)); ty = Math.min(vy0, Math.max(vy0 + visH - S.h * s, ty));
     cam = { tx: tx, ty: ty, s: s, vx0: vx0, vy0: vy0, visW: visW, visH: visH };
     return cam;
   }
+  // attribute writes that skip unchanged values (each write inside the SVG forces a repaint)
+  function A(el, k, val) { if (!el) return; const c = el.__a || (el.__a = {}); val = String(val); if (c[k] !== val) { c[k] = val; el.setAttribute(k, val); } }
   function stepWorld(now, dt, o) {
     const g = o.glow, react = o.react, beat = o.beat, onBeat = o.onBeat, groove = o.groove, e = o.energy, alive = o.alive;
-    const C = cam; sc.world.setAttribute("transform", "translate(" + C.tx.toFixed(2) + " " + C.ty.toFixed(2) + ") scale(" + C.s.toFixed(4) + ")");
+    const C = cam, wt = "translate(" + C.tx.toFixed(2) + " " + C.ty.toFixed(2) + ") scale(" + C.s.toFixed(4) + ")";
+    if (sc.worldT !== wt) {
+      sc.worldT = wt; sc.world.setAttribute("transform", wt);
+      // the painted room is a separate, GPU-composited picture: it is painted once, never on every light change
+      if (sc.roomBg) {
+        const st = $("#stage"), W = st.clientWidth, H = st.clientHeight, k = Math.max(W / 480, H / 452), ox = (W - 480 * k) / 2, oy = (H - 452 * k) / 2;
+        sc.roomBg.style.width = (k * C.s * ART.stage.w).toFixed(1) + "px"; sc.roomBg.style.height = (k * C.s * ART.stage.h).toFixed(1) + "px";
+        sc.roomBg.style.transform = "translate3d(" + (ox + k * C.tx).toFixed(1) + "px," + (oy + k * C.ty).toFixed(1) + "px,0)";
+      }
+    }
+    const setAttribute = 0; // (use A() below: it skips values that did not change)
+    void setAttribute;
     // colour of the stage lights = the sound's glow colour
-    sc.gGlow0.setAttribute("stop-color", g); sc.gGlow1.setAttribute("stop-color", g);
-    sc.gCone1.setAttribute("stop-color", g); sc.gCone2.setAttribute("stop-color", g);
-    sc.platRings.setAttribute("stroke", g);
+    A(sc.gGlow0, "stop-color", g); A(sc.gGlow1, "stop-color", g);
+    A(sc.gCone1, "stop-color", g); A(sc.gCone2, "stop-color", g);
+    A(sc.platRings, "stroke", g);
     // platform: rings chase around with the beat, pool of light under the feet follows the envelope
     const chase = beat * 86;
-    sc.ringEls.forEach(function (r, i) { if (i === 0) r.setAttribute("stroke-dashoffset", (-chase).toFixed(1)); if (i === 2) r.setAttribute("stroke-dashoffset", (chase * .7).toFixed(1)); r.setAttribute("opacity", (i % 2 ? .45 + onBeat * groove * .5 : .7).toFixed(2)); });
-    sc.platRings.setAttribute("opacity", ((.18 + e * .55 + o.env * .25) * react).toFixed(2));
-    sc.platPool.setAttribute("opacity", ((.12 + o.env * .5 + onBeat * groove * .25) * react).toFixed(2));
-    sc.cones.setAttribute("opacity", ((e * .7 + o.bloom * .3) * react).toFixed(2));
+    sc.ringEls.forEach(function (r, i) { if (i === 0) A(r, "stroke-dashoffset", (-chase).toFixed(1)); if (i === 2) A(r, "stroke-dashoffset", (chase * .7).toFixed(1)); A(r, "opacity", (i % 2 ? .45 + onBeat * groove * .5 : .7).toFixed(2)); });
+    A(sc.platRings, "opacity", ((.18 + e * .55 + o.env * .25) * react).toFixed(2));
+    A(sc.platPool, "opacity", ((.12 + o.env * .5 + onBeat * groove * .25) * react).toFixed(2));
+    A(sc.cones, "opacity", ((e * .7 + o.bloom * .3) * react).toFixed(2));
     const sw = Math.sin(beat * Math.PI * .5) * 7 * groove;
-    sc.coneA.setAttribute("transform", "rotate(" + (-6 + sw).toFixed(2) + " 590 -20)"); sc.coneB.setAttribute("transform", "rotate(" + (5 - sw).toFixed(2) + " 1080 -20)");
+    A(sc.coneA, "transform", "rotate(" + (-6 + sw).toFixed(2) + " 590 -20)"); A(sc.coneB, "transform", "rotate(" + (5 - sw).toFixed(2) + " 1080 -20)");
     // front light bars pulse on the beat; side dots chase
-    sc.bars.forEach(function (b) { b.setAttribute("fill", b.dataset.k === "c" ? mixHex("#2fe0ff", g, .4) : mixHex("#ffb340", g, .25)); b.setAttribute("opacity", ((.1 + onBeat * groove * .55 + o.env * .25) * react).toFixed(2)); });
+    sc.bars.forEach(function (b) { A(b, "fill", b.dataset.k === "c" ? mixHex("#2fe0ff", g, .4) : mixHex("#ffb340", g, .25)); A(b, "opacity", ((.1 + onBeat * groove * .55 + o.env * .25) * react).toFixed(2)); });
     const step = Math.floor(beat * 2) % 3;
-    sc.dots.forEach(function (d, i) { d.setAttribute("opacity", (((i % 3) === step ? .2 + groove * .6 : .05) * react).toFixed(2)); });
+    sc.dots.forEach(function (d, i) { A(d, "opacity", (((i % 3) === step ? .2 + groove * .6 : .05) * react).toFixed(2)); });
     // room lights: lamps breathe and flicker a little, the lava lamp follows the LFO, speakers kick
-    sc.lampGs.forEach(function (l, i) { if (Math.random() < .004) l.fl = 1; l.fl *= Math.exp(-dt * 9); l.el.setAttribute("opacity", ((.16 + .06 * Math.sin(now / 900 + l.ph) + o.cut * .18 + e * .2 + (i % 2 ? onBeat : 0) * groove * .18 - l.fl * .12) * react).toFixed(2)); });
-    if (sc.lava) sc.lava.setAttribute("opacity", ((.25 + Math.abs(o.lfo) * .55 + o.res * .2) * react).toFixed(2));
-    if (sc.planet) sc.planet.setAttribute("opacity", ((.12 + o.bloom * .5 + .08 * Math.sin(now / 1700)) * react).toFixed(2));
-    sc.strips.forEach(function (p, i) { p.setAttribute("opacity", ((.06 + o.res * .4 * (.5 + .5 * Math.sin(now / 70 + i)) + groove * .14 + (i === step ? onBeat * groove * .2 : 0)) * react).toFixed(2)); });
-    sc.spk.forEach(function (c) { const cx = c.getAttribute("cx"), cy = c.getAttribute("cy"); c.setAttribute("opacity", ((e * .6 + onBeat * groove * .5) * react).toFixed(2)); c.setAttribute("transform", "translate(" + cx + " " + cy + ") scale(" + (.75 + e * .35 + onBeat * groove * .35).toFixed(2) + ") translate(" + (-cx) + " " + (-cy) + ")"); });
-    sc.twk.forEach(function (t) { t.ph += dt * t.sp; const on = .5 + .5 * Math.sin(t.ph * 2.3 + t.on * 6); t.el.setAttribute("opacity", ((.08 + on * on * .55 * (.35 + .65 * alive)) * Math.min(1, react)).toFixed(2)); });
+    sc.lampGs.forEach(function (l, i) { if (Math.random() < .004) l.fl = 1; l.fl *= Math.exp(-dt * 9); A(l.el, "opacity", ((.16 + .06 * Math.sin(now / 900 + l.ph) + o.cut * .18 + e * .2 + (i % 2 ? onBeat : 0) * groove * .18 - l.fl * .12) * react).toFixed(2)); });
+    if (sc.lava) A(sc.lava, "opacity", ((.25 + Math.abs(o.lfo) * .55 + o.res * .2) * react).toFixed(2));
+    if (sc.planet) A(sc.planet, "opacity", ((.12 + o.bloom * .5 + .08 * Math.sin(now / 1700)) * react).toFixed(2));
+    sc.strips.forEach(function (p, i) { A(p, "opacity", ((.06 + o.res * .4 * (.5 + .5 * Math.sin(now / 70 + i)) + groove * .14 + (i === step ? onBeat * groove * .2 : 0)) * react).toFixed(2)); });
+    sc.spk.forEach(function (c) { const cx = c.getAttribute("cx"), cy = c.getAttribute("cy"); A(c, "opacity", ((e * .6 + onBeat * groove * .5) * react).toFixed(2)); A(c, "transform", "translate(" + cx + " " + cy + ") scale(" + (.75 + e * .35 + onBeat * groove * .35).toFixed(2) + ") translate(" + (-cx) + " " + (-cy) + ")"); });
+    sc.twk.forEach(function (t) { t.ph += dt * t.sp; const on = .5 + .5 * Math.sin(t.ph * 2.3 + t.on * 6); A(t.el, "opacity", ((.08 + on * on * .55 * (.35 + .65 * alive)) * Math.min(1, react)).toFixed(2)); });
     // bokeh in front of the scene: drifts up, moves faster than the room when the mouse moves (depth)
     sc.bk.forEach(function (b) {
       b.y += b.vy * dt * b.z; b.ph += dt; if (b.y < -20) { b.y = 470; b.x = Math.random() * 520 - 20; }
-      b.el.setAttribute("cx", (b.x - mx * 40 * b.z).toFixed(1)); b.el.setAttribute("cy", (b.y - my * 14 * b.z).toFixed(1));
-      b.el.setAttribute("opacity", (b.a * (.3 + .7 * e) * (.6 + .4 * Math.sin(b.ph * 1.3)) * react).toFixed(3));
+      A(b.el, "cx", (b.x - mx * 40 * b.z).toFixed(1)); A(b.el, "cy", (b.y - my * 14 * b.z).toFixed(1));
+      A(b.el, "opacity", (b.a * (.3 + .7 * e) * (.6 + .4 * Math.sin(b.ph * 1.3)) * react).toFixed(3));
     });
   }
   function buildCharacter() {
@@ -1101,7 +1120,7 @@
     b.innerHTML = ""; f.innerHTML = ""; fx.ghosts = []; fx.shards = []; fx.dust = []; fx.pix = []; fx.hist = [];
     const g = document.createElementNS(NS, "g"); g.innerHTML =
       '<defs><radialGradient id="bloomG"><stop offset="0" stop-color="#ff4fd8" stop-opacity=".75"/><stop offset=".55" stop-color="#ff4fd8" stop-opacity=".25"/><stop offset="1" stop-color="#ff4fd8" stop-opacity="0"/></radialGradient></defs>' +
-      '<g id="bloomFx" opacity="0"><ellipse rx="150" ry="170" fill="url(#bloomG)"/>' + Array.from({ length: 7 }, function (_, i) { const a = -90 + (i - 3) * 26; return '<path transform="rotate(' + a + ')" d="M0 0 C-26 -50 -20 -120 0 -150 C20 -120 26 -50 0 0Z" fill="none" stroke="#ff4fd8" stroke-width="3" opacity=".8" style="filter:drop-shadow(0 0 6px #ff4fd8)"/>'; }).join("") + '</g>';
+      '<g id="bloomFx" opacity="0"><ellipse rx="150" ry="170" fill="url(#bloomG)"/>' + Array.from({ length: 7 }, function (_, i) { const a = -90 + (i - 3) * 26; return '<path transform="rotate(' + a + ')" d="M0 0 C-26 -50 -20 -120 0 -150 C20 -120 26 -50 0 0Z" fill="none" stroke="#ff4fd8" stroke-width="3" opacity=".8" style=""/>'; }).join("") + '</g>';
     b.appendChild(g); fx.bloom = g.querySelector("#bloomFx");
     // ghost afterimages = violet silhouettes of the puppet (reuse its glow mask: cheap, no filter)
     if (puppet) for (let i = 0; i < 4; i++) {
@@ -1126,7 +1145,7 @@
       const t = document.createElementNS(NS, "text");
       t.textContent = glyphs[(Math.random() * glyphs.length) | 0];
       t.setAttribute("x", x + (Math.random() - .5) * 60 * ks); t.setAttribute("y", y); t.setAttribute("font-size", (12 + vel * 14) * ks);
-      t.setAttribute("fill", ["#ffd27a", "#ff4fd8", "#2fe0ff", "#b06bff"][(Math.random() * 4) | 0]); t.setAttribute("font-weight", "700"); t.setAttribute("style", "filter:drop-shadow(0 0 4px currentColor)");
+      t.setAttribute("fill", ["#ffd27a", "#ff4fd8", "#2fe0ff", "#b06bff"][(Math.random() * 4) | 0]); t.setAttribute("font-weight", "700"); t.setAttribute("style", "");
       g.appendChild(t);
       const dx = (Math.random() - .5) * 140 * ks, dy = (-80 - Math.random() * 90) * ks, rot = (Math.random() - .5) * 80;
       if (t.animate) t.animate([{ transform: "translate(0,0) rotate(0deg)", opacity: 1 }, { transform: "translate(" + dx + "px," + dy + "px) rotate(" + rot + "deg)", opacity: 0 }], { duration: 1000 + Math.random() * 500, easing: "cubic-bezier(.2,.7,.3,1)" }).onfinish = function () { t.remove(); };
@@ -1139,17 +1158,17 @@
     // CRUMBLE: amber shards breaking off the outline
     if (crumble > .03 && Math.random() < crumble * 9 * dt * k) spawn(fx.shards, 40, function () {
       const p = document.createElementNS(NS, "path"), a = Math.random() * Math.PI * 2, r = sz * (.25 + Math.random() * .2);
-      p.setAttribute("d", "M0 -" + (4 + Math.random() * 6) + " L" + (3 + Math.random() * 5) + " 4 L-" + (3 + Math.random() * 4) + " 3Z"); p.setAttribute("fill", Math.random() < .5 ? "#ffa02e" : "#ffd27a"); p.setAttribute("style", "filter:drop-shadow(0 0 3px #ffa02e)");
+      p.setAttribute("d", "M0 -" + (4 + Math.random() * 6) + " L" + (3 + Math.random() * 5) + " 4 L-" + (3 + Math.random() * 4) + " 3Z"); p.setAttribute("fill", Math.random() < .5 ? "#ffa02e" : "#ffd27a"); p.setAttribute("style", "");
       f.appendChild(p); return { el: p, x: cx + Math.cos(a) * r * .6, y: cy + Math.sin(a) * r, vx: Math.cos(a) * 40, vy: Math.sin(a) * 30 - 10, rot: Math.random() * 360, vr: (Math.random() - .5) * 400, life: .8 + Math.random() * .7 };
     });
     // DUST: golden particles drifting
     if (dust > .03 && Math.random() < dust * 22 * dt * k) spawn(fx.dust, 70, function () {
-      const c = document.createElementNS(NS, "circle"); c.setAttribute("r", (Math.random() * 1.6 + .5).toFixed(1)); c.setAttribute("fill", Math.random() < .6 ? "#ffd27a" : "#ffa02e"); c.setAttribute("style", "filter:drop-shadow(0 0 2px #ffd23f)");
+      const c = document.createElementNS(NS, "circle"); c.setAttribute("r", (Math.random() * 1.6 + .5).toFixed(1)); c.setAttribute("fill", Math.random() < .6 ? "#ffd27a" : "#ffa02e"); c.setAttribute("style", "");
       f.appendChild(c); return { el: c, x: cx + (Math.random() - .5) * sz * .9, y: cy + (Math.random() - .6) * sz, vx: (Math.random() - .5) * 14, vy: -6 - Math.random() * 16, rot: 0, vr: 0, life: 1.5 + Math.random() * 1.5 };
     });
     // CRUSH: purple pixel blocks blinking around the body
     if (crush > .03 && Math.random() < crush * 14 * dt * k) spawn(fx.pix, 36, function () {
-      const r = document.createElementNS(NS, "rect"), s = 4 + Math.round(Math.random() * 3) * 3; r.setAttribute("width", s); r.setAttribute("height", s); r.setAttribute("fill", Math.random() < .5 ? "#8a4dff" : "#c79bff"); r.setAttribute("style", "filter:drop-shadow(0 0 3px #8a4dff)");
+      const r = document.createElementNS(NS, "rect"), s = 4 + Math.round(Math.random() * 3) * 3; r.setAttribute("width", s); r.setAttribute("height", s); r.setAttribute("fill", Math.random() < .5 ? "#8a4dff" : "#c79bff"); r.setAttribute("style", "");
       f.appendChild(r); const x = cx + (Math.random() < .5 ? -1 : 1) * sz * (.2 + Math.random() * .3); return { el: r, x: Math.round(x / 4) * 4, y: Math.round((cy + (Math.random() - .5) * sz) / 4) * 4, vx: 0, vy: 0, rot: 0, vr: 0, life: .25 + Math.random() * .5, pix: true };
     });
     [fx.shards, fx.dust, fx.pix].forEach(function (list) {
@@ -1290,7 +1309,7 @@
   const LK_CATS = [["hair", "Hair", "face", "em breve"], ["headwear", "Headwear", "hat", "em breve"], ["eyewear", "Eyes", "glasses", "em breve"], ["audio", "Audio", "phones", "em breve"],
     ["looks", "Outfit", "jacket", "visual completo"], ["inst", "Instruments", "guitar", "pose e gestos"], ["knobs", "Knobs", "knob", "todos os knobs reais"], ["palettes", "Palette", "palette", "cores da interface"],
     ["stage", "Stage", "room", "onde ele toca"], ["dance", "Dança", "dance", "estilos e tempo"], ["glow", "Brilho", "glow", "cor da luz"], ["react", "Reatividade", "spark", "intensidade visual"],
-    ["guests", "Convidados", "face", "outros personagens"], ["saved", "Meus looks", "look", "salvos"], ["challenges", "Desafios", "star", "XP opcional"]];
+    ["saved", "Meus looks", "look", "salvos"], ["challenges", "Desafios", "star", "XP opcional"]];
   const OUTFIT_ART = { keytar: "it_o_varsity", guitar: "it_o_utility", bass: "it_o_disco", pads: "it_o_holo" };
   const INST_ART = { keytar: "it_keytar", guitar: "it_guitar", bass: "it_bass", pads: "it_pads" };
   const INST_NAME = { keytar: "Keytar", guitar: "Guitarra estrela", bass: "Baixo", pads: "Controlador", none: "Sem instrumento" };
@@ -1374,7 +1393,7 @@
           click: function () { gesture("sceneRoom", i); setTimeout(renderLocker, 50); } }));
       });
     } else if (lkCat === "looks") {
-      $("#slotNote").textContent = "nesta fase a roupa vem com a pose pintada";
+      $("#slotNote").textContent = "na arte pintada, roupa e instrumento vêm juntos (separados no 3D)";
       Object.keys(PUP.LOOKS).forEach(function (k) {
         const L = PUP.LOOKS[k], locked = L.level > game.state.level;
         grid.appendChild(itemCard({ thumb: lookThumb(k), name: L.name.split(" · ")[0], note: locked ? lockedNote(L.level) : look.pose === k ? "equipado" : "liberado", worn: look.pose === k && charKind === "alien", locked: locked,
@@ -1382,7 +1401,7 @@
       });
       SOON.looks.forEach(function (it) { grid.appendChild(soonCard(it[0], it[1])); });
     } else if (lkCat === "inst") {
-      $("#slotNote").textContent = "cada instrumento tem pose e gestos próprios"; renderInst(grid);
+      $("#slotNote").textContent = "na arte pintada, instrumento e roupa vêm juntos (separados no 3D)"; renderInst(grid);
     } else if (lkCat === "dance") {
       AL.DANCES.forEach(function (d) {
         const locked = d.level > game.state.level;
@@ -1570,7 +1589,14 @@
   }
   let placeKey = "", placeVal = { y: 400, s: .5 };
   function charPlace() {
-    if (sc.world) return { x: ART.stage.feet[0], y: ART.stage.feet[1] + 2, s: 520 / 700, world: true };
+    if (sc.world) {
+      // ESTÚDIO: stand in the free part of the frame (screen x ≈ 468), whatever the camera clamp did
+      if (screen() === "locker" && cam && cam.visW) {
+        const st = $("#stage"), k = Math.max(st.clientWidth / 480, st.clientHeight / 452);
+        return { x: (cam.vx0 + 468 / k - cam.tx) / cam.s, y: ART.stage.feet[1] + 2, s: 520 / 700, world: true };
+      }
+      return { x: ART.stage.feet[0], y: ART.stage.feet[1] + 2, s: 520 / 700, world: true };
+    }
     const st = $("#stage"), W = st.clientWidth, H = st.clientHeight, key = W + "x" + H;
     if (key === placeKey || !W || !H) return placeVal;
     const k = Math.max(W / 480, H / 452), visH = H / k, bottom = 226 + visH / 2;
@@ -1578,9 +1604,14 @@
     placeKey = key; placeVal = { y: bottom - (palco ? 118 : 14) / k - 4, s: clamp(visH * (palco ? .66 : .8) / 700, .25, .62) };
     return placeVal;
   }
+  let lastDraw = 0;
   function frame(now) {
-    const dt = Math.min(.05, (now - lastFrame) / 1000); lastFrame = now;
     if (document.hidden) { requestAnimationFrame(frame); return; } // nothing to draw while the window is hidden
+    // Light frame budget: Reduced animation draws at 30 fps; with no sound and no new note, 20 fps is plenty.
+    const idleNow = motion.alive < .01 && T.serial === lastSerial && !T.preview && !T.playing;
+    if ((animMode === 1 || idleNow) && now - lastDraw < (idleNow ? 48 : 31)) { requestAnimationFrame(frame); return; }
+    lastDraw = now;
+    const dt = Math.min(.05, (now - lastFrame) / 1000); lastFrame = now;
     const react = look.react;
     const amp = (animMode === 2 ? 1 : animMode === 1 ? .5 : 0) * Math.min(1, react);
     const ease = function (rate) { return 1 - Math.exp(-rate * dt); };

@@ -12,6 +12,7 @@ class CharacterEffects
     std::array<std::vector<float>, 2> tape;
     std::array<float, 2> noiseLow{}, noiseDC{}, noisePrevious{}, crackles{}, held{}, crushOutput{};
     double sr = 44100, phase = 0, flutter = 0, crushPhase = 0;
+    float width = 0;
     float follower = 0, attack = .01f, release = .001f, slew = .2f;
     int write = 0;
     std::uint32_t seed = 0x52415354;
@@ -24,7 +25,7 @@ class CharacterEffects
     }
 
   public:
-    float movement = 0, dustActivity = 0, crushActivity = 0, envelope = 0;
+    float movement = 0, movementRight = 0, dustActivity = 0, crushActivity = 0, envelope = 0;
     void prepare(double sampleRate)
     {
         sr = sampleRate;
@@ -47,7 +48,7 @@ class CharacterEffects
         crushOutput = {};
         phase = flutter = crushPhase = 0;
         write = 0;
-        follower = movement = dustActivity = crushActivity = envelope = 0;
+        follower = movement = movementRight = dustActivity = crushActivity = envelope = 0;
         seed = 0x52415354;
     }
     void advance(float sourcePeak, float rate, double reference = -1, bool running = true)
@@ -68,13 +69,19 @@ class CharacterEffects
         flutter -= std::floor(flutter);
         movement =
             float(.84 * std::sin(phase * 6.283185307) + .16 * std::sin(flutter * 6.283185307));
+        // WOBBLE width: the right channel's sweep runs up to a quarter cycle apart (stereo chorus).
+        movementRight = width <= 0 ? movement
+                                   : float(.84 * std::sin((phase + .25 * width) * 6.283185307) +
+                                           .16 * std::sin((flutter + .37 * width) * 6.283185307));
         dustActivity = crushActivity = 0;
     }
+    void setWidth(float w) { width = std::clamp(w, 0.f, 1.f); }
     float wobble(float input, int c, float depth)
     {
+        const float move = c == 0 ? movement : movementRight;
         const int n = (int)tape[c].size();
         tape[c][write] = input;
-        float delay = float(sr) * (.008f + .005f * depth * movement);
+        float delay = float(sr) * (.008f + .005f * depth * move);
         float read = write - delay;
         if (read < 0)
             read += n;

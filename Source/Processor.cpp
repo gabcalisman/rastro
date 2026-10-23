@@ -131,6 +131,10 @@ juce::AudioProcessorValueTreeState::ParameterLayout RastroProcessor::layout()
     add("sceneRoom", 0, 7, 5, 1);        // 5 = Estúdio Palco (round platform, living lights)
     // Sound parameter, appended: 0 serial (legacy default), 1 parallel.
     add("rackParallel", 0, 1, 0, 1);
+    // Sound parameters, appended (23/10/2026). States saved before them restore 0, which is
+    // bit-identical to the old BLOOM and WOBBLE, so old sessions keep their exact sound.
+    add("bDiffusion", 0, 1, .6f); // BLOOM: smears the echoes into a smooth tail
+    add("wWidth", 0, 1, .5f);     // WOBBLE: left/right move apart, chorus opens in stereo
     return l;
 }
 RastroProcessor::RastroProcessor(bool directCaptureForTests)
@@ -232,6 +236,8 @@ rastro::Settings RastroProcessor::settings() const
         p.enabled[m] = value(rastro::onIds[m]) > .5f && value(rastro::presentIds[m]) > .5f;
     int legacy = juce::jlimit(0, 5, (int)value("order"));
     p.parallel = value("rackParallel") > .5f;
+    p.bloomDiffusion = value("bDiffusion");
+    p.wobbleWidth = value("wWidth");
     auto permutation = rastro::decodeOrder((int)value("rackOrder"));
     for (int i = 0; i < rastro::moduleCount; ++i)
     {
@@ -785,7 +791,7 @@ bool RastroProcessor::restoreState(const void *data, int n)
                 // parameter keeps the behaviour it had when it was saved.
                 if (id == "gOn" || id == "cOn" || id == "bOn")
                     v = 1;
-                if (id == "colourSet")
+                if (id == "colourSet" || id == "bDiffusion" || id == "wWidth")
                     v = 0;
                 node.setProperty("value", v, nullptr);
                 tree.addChild(node, -1, nullptr);

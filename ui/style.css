@@ -679,3 +679,8 @@ body[data-lkm="mix"] .lk-mix { display: flex; }
 .ch.done { opacity: .55; }
 .lab-mascot svg { right: 0; top: 40px; overflow: hidden; }
 .lab-mascot .bubble { z-index: 1; }
+.fx-kind { font: 600 12px var(--f-ui); letter-spacing: .6px; color: var(--muted); text-shadow: none; }
+.rack.tiles .mod-sub { display: block; font-size: 10px; letter-spacing: .4px; text-align: center; margin-top: 2px; }
+#macroPanel .knob-grid { gap: 2px 4px; }
+#macroPanel .dice-row .chip-btn { padding: 0 4px; font-size: 9.5px; white-space: nowrap; }
+#macroPanel .dice-row { margin-top: 6px; }

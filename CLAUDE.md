@@ -139,3 +139,11 @@ Separe: o que já existia; o que mudou; o que ficou incompleto; testes que passa
 - **ESTÚDIO** no estilo das referências: moldura com o personagem à esquerda (cartão RASTRO com o resumo do look), à direita **WARDROBE** (looks completos em cartões) e **MIX & MATCH** (categorias + itens). Knobs, paletas, instrumentos, cenário e desafios ficam dentro do MIX & MATCH.
 - 9 roupas novas da folha do Gab (`ui/al_o_*.png`) são visuais completos de verdade (sem instrumento, mão apontando). Cabelo, chapéu, olhos e áudio continuam **EM BREVE** (as folhas novas viram miniaturas, mas o corpo ainda não está em camadas).
 - Expressão: olhos brilham a cada nota (intensidade = velocity) e a boca se abre em acentos fortes.
+
+## Auditoria do rack (23/10/2026) — nomes e melhorias
+
+- Equivalências (o nome RASTRO fica, o subtítulo explica): **GHOST · Delay/Echo**, **CRUMBLE · Stutter/Granular**, **BLOOM · Reverb**, **WOBBLE · Chorus/Vibrato** (wow de fita), **DUST · Noise/Vinil**, **CRUSH · Bitcrusher**. Não duplicar esses efeitos.
+- Não existem: saturação de **Tape**, **Flanger**, **COMP**, **EQ**.
+- Novos parâmetros de som (anexados): `bDiffusion` (BLOOM, difusão por dois allpass, padrão 0,6) e `wWidth` (WOBBLE, defasagem L/R, padrão 0,5). Sessões antigas restauram 0 = som idêntico ao anterior.
+- Testes novos (suíte dsp): cada controle de cada módulo muda o som; bypass e Mix 0 saem idênticos ao seco; o bypass faz fade (o teste falha se o fade for removido); largura 0 fica mono e largura alta abre o estéreo.
+- A antiga macro "JAM %" virou **VARIAÇÃO** (mesmo parâmetro `mutation`).

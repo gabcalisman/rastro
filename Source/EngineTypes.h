@@ -77,6 +77,7 @@ struct Settings
     std::array<bool, moduleCount> enabled{{true, true, true, true, true, true}};
     Order order = defaultOrder;
     bool parallel = false; // false: modules in series (legacy); true: each module hears the dry input
+    float bloomDiffusion = 0, wobbleWidth = 0; // 0 = exact legacy sound
     int mode = 0, sliceCount = 8, pitchMode = 0; // 0 REPITCH, 1 FIXED PITCH
     std::array<float, 17> cuts{
         {0, .125f, .25f, .375f, .5f, .625f, .75f, .875f, 1, 1, 1, 1, 1, 1, 1, 1, 1}};

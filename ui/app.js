@@ -509,7 +509,7 @@
     const m = $("#macroKnobs");
     knob(m, "presence", "PRESENÇA", { size: 50, color: "#ffb340" });
     knob(m, "trail", "RASTRO", { size: 50, color: "#ff4fd8" });
-    knob(m, "mutation", "JAM %", { size: 50, color: "#2fe0ff", title: "Quanto o JAM varia" });
+    knob(m, "mutation", "VARIAÇÃO", { size: 50, color: "#2fe0ff", title: "Quanto o VARIAR FX muda os efeitos; também deixa o CRUMBLE mais imprevisível" });
     knob(m, "drywet", "MIX", { size: 50, color: "#b06bff", title: "Mistura entre o som original e o rack" });
     knob($("#palcoK1"), "presence", "PRESENÇA", { size: 46, color: "#2fe0ff" });
     knob($("#palcoK2"), "trail", "RASTRO", { size: 46, color: "#ffb340" });
@@ -518,12 +518,12 @@
 
   /* ================= rack ================= */
   const MOD = [
-    { k: "g", name: "Ghost", sub: "Eco filtrado", say: "Repete o som como um eco que vai escurecendo.", sayEn: "Echoes the sound, each repeat darker.", color: "#b06bff", ctl: ["T", "gFeedback", "gTone"], labels: ["TEMPO", "FEEDBACK", "TOM"], slot: 0, look: "rastros violeta" },
-    { k: "c", name: "Crumble", sub: "Fragmentos", say: "Picota o som em pedacinhos que se repetem.", sayEn: "Chops the sound into repeating crumbs.", color: "#ffa02e", ctl: ["T", "cVariation"], labels: ["TAXA", "VARIAÇÃO"], slot: 1, look: "fragmentos âmbar" },
-    { k: "b", name: "Bloom", sub: "Cauda difusa", say: "Abre uma cauda difusa, como um espaço.", sayEn: "Opens a diffuse tail, like a room.", color: "#ff4fd8", ctl: ["bSize", "bTone", "bDecay"], labels: ["TAMANHO", "TOM", "DECAY"], look: "aura rosa" },
-    { k: "w", name: "Wobble", sub: "Afinação viva", say: "Faz a afinação balançar como fita gasta.", sayEn: "Makes the pitch wobble like worn tape.", color: "#2fe0ff", ctl: ["wDepth", "T"], labels: ["PROFUND.", "TAXA"], slot: 2, look: "contorno ciano" },
-    { k: "d", name: "Dust", sub: "Textura viva", say: "Adiciona poeira e chiado que seguem o som.", sayEn: "Adds dust and hiss that follow the sound.", color: "#ffd23f", ctl: ["dLevel", "dCharacter"], labels: ["NÍVEL", "CARÁTER"], look: "partículas douradas" },
-    { k: "k", name: "Crush", sub: "Bits + taxa", say: "Reduz bits e taxa: som digital e áspero.", sayEn: "Lowers bits and rate: gritty digital sound.", color: "#8a4dff", ctl: ["kAmount"], labels: ["INTENS."], look: "pixels roxos" }
+    { k: "g", name: "Ghost", sub: "Delay · Echo", say: "Delay: repete o som como um eco que vai escurecendo.", sayEn: "Echoes the sound, each repeat darker.", color: "#b06bff", ctl: ["T", "gFeedback", "gTone"], labels: ["TEMPO", "FEEDBACK", "TOM"], slot: 0, look: "rastros violeta" },
+    { k: "c", name: "Crumble", sub: "Stutter · Granular", say: "Stutter: picota o som em pedacinhos que se repetem.", sayEn: "Chops the sound into repeating crumbs.", color: "#ffa02e", ctl: ["T", "cVariation"], labels: ["TAXA", "VARIAÇÃO"], slot: 1, look: "fragmentos âmbar" },
+    { k: "b", name: "Bloom", sub: "Reverb", say: "Reverb: abre uma cauda, como um espaço. DIFUSÃO alisa as repetições.", sayEn: "Reverb: opens a tail, like a room. DIFFUSION smooths the echoes.", color: "#ff4fd8", ctl: ["bSize", "bTone", "bDecay", "bDiffusion"], labels: ["TAMANHO", "TOM", "DECAY", "DIFUSÃO"], look: "aura rosa" },
+    { k: "w", name: "Wobble", sub: "Chorus · Vibrato", say: "Chorus/vibrato: a afinação balança como fita gasta. LARGURA abre o estéreo.", sayEn: "Chorus/vibrato: the pitch wobbles like worn tape. WIDTH opens the stereo.", color: "#2fe0ff", ctl: ["wDepth", "T", "wWidth"], labels: ["PROFUND.", "TAXA", "LARGURA"], slot: 2, look: "contorno ciano" },
+    { k: "d", name: "Dust", sub: "Noise · Vinil", say: "Noise: adiciona poeira e chiado que seguem o som.", sayEn: "Adds dust and hiss that follow the sound.", color: "#ffd23f", ctl: ["dLevel", "dCharacter"], labels: ["NÍVEL", "CARÁTER"], look: "partículas douradas" },
+    { k: "k", name: "Crush", sub: "Bitcrusher", say: "Bitcrusher: reduz bits e taxa, som digital e áspero.", sayEn: "Lowers bits and rate: gritty digital sound.", color: "#8a4dff", ctl: ["kAmount"], labels: ["INTENS."], look: "pixels roxos" }
   ];
   const timeIds = [["gTime", "gFreeMs", "gDivision"], ["cRate", "cFreeHz", "cDivision"], ["wRate", "wFreeHz", "wDivision"]], timingIds = ["gTiming", "cTiming", "wTiming"], DIV = ["1/4", "1/8", "1/8.", "1/8T"];
   function timeParam(mi) { const slot = MOD[mi].slot; return timeIds[slot][Math.round(v(timingIds[slot]))]; }
@@ -565,7 +565,7 @@
   function renderFxDetail() {
     dropOwned("fx");
     const M = MOD[selMod], body = $("#fxBody"); body.innerHTML = "";
-    $("#fxTitle").innerHTML = ""; $("#fxTitle").insertAdjacentHTML("beforeend", '<span style="color:' + M.color + ';text-shadow:0 0 8px ' + M.color + '">' + M.name.toUpperCase() + '</span>');
+    $("#fxTitle").innerHTML = ""; $("#fxTitle").insertAdjacentHTML("beforeend", '<span style="color:' + M.color + ';text-shadow:0 0 8px ' + M.color + '">' + M.name.toUpperCase() + '</span> <small class="fx-kind">· ' + M.sub + '</small>');
     $("#fxSay").textContent = M.say;
     const row = document.createElement("div"); row.className = "knob-row"; body.appendChild(row);
     M.ctl.forEach(function (c, i) { const id = c === "T" ? timeParam(selMod) : c; knob(row, id, M.labels[i], { size: 52, color: M.color, format: formatFor(id), owned: "fx" }); });
@@ -579,7 +579,7 @@
       [[1, "FREE"], [2, "SYNC"]].forEach(function (o) { const b = document.createElement("button"); b.className = "chip-btn"; b.textContent = o[1]; const f = function (x) { b.classList.toggle("on", Math.round(x) === o[0]); }; f.owned = "fx"; watch(tid, f); b.addEventListener("click", function () { gesture(tid, o[0]); renderFxDetail(); }); tools.appendChild(b); });
     }
     const lid = M.k + "JamLock";
-    if (P[lid]) { const b = document.createElement("button"); b.className = "chip-btn"; b.title = "Bloqueado: o JAM não mexe neste módulo"; const f = function (x) { b.textContent = x > .5 ? "🔒 JAM BLOQUEADO" : "JAM LIVRE"; b.classList.toggle("on", x > .5); }; f.owned = "fx"; watch(lid, f); b.addEventListener("click", function () { gesture(lid, v(lid) > .5 ? 0 : 1); }); tools.appendChild(b); }
+    if (P[lid]) { const b = document.createElement("button"); b.className = "chip-btn"; b.title = "Travado: o VARIAR FX não mexe neste módulo"; const f = function (x) { b.textContent = x > .5 ? "🔒 VARIAR TRAVADO" : "VARIAR LIVRE"; b.classList.toggle("on", x > .5); }; f.owned = "fx"; watch(lid, f); b.addEventListener("click", function () { gesture(lid, v(lid) > .5 ? 0 : 1); }); tools.appendChild(b); }
     const rm = document.createElement("button"); rm.className = "chip-btn"; rm.textContent = "REMOVER DO RACK"; rm.addEventListener("click", function () { gesture(M.k + "Present", 0); renderRack(); }); tools.appendChild(rm);
     const look2 = document.createElement("span"); look2.className = "hint"; look2.style.marginLeft = "auto"; look2.textContent = "no personagem: " + M.look; tools.appendChild(look2);
   }

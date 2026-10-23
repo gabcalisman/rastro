@@ -11,6 +11,9 @@ class EffectRack
     std::array<std::vector<float>, 2> delay, grain;
     std::array<std::array<std::vector<float>, 4>, 2> reverb;
     std::array<std::array<int, 4>, 2> rp{};
+    // BLOOM diffusion: two allpass stages per channel after the comb echoes.
+    std::array<std::array<std::vector<float>, 2>, 2> diffuser;
+    std::array<std::array<int, 2>, 2> dp{};
     float ghostTone[2]{}, bloomTone[2]{};
     float delayTime = 1, grainOutput[2]{}, grainSmoothing = .1f;
     bool wasClocked = false;
@@ -51,6 +54,12 @@ class EffectRack
         for (auto &c : reverb)
             for (auto &d : c)
                 d.assign((size_t)(sr * .16) + 2, 0);
+        for (int c = 0; c < 2; ++c)
+        {
+            const double spread = c ? 1.071 : 1.0; // decorrelate left/right
+            diffuser[c][0].assign(std::max<size_t>(2, (size_t)(sr * .0051 * spread)), 0);
+            diffuser[c][1].assign(std::max<size_t>(2, (size_t)(sr * .0017 * spread)), 0);
+        }
         character.prepare(sr);
         grainSmoothing = 1 - std::exp(-1.f / float(sr * .0008));
         peakRelease = std::exp(-1.f / float(sr * .075));
@@ -66,6 +75,10 @@ class EffectRack
             for (auto &d : c)
                 std::fill(d.begin(), d.end(), 0);
         rp = {};
+        for (auto &c : diffuser)
+            for (auto &d : c)
+                std::fill(d.begin(), d.end(), 0);
+        dp = {};
         write = grainWrite = phase = 0;
         std::fill_n(ghostTone, 2, 0);
         std::fill_n(bloomTone, 2, 0);
@@ -129,6 +142,9 @@ class EffectRack
                 smooth(sm.crumble[j], p.crumble[j]);
         }
         smooth(sm.playX, p.playX);
+        smooth(sm.bloomDiffusion, p.bloomDiffusion);
+        smooth(sm.wobbleWidth, p.wobbleWidth);
+        character.setWidth(sm.wobbleWidth);
         smooth(sm.playY, p.playY);
         for (int j = 0; j < 3; ++j)
         {
@@ -276,6 +292,22 @@ class EffectRack
                                                                           .04f * sm.trail));
                         idx = (idx + 1) % len;
                         sum += z * .25f;
+                    }
+                    if (sm.bloomDiffusion > 0)
+                    {
+                        float d = sum;
+                        const float g = .45f + .2f * sm.bloomDiffusion;
+                        for (int k = 0; k < 2; ++k)
+                        {
+                            auto &buf = diffuser[c][k];
+                            int &i = dp[c][k];
+                            const float delayed = buf[i];
+                            const float v = d + g * delayed;
+                            buf[i] = v;
+                            d = delayed - g * v;
+                            i = (i + 1) % (int)buf.size();
+                        }
+                        sum += (d - sum) * sm.bloomDiffusion;
                     }
                     bloomTone[c] += (.015f + .65f * sm.bloom[1]) * (sum - bloomTone[c]);
                     wet = bloomTone[c];

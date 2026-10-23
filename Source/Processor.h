@@ -28,6 +28,20 @@ class RastroProcessor : public juce::AudioProcessor, private juce::MidiKeyboardS
     void setPlaybackMode(int);
     void equalSlices(int);
     std::atomic<int> previewRequest{0};
+    // UI-only preview cursor; -1 means use the saved trim start.
+    std::atomic<float> previewFrom{-1.f};
+    juce::String getLook() const
+    {
+        juce::ScopedLock lock(stateLock);
+        return webLook;
+    }
+    void setLook(const juce::String &json)
+    {
+        juce::ScopedLock lock(stateLock);
+        webLook = json.substring(0, 65536);
+        lookRevision.fetch_add(1, std::memory_order_relaxed);
+    }
+    std::atomic<int> lookRevision{0};
     // Runtime transport, not a sound/appearance parameter and never serialized.
     std::atomic<int> playbackTransport{0}; // 0 running, 1 paused, 2 stopped (new MIDI restarts)
     std::atomic<unsigned> stopSerial{0}, pauseSerial{0};
@@ -99,6 +113,25 @@ class RastroProcessor : public juce::AudioProcessor, private juce::MidiKeyboardS
     rastro::ImportError importFile(const juce::File &);
     rastro::ImportError importData(const void *, size_t, juce::String);
     void importFileAsync(juce::File, std::function<void(rastro::ImportError)>);
+    void importDataAsync(juce::MemoryBlock, juce::String,
+                         std::function<void(rastro::ImportError)>);
+    // Lock-free telemetry for the browser keyboard; this never participates in DSP.
+    std::array<std::atomic<uint32_t>, 4> heldNotes{};
+    void markNote(int note, bool on)
+    {
+        if (note < 0 || note > 127)
+            return;
+        const uint32_t bit = 1u << (note & 31);
+        if (on)
+            heldNotes[(size_t)(note >> 5)].fetch_or(bit, std::memory_order_relaxed);
+        else
+            heldNotes[(size_t)(note >> 5)].fetch_and(~bit, std::memory_order_relaxed);
+    }
+    void clearNotes()
+    {
+        for (auto &word : heldNotes)
+            word.store(0, std::memory_order_relaxed);
+    }
     std::atomic<rastro::ImportError> importError{rastro::ImportError::none};
     juce::String importMessage(rastro::ImportError) const;
     void loadFileAsync(juce::File, std::function<void(bool)>);
@@ -133,10 +166,12 @@ class RastroProcessor : public juce::AudioProcessor, private juce::MidiKeyboardS
     std::atomic<bool> overflow{false};
     void handleNoteOn(juce::MidiKeyboardState *, int, int n, float v) override
     {
+        markNote(n, true);
         enqueue(n, v, true);
     }
     void handleNoteOff(juce::MidiKeyboardState *, int, int n, float) override
     {
+        markNote(n, false);
         enqueue(n, 0, false);
     }
     void enqueue(int n, float v, bool on)
@@ -157,6 +192,7 @@ class RastroProcessor : public juce::AudioProcessor, private juce::MidiKeyboardS
     bool wasHostPlaying = false;
     const rastro::Sample *previousSource = nullptr;
     juce::CriticalSection stateLock;
+    juce::String webLook;
     std::vector<std::unique_ptr<rastro::Sample>> owned;
     size_t ownedBytes = 0;
     juce::MemoryBlock sampleBytes;

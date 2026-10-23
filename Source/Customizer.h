@@ -18,10 +18,15 @@ class VisualCustomizer : public juce::Component
         void paintButton(juce::Graphics &, bool, bool) override;
     };
     std::array<std::unique_ptr<Choice>, 9> palettes;
-    std::array<std::unique_ptr<Choice>, 4> knobs;
+    juce::Component knobContent;
+    juce::Viewport knobViewport;
+    std::array<std::unique_ptr<Choice>, 10> knobs;
+    juce::Component characterContent;
+    juce::Viewport characterViewport;
     std::array<std::unique_ptr<Choice>, 3> bodies;
     std::array<juce::TextButton, 6> tabs;
-    juce::TextButton close, reset, undo, redo, revert, saveLook, loadLook;
+    juce::TextButton close, reset, undo, redo, revert, saveLook, loadLook, dancePreview, dancePause,
+        danceStop;
     juce::ComboBox lookScope;
     juce::Label fileStatus;
     std::unique_ptr<juce::FileChooser> chooser;
@@ -44,6 +49,7 @@ class VisualCustomizer : public juce::Component
     void syncFields();
     void localize();
     void chooseTab(int);
+    void refreshCharacterFields();
     void dismiss();
 
   public:

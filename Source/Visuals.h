@@ -1,5 +1,6 @@
 #pragma once
 #include "Appearance.h"
+#include "HardwareKnobs.h"
 #include <juce_gui_basics/juce_gui_basics.h>
 namespace visuals
 {
@@ -117,6 +118,8 @@ inline void cosmicTexture(juce::Graphics &g, juce::Rectangle<float> box, juce::C
 }
 template <typename Processor> int knobStyle(const Processor &p)
 {
+    if (p.value("knobEdition") > .5f)
+        return 3 + int(p.value("knobEdition"));
     const int design = (int)p.value("knobDesign");
     // Keep old controlStyle's range/normalization unchanged for saved automation.
     return design ? design - 1 : (int)p.value("controlStyle");
@@ -124,6 +127,8 @@ template <typename Processor> int knobStyle(const Processor &p)
 inline void knob(juce::Graphics &g, juce::Rectangle<float> box, float v, float a, float b,
                  int design, juce::Colour colour)
 {
+    if (materialKnob(g, box, v, a, b, design, colour))
+        return;
     float r = std::max(3.f, std::min(box.getWidth(), box.getHeight()) * .46f);
     auto c = box.getCentre();
     auto disc = juce::Rectangle<float>(c.x - r, c.y - r, r * 2, r * 2);

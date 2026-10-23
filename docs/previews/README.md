@@ -5,14 +5,41 @@ Clique nos PNGs para abrir/baixar o original. O Codex no navegador não exibiu a
 anteriores; estes links são um caminho de acesso verificável, não confirmação de exibição no chat.
 
 **No pacote do build:** abra `Previews/ABRIR-PREVIAS.html` por duplo clique, offline, ou qualquer PNG.
-São 68 capturas atuais e duas referências históricas da árvore JUCE no **Linux x86_64**, não mockups, Mac/Logic ou prova de teste de escuta.
+São 122 capturas atuais e duas referências históricas da árvore JUCE no **Linux x86_64**, não mockups, Mac/Logic ou prova de teste de escuta.
 HiDPI é render 2× simulado. O sample visual.wav e a atividade musical são sintéticos dos testes.
 
 ## Cosmic Arcade
 
 ![Cosmic Arcade](cosmic.png)
 
-## Instrumento padrão — 1100×760
+## Correções de rack, prévia e materiais
+
+Estas capturas pertencem à revisão de rack, dança e coleção de figurino. São renders reais JUCE no Linux; abra os PNGs ou use o HTML offline do pacote Mac.
+
+- [Rack padrão — janela inteira](rack-standard.png)
+- [Rack compacto — janela inteira](rack-compact.png)
+- [Janela mínima](rack-minimum.png) e [rack rolado, teclado preservado](rack-minimum-scrolled.png)
+- Prévia visual: [Soul step](dance-preview-0.png), [Disco](dance-preview-1.png), [Half-time](dance-preview-2.png)
+- [Reduzida](dance-reduced.png), [desligada](dance-off.png), [playback pausado](dance-playback-paused.png), [parado](dance-playback-stopped.png)
+- Knobs aplicados aos controles: [marfim](knob-applied-0.png), [metal](knob-applied-1.png), [borracha](knob-applied-2.png), [console](knob-applied-3.png), [preto/latão](knob-applied-4.png), [vidro/ciano](knob-applied-5.png)
+- Personalizador: [marfim](knob-customizer-0.png), [metal](knob-customizer-1.png), [preto/latão](knob-customizer-4.png), [vidro/ciano](knob-customizer-5.png)
+
+## Coleção de criaturas e itens
+
+As bases não equipam óculos ou figurino automaticamente. Os modelos anteriores continuam disponíveis.
+
+| Criatura | Base sem itens | Figurino e instrumento | Performance |
+| --- | --- | --- | --- |
+| Fuzz | [Abrir](concept-base-1.png) | [Abrir](concept-outfit-1.png) | [Quadro 0](concept-dance-1-0.png), [1](concept-dance-1-1.png), [2](concept-dance-1-2.png) |
+| Soul Fin | [Abrir](concept-base-2.png) | [Abrir](concept-outfit-2.png) | [Quadro 0](concept-dance-2-0.png), [1](concept-dance-2-1.png), [2](concept-dance-2-2.png) |
+| Violet Curls | [Abrir](concept-base-3.png) | [Abrir](concept-outfit-3.png) | [Quadro 0](concept-dance-3-0.png), [1](concept-dance-3-1.png), [2](concept-dance-3-2.png) |
+| Aqua Crest | [Abrir](concept-base-4.png) | [Abrir](concept-outfit-4.png) | [Quadro 0](concept-dance-4-0.png), [1](concept-dance-4-1.png), [2](concept-dance-4-2.png) |
+
+[Personalizador compacto](concept-compact.png) · [Janela mínima, opções roladas](concept-minimum.png).
+Knobs adicionais aplicados: [rosa glossy](knob-applied-6.png), [âmbar](knob-applied-7.png), [onyx](knob-applied-8.png), [RGB](knob-applied-9.png).
+[Seletor das dez famílias](knob-customizer-9.png). São interpretações vetoriais dos conceitos; as pranchas não são exibidas como uma falsa interface.
+
+## Instrumento padrão — 1100×840
 
 ![Instrumento padrão](instrumento.png)
 
@@ -64,7 +91,7 @@ Essas telas usam a ponte local real e entrada sintética dos testes. Não são p
 
 ## Redesign do personagem — antes e depois
 
-Referências do commit anterior `f852c34`, preservadas para comparação:
+Referências do commit inicial desta revisão `4f36345`, preservadas para comparação:
 
 ![Interface anterior](before-interface.png)
 

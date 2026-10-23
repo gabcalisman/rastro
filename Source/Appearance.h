@@ -5,28 +5,34 @@ namespace rastro
 // This registry is shared by preset isolation, visual undo and sound-only patch loading.
 // No member is read by the audio engine. Existing host parameter indices remain untouched.
 inline constexpr const char *appearanceIds[]{
-    "visualTheme",    "visualPalette",    "controlStyle",
-    "avatarBody",     "avatarEyes",       "avatarAccessory",
-    "knobDesign",     "visualBackground", "visualAccent",
-    "visualControls", "avatarColour",     "avatarHair",
-    "avatarHorns",    "avatarClothes",    "avatarGlasses",
-    "avatarTail",     "avatarWings",      "avatarInstrument",
-    "colourSet",      "cosmicArcade",     "avatarPresentation",
-    "avatarHalo",     "avatarSpecies",    "avatarMaterial",
-    "sceneKind",      "sceneColour",      "sceneLight",
-    "sceneDecor",     "sceneReaction",    "animation",
-    "danceStyle",     "danceAmount",      "gColour",
-    "cColour",        "bColour",          "wColour",
-    "dColour",        "kColour",          "gJamLock",
-    "cJamLock",       "bJamLock",         "wJamLock",
-    "dJamLock",       "kJamLock"};
+    "visualTheme",     "visualPalette",    "controlStyle",
+    "avatarBody",      "avatarEyes",       "avatarAccessory",
+    "knobDesign",      "visualBackground", "visualAccent",
+    "visualControls",  "avatarColour",     "avatarHair",
+    "avatarHorns",     "avatarClothes",    "avatarGlasses",
+    "avatarTail",      "avatarWings",      "avatarInstrument",
+    "colourSet",       "cosmicArcade",     "avatarPresentation",
+    "avatarHalo",      "avatarSpecies",    "avatarMaterial",
+    "sceneKind",       "sceneColour",      "sceneLight",
+    "sceneDecor",      "sceneReaction",    "animation",
+    "danceStyle",      "danceAmount",      "gColour",
+    "cColour",         "bColour",          "wColour",
+    "dColour",         "kColour",          "gJamLock",
+    "cJamLock",        "bJamLock",         "wJamLock",
+    "dJamLock",        "kJamLock",         "knobEdition",
+    "creatureModel",   "stageHeadwear",    "stageShirt",
+    "stageJacket",     "stagePants",       "stageShoes",
+    "stageHeadphones", "stagePatch",       "stageLanyard",
+    "stageJewelry",    "stageEarring",     "instrumentEdition",
+    "glassesEdition"};
 inline constexpr const char *rackColourIds[]{"gColour", "cColour", "bColour",
                                              "wColour", "dColour", "kColour"};
 inline constexpr const char *jamLockIds[]{"gJamLock", "cJamLock", "bJamLock",
                                           "wJamLock", "dJamLock", "kJamLock"};
 inline int appearanceGroup(const juce::String &id)
 {
-    if (id.startsWith("avatar"))
+    if (id.startsWith("avatar") || id.startsWith("stage") || id == "creatureModel" ||
+        id == "instrumentEdition" || id == "glassesEdition")
         return 1;
     if (id.startsWith("scene"))
         return 2;

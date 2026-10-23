@@ -1,5 +1,8 @@
 # Validação desta revisão — RASTRO PLAY
 
+**Revisão local de rack/dança/knobs:** [evidência atual, estado e dependências](RACK-DANCE-VALIDATION.md).
+Os resultados abaixo documentam também a rodada anterior; não estabelecem novo build Mac.
+
 ## Ambiente e resultado local
 
 Debian 13 **Linux x86_64**, GCC 14.2, CMake 3.31.6, JUCE 8.0.6, Release/Ninja.

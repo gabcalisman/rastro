@@ -28,6 +28,25 @@ class RastroProcessor : public juce::AudioProcessor, private juce::MidiKeyboardS
     void setPlaybackMode(int);
     void equalSlices(int);
     std::atomic<int> previewRequest{0};
+    // Runtime transport, not a sound/appearance parameter and never serialized.
+    std::atomic<int> playbackTransport{0}; // 0 running, 1 paused, 2 stopped (new MIDI restarts)
+    std::atomic<unsigned> stopSerial{0}, pauseSerial{0};
+    std::atomic<bool> stopRequest{false};
+    void pausePlayback(bool pause)
+    {
+        playbackTransport = pause ? 1 : 0;
+        if (pause)
+            pauseSerial.fetch_add(1);
+    }
+    void stopPlayback()
+    {
+        playbackTransport = 2;
+        previewRequest = 0;
+        stopRequest = true;
+        stopSerial.fetch_add(1);
+    }
+    float transportGain = 1, lastTransportOutput[2]{};
+    int previousTransport = 0;
     const juce::String getName() const override { return "RASTRO"; }
     void prepareToPlay(double, int) override;
     void releaseResources() override {}

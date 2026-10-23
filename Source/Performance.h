@@ -2,6 +2,7 @@
 #include "DanceMotion.h"
 #include "Processor.h"
 #include "RastroStrings.h"
+#include "Visuals.h"
 // All animation, Paths and painting remain on JUCE's message thread.
 class PlayPad : public juce::Component, public juce::SettableTooltipClient
 {
@@ -36,6 +37,10 @@ class RastroAvatar : public juce::Component
     std::array<float, 6> effects{};
     std::array<float, 64> controlValues{};
     bool observedControls = false;
+    bool visualPreview = false, previewPaused = false;
+    float previewClock = 0;
+    unsigned seenStop = 0, seenPause = 0;
+    std::array<float, std::size(visuals::visualIds)> seenAppearance{};
     float controlPulse = 0, staleTime = 0;
     unsigned lastBlock = 0;
     juce::Image roomLayer;
@@ -45,12 +50,33 @@ class RastroAvatar : public juce::Component
     explicit RastroAvatar(RastroProcessor &processor) : p(processor) {}
     struct Motion
     {
-        float x, y, swing, lift, activity, footLeft, footRight, armLeft, armRight, head;
+        float x, y, swing, lift, activity, footLeft, footRight, armLeft, armRight, head, phase,
+            torso, bounce;
     };
+    bool isPreviewing() const { return visualPreview; }
+    bool isPreviewPaused() const { return previewPaused; }
+    void setPreview(bool enabled)
+    {
+        visualPreview = enabled;
+        previewPaused = false;
+        previewClock = 0;
+        seenStop = p.stopSerial.load();
+        seenPause = p.pauseSerial.load();
+        resume();
+        repaint();
+    }
+    void pausePreview(bool paused)
+    {
+        previewPaused = paused;
+        repaint();
+    }
     void resume()
     {
         lastNote = p.engine.noteSerial.load();
-        note = level = swing = swingVelocity = lift = liftVelocity = 0;
+        note = level = wobble = dust = crush = tail = swing = swingVelocity = lift = liftVelocity =
+            0;
+        effects = {};
+        controlPulse = 0;
         dance.reset();
         staleTime = 1;
         lastBlock = p.engine.blockSerial.load();
@@ -66,7 +92,10 @@ class RastroAvatar : public juce::Component
                 dance.footRight,
                 dance.armLeft,
                 dance.armRight,
-                dance.head};
+                dance.head,
+                dance.phase,
+                dance.torso,
+                dance.bounce};
     }
     bool update(int animationMode);
     void paint(juce::Graphics &) override;

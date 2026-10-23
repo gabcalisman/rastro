@@ -98,6 +98,7 @@ void VisualCustomizer::open()
 }
 void VisualCustomizer::dismiss()
 {
+    avatar.setPreview(false);
     setVisible(false);
     if (onClose)
         onClose();
@@ -114,7 +115,9 @@ VisualCustomizer::Choice::Choice(VisualCustomizer &owner, int i, int type)
                                 : "bodyChoice") +
                    juce::String(i));
     setButtonText(kind == 0   ? juce::String(visuals::paletteNames[i])
-                  : kind == 1 ? juce::StringArray{"Vintage", "Amplifier", "Synth", "Console"}[i]
+                  : kind == 1 ? juce::StringArray{"Ivory", "Machined", "Synth", "Console",
+                                                  "Black / Gold", "Glass / Cyan", "Pink Gloss",
+                                                  "Amber", "Onyx", "Prism RGB"}[i]
                               : juce::StringArray{"Orbit", "Soul", "Metro"}[i]);
     setWantsKeyboardFocus(true);
     onClick = [this]
@@ -128,8 +131,14 @@ VisualCustomizer::Choice::Choice(VisualCustomizer &owner, int i, int type)
             for (auto id : {"visualBackground", "visualAccent", "visualControls"})
                 ui.p.set(id, 0);
         }
+        else if (kind == 1)
+        {
+            ui.p.set("knobEdition", index >= 4 ? float(index - 3) : 0.f);
+            if (index < 4)
+                ui.p.set("knobDesign", float(index + 1));
+        }
         else
-            ui.p.set(kind == 1 ? "knobDesign" : "avatarBody", (float)index + (kind == 1 ? 1 : 0));
+            ui.p.set("avatarBody", float(index));
         ui.observed = ui.capture();
         ui.syncFields();
         ui.repaint();
@@ -197,10 +206,21 @@ void VisualCustomizer::Choice::paintButton(juce::Graphics &g, bool over, bool)
     if (kind == 1)
     {
         const juce::StringArray material =
-            ui.p.language == 0 ? juce::StringArray{utf("Marfim canelado"), utf("Metal escovado"),
-                                                   utf("Borracha"), utf("Plástico de console")}
-                               : juce::StringArray{"Fluted ivory", "Brushed metal", "Soft rubber",
-                                                   "Console plastic"};
+            ui.p.language == 0
+                ? juce::StringArray{utf("Marfim canelado"),
+                                    utf("Metal escovado"),
+                                    utf("Borracha"),
+                                    utf("Plástico de console"),
+                                    utf("Baquelite / latão"),
+                                    utf("Vidro fumê / luz"),
+                                    "Rosa glossy",
+                                    utf("Âmbar facetado"),
+                                    utf("Preto canelado"),
+                                    "LED segmentado"}
+                : juce::StringArray{"Fluted ivory",    "Brushed metal",    "Soft rubber",
+                                    "Console plastic", "Bakelite / brass", "Smoked glass / light",
+                                    "Pink gloss",      "Faceted amber",    "Fluted onyx",
+                                    "Segmented LEDs"};
         g.setFont(juce::Font(juce::FontOptions(11)));
         g.setColour(pal.muted);
         g.drawText(material[index], box.withTrimmedTop(110), juce::Justification::centred);
@@ -275,13 +295,48 @@ VisualCustomizer::VisualCustomizer(RastroProcessor &processor) : p(processor), a
     {
         palettes[i] = std::make_unique<Choice>(*this, i, 0);
         addChildComponent(*palettes[i]);
-        if (i < 4)
-        {
-            knobs[i] = std::make_unique<Choice>(*this, i, 1);
-            addChildComponent(*knobs[i]);
-        }
     }
+    addChildComponent(knobViewport);
+    knobViewport.setComponentID("knobViewport");
+    knobViewport.setViewedComponent(&knobContent, false);
+    knobViewport.setScrollBarsShown(true, false);
+    knobViewport.setScrollBarThickness(14);
+    for (int i = 0; i < int(knobs.size()); ++i)
+    {
+        knobs[i] = std::make_unique<Choice>(*this, i, 1);
+        knobContent.addAndMakeVisible(*knobs[i]);
+    }
+    addChildComponent(characterViewport);
+    characterViewport.setComponentID("characterViewport");
+    characterViewport.setViewedComponent(&characterContent, false);
+    characterViewport.setScrollBarsShown(true, false);
+    characterViewport.setScrollBarThickness(14);
+    for (auto &body : bodies)
+        characterContent.addChildComponent(*body);
     addChildComponent(avatar);
+    addChildComponent(dancePreview);
+    addChildComponent(dancePause);
+    addChildComponent(danceStop);
+    dancePreview.setComponentID("dancePreview");
+    dancePause.setComponentID("dancePause");
+    danceStop.setComponentID("danceStop");
+    dancePreview.onClick = [this]
+    {
+        avatar.setPreview(!avatar.isPreviewing());
+        update(int(p.value("animation")));
+    };
+    dancePause.onClick = [this]
+    {
+        avatar.pausePreview(!avatar.isPreviewPaused());
+        update(int(p.value("animation")));
+    };
+    danceStop.onClick = [this]
+    {
+        avatar.setPreview(false);
+        update(int(p.value("animation")));
+    };
+    dancePreview.setTooltip(
+        utf("Prévia só visual. Não gera MIDI nem áudio. / Visual only. No MIDI or audio."));
     addChildComponent(previewKnob);
     addChildComponent(previewLabel);
     previewKnob.setComponentID("liveKnobPreview");
@@ -292,34 +347,77 @@ VisualCustomizer::VisualCustomizer(RastroProcessor &processor) : p(processor), a
     previewKnob.setTextValueSuffix("%");
     previewKnob.setWantsKeyboardFocus(true);
     previewLabel.setJustificationType(juce::Justification::centred);
-    const char *ids[]{"visualTheme",  "visualBackground", "visualAccent",     "visualControls",
-                      "avatarColour", "avatarBody",       "avatarEyes",       "avatarAccessory",
-                      "avatarHair",   "avatarHorns",      "avatarClothes",    "avatarGlasses",
-                      "avatarTail",   "avatarWings",      "avatarInstrument", "avatarPresentation",
-                      "avatarHalo",   "avatarSpecies",    "avatarMaterial",   "sceneKind",
-                      "sceneColour",  "sceneLight",       "sceneDecor",       "sceneReaction",
-                      "animation",    "danceStyle",       "danceAmount",      "gColour",
-                      "cColour",      "bColour",          "wColour",          "dColour",
-                      "kColour",      "gJamLock",         "cJamLock",         "bJamLock",
-                      "wJamLock",     "dJamLock",         "kJamLock"};
+    const char *ids[]{
+        "visualTheme",     "visualBackground", "visualAccent",     "visualControls",
+        "avatarColour",    "avatarBody",       "avatarEyes",       "avatarAccessory",
+        "avatarHair",      "avatarHorns",      "avatarClothes",    "avatarGlasses",
+        "avatarTail",      "avatarWings",      "avatarInstrument", "avatarPresentation",
+        "avatarHalo",      "avatarSpecies",    "avatarMaterial",   "sceneKind",
+        "sceneColour",     "sceneLight",       "sceneDecor",       "sceneReaction",
+        "animation",       "danceStyle",       "danceAmount",      "gColour",
+        "cColour",         "bColour",          "wColour",          "dColour",
+        "kColour",         "gJamLock",         "cJamLock",         "bJamLock",
+        "wJamLock",        "dJamLock",         "kJamLock",         "stageHeadwear",
+        "stageShirt",      "stageJacket",      "stagePants",       "stageShoes",
+        "stageHeadphones", "stagePatch",       "stageLanyard",     "stageJewelry",
+        "stageEarring"};
     for (int i = 0; i < int(std::size(ids)); ++i)
     {
         auto f = std::make_unique<Field>();
         f->id = ids[i];
-        f->area = i < 4 ? 0 : i < 19 ? 2 : i < 24 ? 3 : i < 27 ? 4 : 5;
+        f->area = i >= 39 ? 2 : i < 4 ? 0 : i < 19 ? 2 : i < 24 ? 3 : i < 27 ? 4 : 5;
         f->combo.setComponentID(f->id);
         f->label.setComponentID(f->id + "Label");
         f->combo.setWantsKeyboardFocus(true);
         f->label.setFont(juce::Font(juce::FontOptions(13)));
-        addChildComponent(f->combo);
-        addChildComponent(f->label);
+        auto &parent = f->area == 2 ? characterContent : *this;
+        parent.addChildComponent(f->combo);
+        parent.addChildComponent(f->label);
         auto *field = f.get();
         f->combo.onChange = [this, field]
         {
             if (restoring)
                 return;
             beforeEdit();
-            p.set(field->id, (float)(field->combo.getSelectedId() - 1));
+            int value = field->combo.getSelectedId() - 1;
+            if (field->id == "avatarSpecies")
+            {
+                p.set("creatureModel", value >= 3 ? float(value - 2) : 0.f);
+                if (value < 3)
+                    p.set(field->id, float(value));
+            }
+            else if (field->id == "avatarInstrument")
+            {
+                p.set("instrumentEdition", value >= 3 ? float(value - 2) : 0.f);
+                if (value < 3)
+                    p.set(field->id, float(value));
+            }
+            else if (field->id == "avatarGlasses")
+            {
+                p.set("glassesEdition", value == 3 ? 1.f : 0.f);
+                if (value == 3)
+                    p.set("avatarGlasses", 0);
+                if (value < 3)
+                    p.set(field->id, float(value));
+            }
+            else
+            {
+                p.set(field->id, float(value));
+                if (value > 0 && field->id == "stageHeadphones" && p.value("avatarAccessory") == 1)
+                    p.set("avatarAccessory", 0);
+                if (value == 1 && field->id == "avatarAccessory")
+                    p.set("stageHeadphones", 0);
+                if (value > 0 && field->id == "stageHeadwear")
+                {
+                    p.set("avatarHair", 0);
+                    p.set("avatarHorns", 0);
+                }
+                if (value > 0 && (field->id == "avatarHair" || field->id == "avatarHorns"))
+                {
+                    p.set("stageHeadwear", 0);
+                }
+            }
+            refreshCharacterFields();
             observed = capture();
             previewDirty = true;
             repaint();
@@ -334,7 +432,17 @@ void VisualCustomizer::syncFields()
 {
     previewDirty = true;
     for (auto &f : fields)
-        f->combo.setSelectedId((int)p.value(f->id.toRawUTF8()) + 1, juce::dontSendNotification);
+    {
+        int value = int(p.value(f->id.toRawUTF8()));
+        if (f->id == "avatarSpecies" && p.value("creatureModel") > .5f)
+            value = 2 + int(p.value("creatureModel"));
+        if (f->id == "avatarInstrument" && p.value("instrumentEdition") > .5f)
+            value = 2 + int(p.value("instrumentEdition"));
+        if (f->id == "avatarGlasses" && p.value("glassesEdition") > .5f)
+            value = 3;
+        f->combo.setSelectedId(value + 1, juce::dontSendNotification);
+    }
+    refreshCharacterFields();
     undo.setEnabled(!undoStack.empty());
     redo.setEnabled(!redoStack.empty());
 }
@@ -398,7 +506,17 @@ void VisualCustomizer::localize()
                                   "BLOOM / JAM",
                                   "WOBBLE / JAM",
                                   "DUST / JAM",
-                                  "CRUSH / JAM"};
+                                  "CRUSH / JAM",
+                                  utf("Cabeça / slot"),
+                                  utf("Camisa"),
+                                  utf("Jaqueta"),
+                                  utf("Calça"),
+                                  utf("Calçado"),
+                                  utf("Fones neon"),
+                                  utf("Patch / pin"),
+                                  utf("Cordão lateral"),
+                                  utf("Colar soul"),
+                                  utf("Brinco estrela")};
     const juce::String labelsEn[]{"Chassis",
                                   "Background",
                                   "Accent",
@@ -437,7 +555,17 @@ void VisualCustomizer::localize()
                                   "BLOOM / JAM",
                                   "WOBBLE / JAM",
                                   "DUST / JAM",
-                                  "CRUSH / JAM"};
+                                  "CRUSH / JAM",
+                                  "Headwear",
+                                  "Shirt",
+                                  "Jacket",
+                                  "Trousers",
+                                  "Shoes",
+                                  "Neon phones",
+                                  "Patch / pin",
+                                  "Side lanyard",
+                                  "Soul necklace",
+                                  "Star earring"};
     const juce::StringArray choices[]{
         {"Retro", "Futuro", "Arcade", pt ? juce::String::fromUTF8("Orgânico") : "Organic"},
         {pt ? "Da paleta" : "Follow palette", "Midnight", "Lagoon", "Afterparty", "Ember"},
@@ -454,21 +582,22 @@ void VisualCustomizer::localize()
         {pt ? "Nenhum" : "None", "Pompadour", "Sleek"},
         {pt ? "Nenhum" : "None", "Chrome fins", "Orbit fins"},
         {"Flight suit", "Soul jacket", "Studio vest"},
-        {pt ? "Nenhum" : "None", "Aviator", pt ? "Visor" : "Visor"},
+        {pt ? "Nenhum" : "None", "Aviator", "Visor", "Amber round"},
         {pt ? "Nenhuma" : "None", "Audio cable", "Ribbon"},
         {pt ? "Nenhuma" : "None", "Pleated cape", "Chrome plates"},
-        {pt ? "Nenhum" : "None", pt ? "Keytar" : "Keytar", "Beat pads"},
+        {pt ? "Nenhum" : "None", "Keytar", "Beat pads", "Neon keytar", "Soul analog", "Pocket keys",
+         "Ivory stage"},
         {pt ? utf("Andrógina") : "Androgynous", pt ? "Masculina" : "Masculine",
          pt ? "Feminina" : "Feminine"},
         {pt ? "Desligada" : "Off", pt ? "Ligada" : "On"},
-        {"Pilot", "Mooncat", "Nova"},
+        {"Pilot", "Mooncat", "Nova", "Fuzz", "Soul Fin", "Violet Curls", "Aqua Crest"},
         {"Satin", "Chrome", "Enamel"},
         {"Stage", "Soul Bedroom", "Orbital Studio", "Sunset Loft"},
         {pt ? "Da paleta" : "Follow palette", "Violet", "Coral", "Lagoon", "Ivory"},
         {"Soft", "Neon", "Golden hour"},
         {"Minimal", "Plants", "Vinyl", "Synth wall"},
         {"Off", "Soft", "Bold"},
-        {"Off", "Reduced", "Full"},
+        {pt ? "Desligada" : "Off", pt ? "Reduzida" : "Reduced", pt ? "Completa" : "Full"},
         {"Soul step", "Disco", "Half-time"},
         {"Still", "Groove", "Expressive"},
         {"Auto", "Violet", "Cyan", "Coral", "Gold"},
@@ -482,7 +611,18 @@ void VisualCustomizer::localize()
         {"JAM: free", "JAM: locked"},
         {"JAM: free", "JAM: locked"},
         {"JAM: free", "JAM: locked"},
-        {"JAM: free", "JAM: locked"}};
+        {"JAM: free", "JAM: locked"},
+        {pt ? "Nenhum" : "None", "Violet beanie", "Soul fedora", "Orange beanie"},
+        {pt ? "Nenhuma" : "None", "Floral soul", "Cream sweater", "Ivory stripes"},
+        {pt ? "Nenhuma" : "None", "Neon bomber", "Soul fringe", "Night work", "Aqua track"},
+        {pt ? "Nenhuma" : "None", "Neon cargo", "Soul flare", "Patch cargo", "Aqua track"},
+        {pt ? "Nenhum" : "None", "Neon high-top", "Soul platforms", "Patch runners",
+         "Orange canvas"},
+        {pt ? "Nenhum" : "None", "Neon studio"},
+        {pt ? "Nenhum" : "None", "Eye pin", "Smile", "Heart", "XX", "Star"},
+        {pt ? "Nenhum" : "None", "Orange loop"},
+        {pt ? "Nenhum" : "None", "Gold soul"},
+        {pt ? "Nenhum" : "None", "Orbit star"}};
     for (size_t i = 0; i < fields.size(); ++i)
     {
         auto &f = *fields[i];
@@ -492,6 +632,23 @@ void VisualCustomizer::localize()
     }
     syncFields();
 }
+void VisualCustomizer::refreshCharacterFields()
+{
+    characterViewport.setVisible(tab == 2);
+    bool concept = p.value("creatureModel") > .5f;
+    bool changed = false;
+    for (auto &f : fields)
+    {
+        bool legacyOnly = f->id == "avatarClothes" || f->id == "avatarHair" ||
+                          f->id == "avatarHorns" || f->id == "avatarEyes";
+        bool visible = f->area == tab && f->id != "avatarBody" && !(concept && legacyOnly);
+        changed |= f->combo.isVisible() != visible;
+        f->label.setVisible(visible);
+        f->combo.setVisible(visible);
+    }
+    if (changed && getWidth() > 0)
+        resized();
+}
 void VisualCustomizer::chooseTab(int next)
 {
     tab = juce::jlimit(0, 5, next);
@@ -499,19 +656,18 @@ void VisualCustomizer::chooseTab(int next)
         tabs[i].setToggleState(tab == i, juce::dontSendNotification);
     for (auto &b : palettes)
         b->setVisible(tab == 0);
+    knobViewport.setVisible(tab == 1);
     for (auto &b : knobs)
         b->setVisible(tab == 1);
     for (auto &b : bodies)
         b->setVisible(tab == 2);
-    for (auto &f : fields)
-    {
-        bool visible = f->area == tab && f->id != "avatarBody";
-        f->label.setVisible(visible);
-        f->combo.setVisible(visible);
-    }
-    if (tab >= 2 && tab <= 4)
-        avatar.resume();
+    refreshCharacterFields();
+    avatar.setPreview(false);
+    dancePreview.setVisible(tab == 4);
+    dancePause.setVisible(tab == 4);
+    danceStop.setVisible(tab == 4);
     avatar.setVisible(tab >= 2 && tab <= 4);
+    avatar.setComponentID("customizerAvatar");
     previewKnob.setVisible(tab == 1);
     previewLabel.setVisible(tab == 1);
     resized();
@@ -526,6 +682,7 @@ bool VisualCustomizer::update(int mode)
     {
         observed = now;
         syncFields();
+        avatar.repaint();
         repaint();
     }
     if ((tab == 0 || tab == 5) && previewDirty && renderInstrumentPreview)
@@ -554,6 +711,17 @@ bool VisualCustomizer::update(int mode)
     if (tab >= 2 && tab <= 4)
     {
         avatar.update(mode);
+        bool running = avatar.isPreviewing(), paused = avatar.isPreviewPaused();
+        dancePreview.setButtonText(p.language == 0 ? utf(running ? "DESLIGAR PRÉVIA" : "PRÉVIA")
+                                   : running       ? "END PREVIEW"
+                                                   : "PREVIEW");
+        dancePreview.setToggleState(running, juce::dontSendNotification);
+        dancePreview.setEnabled(mode > 0 && p.playbackTransport != 1);
+        dancePause.setEnabled(running && mode > 0);
+        dancePause.setButtonText(p.language == 0 ? (paused ? "RETOMAR" : "PAUSAR")
+                                                 : (paused ? "RESUME" : "PAUSE"));
+        danceStop.setButtonText(p.language == 0 ? "PARAR" : "STOP");
+        danceStop.setEnabled(running || paused);
         return true;
     }
     return false;
@@ -591,29 +759,46 @@ void VisualCustomizer::resized()
         tabs[i].setBounds(24 + i * (w - 48) / 6, 62, (w - 48) / 6 - 6, 34);
     for (int i = 0; i < 9; ++i)
         palettes[i]->setBounds(left + (i % 3) * width / 3, 115 + (i / 3) * 74, width / 3 - 5, 70);
-    for (int i = 0; i < 4; ++i)
-        knobs[i]->setBounds(left + (i % 2) * width / 2, 120 + (i / 2) * 143, width / 2 - 8, 130);
+    knobViewport.setBounds(left, 116, width, h - 230);
+    int knobWidth = (width - 14) / 4;
+    knobContent.setSize(width - 14, 3 * 143);
+    for (int i = 0; i < int(knobs.size()); ++i)
+        knobs[i]->setBounds((i % 4) * knobWidth, (i / 4) * 143, knobWidth - 8, 130);
+    characterViewport.setBounds(left, 116, width, h - 230);
+    int characterWidth = width - 14;
     for (int i = 0; i < 3; ++i)
-        bodies[i]->setBounds(left + i * width / 3, 118, width / 3 - 8, 102);
+        bodies[i]->setBounds(i * characterWidth / 3, 0, characterWidth / 3 - 8, 102);
     std::array<int, 6> indices{};
+    int characterIndex = 1;
     for (auto &f : fields)
     {
-        int n = indices[f->area]++;
         if (f->id == "avatarBody")
-        {
-            --indices[f->area];
             continue;
+        int n = indices[f->area]++;
+        if (f->area == 2)
+        {
+            if (!f->combo.isVisible())
+                continue;
+            n = f->id == "avatarSpecies" ? 0 : characterIndex++;
+            int cell = characterWidth / 3, x = (n % 3) * cell, y = 114 + (n / 3) * 54;
+            f->label.setBounds(x, y, cell - 10, 20);
+            f->combo.setBounds(x, y + 22, cell - 10, 30);
         }
-        int columns = f->area == 0 ? 2 : 3;
-        int x = left + (n % columns) * width / columns, y = (f->area == 0   ? 353
-                                                             : f->area == 2 ? 230
-                                                                            : 120) +
-                                                            (n / columns) * 54;
-        f->label.setBounds(x, y, width / columns - 10, 20);
-        f->combo.setBounds(x, y + 22, width / columns - 10, 30);
+        else
+        {
+            int columns = f->area == 0 ? 2 : 3;
+            int x = left + (n % columns) * width / columns,
+                y = (f->area == 0 ? 353 : 120) + (n / columns) * 54;
+            f->label.setBounds(x, y, width / columns - 10, 20);
+            f->combo.setBounds(x, y + 22, width / columns - 10, 30);
+        }
     }
+    characterContent.setSize(characterWidth, 114 + ((characterIndex + 2) / 3) * 54);
     int previewWidth = w - right - 32;
     avatar.setBounds(right + 8, 116, previewWidth, std::min(h - 240, 410));
+    dancePreview.setBounds(24, 218, width - 10, 36);
+    dancePause.setBounds(24, 264, (width - 20) / 2, 32);
+    danceStop.setBounds(34 + (width - 20) / 2, 264, (width - 20) / 2, 32);
     previewKnob.setBounds(right + 30, 160, previewWidth - 44, std::min(245, h - 275));
     previewLabel.setBounds(right + 8, 120, previewWidth, 40);
     undo.setBounds(24, h - 90, 100, 32);

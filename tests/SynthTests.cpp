@@ -119,6 +119,16 @@ int main()
             difference += std::abs(soul.footLeft - disco.footLeft);
         }
         check(difference > .5f, "disco shuffle differs from soul step");
+        rastro::DanceMotion full, reduced;
+        float secondary = 0;
+        for (int i = 0; i < 120; ++i)
+        {
+            full.step(1.f / 24, 1, .9f, .7f, .8f, 120, -1, .2f, 1, 1, false);
+            reduced.step(1.f / 12, 1, .9f, .7f, .8f, 120, -1, .2f, 1, 1, true);
+            secondary = std::max(secondary, std::abs(full.armLeft) + std::abs(full.torso));
+        }
+        check(secondary > .5f && reduced.armLeft == 0 && reduced.torso == 0,
+              "reduced removes secondary choreography while full articulates arms/chest");
         check(std::abs(soul.phase - .5f) < .001f && std::abs(slow.phase - .75f) < .001f,
               "half-time follows half the beat rate");
         check(still.footLeft == 0 && still.armRight == 0 && still.phase == 0,

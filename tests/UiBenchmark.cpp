@@ -17,6 +17,24 @@ class UiBenchmark : private juce::Timer
     {
         frames = 0;
         p.set("animation", phase == 0 ? 0.f : 2.f);
+        if (phase == 1)
+        {
+            p.set("creatureModel", 2);
+            p.set("stageShirt", 1);
+            p.set("stageJacket", 2);
+            p.set("stagePants", 2);
+            p.set("stageShoes", 2);
+            p.set("instrumentEdition", 2);
+        }
+        if (phase == 3)
+        {
+            p.set("creatureModel", 3);
+            p.set("stageHeadwear", 3);
+            p.set("stageShirt", 2);
+            p.set("stageJacket", 3);
+            p.set("stagePants", 3);
+            p.set("stageShoes", 3);
+        }
         if (phase == 2)
             for (auto *c : editor->getChildren())
                 if (auto *b = dynamic_cast<juce::TextButton *>(c);

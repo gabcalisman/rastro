@@ -26,6 +26,7 @@ void RastroEditor::Style::apply(const visuals::Palette &pal, int design, int the
     setColour(juce::Slider::thumbColourId, pal.control);
     setColour(juce::Slider::trackColourId, pal.control);
     setColour(juce::Slider::backgroundColourId, pal.outline);
+    setColour(juce::ScrollBar::thumbColourId, pal.control.withAlpha(.65f));
     setColour(juce::ComboBox::backgroundColourId, pal.button);
     setColour(juce::ComboBox::outlineColourId, pal.outline);
     setColour(juce::ComboBox::textColourId, pal.text);
@@ -124,6 +125,10 @@ void RastroEditor::Knob::resized()
 RastroEditor::Card::Card(RastroEditor &e, int m) : ui(e), module(m)
 {
     setComponentID("rack_" + juce::String(m));
+    addAndMakeVisible(jamLock);
+    jamLock.setComponentID("jamLock_" + juce::String(m));
+    jamLock.setTooltip(juce::String::fromUTF8("JAM: bloquear este efeito / lock this effect"));
+    jamLock.onClick = [this] { ui.p.set(jamLockIds[module], 1 - ui.p.value(jamLockIds[module])); };
     addAndMakeVisible(bypass);
     addAndMakeVisible(remove);
     remove.setButtonText(juce::String::fromUTF8("×"));
@@ -275,7 +280,9 @@ void RastroEditor::Card::paint(juce::Graphics &g)
 }
 void RastroEditor::Card::resized()
 {
-    timing.setBounds(getWidth() / 2 + 3, 61, getWidth() / 2 - 12, 24);
+    // The footer belongs to the measured card height, never to a shorter grid row.
+    timing.setBounds(8, height - 34, getWidth() / 2 - 12, 26);
+    jamLock.setBounds(getWidth() / 2 + 3, height - 34, getWidth() / 2 - 11, 26);
     remove.setBounds(getWidth() - 29, 3, 26, 25);
     bypass.setBounds(9, 61, getWidth() / 2 - 13, 24);
     primary->setBounds(8, 86, getWidth() - 16, 26);
@@ -299,7 +306,7 @@ void RastroEditor::Card::mouseUp(const juce::MouseEvent &e)
         ui.selectModule(module);
         return;
     }
-    auto point = ui.getLocalPoint(this, e.getPosition());
+    auto point = ui.rackContent.getLocalPoint(this, e.getPosition());
     auto order = ui.p.settings().order;
     for (int to = 0; to < moduleCount; ++to)
         if (ui.cards[order[to]]->getBounds().contains(point))
@@ -340,7 +347,8 @@ RastroEditor::RastroEditor(RastroProcessor &processor)
         for (auto *c : getChildren())
             if (c != capturePanel.get())
                 c->setEnabled(true);
-        avatar.resume();
+        if (p.playbackTransport != 1)
+            avatar.resume();
         deck.resume();
         openCapture.grabKeyboardFocus();
     };
@@ -427,7 +435,8 @@ RastroEditor::RastroEditor(RastroProcessor &processor)
         for (auto *child : getChildren())
             if (child != instrument.get())
                 child->setEnabled(true);
-        avatar.resume();
+        if (p.playbackTransport != 1)
+            avatar.resume();
         deck.resume();
         openInstrument.grabKeyboardFocus();
     };
@@ -450,8 +459,8 @@ RastroEditor::RastroEditor(RastroProcessor &processor)
         openInstrument.onClick();
         instrument->showPage(true);
     };
-    for (auto *b :
-         {&load, &mutate, &undo, &reset, &add, &about, &center, &preview, &customize, &compact})
+    for (auto *b : {&load, &mutate, &undo, &reset, &add, &about, &center, &preview, &customize,
+                    &compact, &pause, &stop})
         addAndMakeVisible(b);
     customize.setComponentID("customize");
     customize.setButtonText("VISUAL / QUARTO / DANÇA");
@@ -513,7 +522,21 @@ RastroEditor::RastroEditor(RastroProcessor &processor)
         sliceCount.addItem(juce::String(i), i);
     playbackMode.onChange = [this] { p.setPlaybackMode(playbackMode.getSelectedId() - 1); };
     sliceCount.onChange = [this] { p.equalSlices(sliceCount.getSelectedId()); };
-    preview.onClick = [this] { p.previewRequest = p.engine.previewActive.load() ? -1 : 1; };
+    preview.setComponentID("samplePreview");
+    pause.setComponentID("playbackPause");
+    stop.setComponentID("playbackStop");
+    pause.onClick = [this] { p.pausePlayback(p.playbackTransport != 1); };
+    stop.onClick = [this] { p.stopPlayback(); };
+    preview.onClick = [this]
+    {
+        if (p.engine.previewActive && p.playbackTransport == 0)
+            p.stopPlayback();
+        else
+        {
+            p.pausePlayback(false);
+            p.previewRequest = p.engine.previewActive ? 0 : 1;
+        }
+    };
     addAndMakeVisible(play);
     addAndMakeVisible(avatar);
     addAndMakeVisible(animations);
@@ -555,10 +578,15 @@ RastroEditor::RastroEditor(RastroProcessor &processor)
         macros.push_back(std::make_unique<Knob>(p, id));
         addAndMakeVisible(*macros.back());
     }
+    addAndMakeVisible(rackViewport);
+    rackViewport.setComponentID("rackViewport");
+    rackViewport.setViewedComponent(&rackContent, false);
+    rackViewport.setScrollBarsShown(true, true);
+    rackViewport.setScrollBarThickness(14);
     for (int i = 0; i < moduleCount; ++i)
     {
         cards[i] = std::make_unique<Card>(*this, i);
-        addAndMakeVisible(*cards[i]);
+        rackContent.addAndMakeVisible(*cards[i]);
     }
     for (int i = 0; i < 5; ++i)
     {
@@ -602,7 +630,7 @@ RastroEditor::RastroEditor(RastroProcessor &processor)
     };
     setResizable(true, true);
     setResizeLimits(980, 700, 1680, 1100);
-    setSize(p.value("uiCompact") > .5f ? 1000 : 1100, p.value("uiCompact") > .5f ? 700 : 760);
+    setSize(p.value("uiCompact") > .5f ? 1000 : 1100, p.value("uiCompact") > .5f ? 760 : 840);
     localize();
     timerCallback();
     startTimerHz((int)p.value("animation") == 0 ? 6 : (int)p.value("animation") == 1 ? 12 : 24);
@@ -734,7 +762,8 @@ void RastroEditor::timerCallback()
     }
     if (!windowWasShowing)
     {
-        avatar.resume();
+        if (p.playbackTransport != 1)
+            avatar.resume();
         deck.resume();
         windowWasShowing = true;
     }
@@ -775,7 +804,7 @@ void RastroEditor::synchroniseUi()
         bool first = lastCompact < 0;
         lastCompact = requested;
         if (!first)
-            setSize(requested ? 1000 : 1100, requested ? 700 : 760);
+            setSize(requested ? 1000 : 1100, requested ? 760 : 840);
         compact.setToggleState(requested != 0, juce::dontSendNotification);
     }
     int animationMode = (int)p.value("animation"), hz = animationMode == 0   ? 6
@@ -861,6 +890,10 @@ void RastroEditor::synchroniseUi()
         cards[i]->primary->setVisible(present);
         cards[i]->bypass.setVisible(present);
         cards[i]->remove.setVisible(present);
+        cards[i]->jamLock.setVisible(present);
+        bool locked = p.value(jamLockIds[i]) > .5f;
+        cards[i]->jamLock.setButtonText(locked ? juce::String::fromUTF8("JAM ×") : "JAM");
+        cards[i]->jamLock.setToggleState(locked, juce::dontSendNotification);
         auto label = tr(p.value(onIds[i]) > .5f ? "on" : "off");
         if (cards[i]->bypass.getButtonText() != label)
         {
@@ -892,7 +925,9 @@ void RastroEditor::synchroniseUi()
     playbackMode.setSelectedId(mode + 1, juce::dontSendNotification);
     sliceCount.setSelectedId((int)p.value("sliceCount"), juce::dontSendNotification);
     sliceCount.setVisible(mode == 4);
-    preview.setButtonText(tr(p.engine.previewActive ? "stopPreview" : "preview"));
+    preview.setButtonText(p.engine.previewActive && p.playbackTransport == 0 ? "STOP" : "PLAY");
+    pause.setButtonText(p.playbackTransport == 1 ? ">" : "II");
+    stop.setButtonText(juce::String::fromUTF8("■"));
     undo.setEnabled(!editing && p.canUndoMutation());
     bool jamAvailable = false;
     for (int m = 0; m < moduleCount; ++m)
@@ -906,7 +941,7 @@ void RastroEditor::resized()
 {
     ++measurements.layouts;
     int w = getWidth(), h = getHeight();
-    compactLayout = h < 740;
+    compactLayout = h < 800 || w <= 1000;
     int margin = 20, content = w - margin * 2;
     customize.setBounds(w - 588, 10, 230, 30);
     compact.setBounds(w - 348, 10, 88, 30);
@@ -929,7 +964,14 @@ void RastroEditor::resized()
     load.setBounds(sampleRight - 174, 96, 78, 30);
     openCapture.setBounds(sampleRight - 88, 96, 80, 30);
     playbackMode.setBounds(sampleRight - 322, 96, 140, 30);
-    preview.setBounds(32, compactLayout ? 236 : 268, compactLayout ? 148 : 176, 28);
+    int transportY = compactLayout ? 236 : 268;
+    preview.setBounds(32, transportY, compactLayout ? 68 : 80, 28);
+    pause.setBounds(compactLayout ? 104 : 116, transportY, compactLayout ? 36 : 44, 28);
+    stop.setBounds(compactLayout ? 144 : 164, transportY, compactLayout ? 36 : 44, 28);
+    pause.setTooltip(p.language == 0 ? "Pausar / retomar: guarda ponto e pose"
+                                     : "Pause / resume: keep position and pose");
+    stop.setTooltip(p.language == 0 ? "Parar: voltar ao início da seleção e à pose natural"
+                                    : "Stop: selection start and natural pose");
     sliceCount.setBounds(sampleRight - 384, 96, 56, 30);
     int sampleX = compactLayout ? 192 : 220;
     deck.setBounds(32, compactLayout ? 112 : 116, compactLayout ? 148 : 176,
@@ -965,14 +1007,18 @@ void RastroEditor::resized()
     rackTitle = {20, barY + 32, content, 24};
     reset.setBounds(w - 328, rackTitle.getY(), 186, 28);
     add.setBounds(w - 134, rackTitle.getY(), 114, 28);
-    rack = {20, rackTitle.getBottom() + 4, content, 142};
-    auto order = p.settings().order;
-    int cw = (content - 40) / 6;
-    for (int i = 0; i < moduleCount; ++i)
-        cards[order[i]]->setBounds(20 + i * (cw + 8), rack.getY(), cw, 142);
     int keyboardHeight = compactLayout ? 34 : 36;
     keyboard.setBounds(20, h - keyboardHeight - 8, content, keyboardHeight);
-    detail = {20, rack.getBottom() + 6, content, keyboard.getY() - rack.getBottom() - 14};
+    constexpr int detailHeight = 56;
+    detail = {20, keyboard.getY() - detailHeight - 8, content, detailHeight};
+    rack = {20, rackTitle.getBottom() + 4, content, detail.getY() - rackTitle.getBottom() - 10};
+    rackViewport.setBounds(rack);
+    auto order = p.settings().order;
+    // Leave space for a vertical scrollbar at the minimum window height.
+    int cw = std::max(150, (content - 14 - 40) / moduleCount);
+    rackContent.setSize(cw * moduleCount + 8 * (moduleCount - 1), Card::height);
+    for (int i = 0; i < moduleCount; ++i)
+        cards[order[i]]->setBounds(i * (cw + 8), 0, cw, Card::height);
     for (int m = 0; m < moduleCount; ++m)
         for (auto &k : cards[m]->knobs)
             k->setVisible(m == selected && p.value(presentIds[m]) > .5f);
@@ -1063,7 +1109,8 @@ bool RastroEditor::keyPressed(const juce::KeyPress &key)
 }
 void RastroEditor::customizerClosed()
 {
-    avatar.resume();
+    if (p.playbackTransport != 1)
+        avatar.resume();
     deck.resume();
     for (auto *child : getChildren())
         if (child != customizer.get())
@@ -1119,7 +1166,8 @@ void RastroEditor::visibilityChanged()
         return;
     }
     windowWasShowing = true;
-    avatar.resume();
+    if (p.playbackTransport != 1)
+        avatar.resume();
     deck.resume();
     int mode = int(p.value("animation"));
     startTimerHz(mode == 0 ? 6 : mode == 1 ? 12 : 24);

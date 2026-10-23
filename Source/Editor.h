@@ -39,7 +39,8 @@ class RastroEditor : public juce::AudioProcessorEditor,
         RastroEditor &ui;
         int module;
         std::array<float, 8> displayState{};
-        juce::TextButton bypass, remove, timing;
+        static constexpr int height = 178;
+        juce::TextButton bypass, remove, timing, jamLock;
         bool updateTiming();
         std::unique_ptr<Knob> mix, primary;
         std::vector<std::unique_ptr<Knob>> knobs;
@@ -60,7 +61,8 @@ class RastroEditor : public juce::AudioProcessorEditor,
     } captureShade;
     std::unique_ptr<CapturePanel> capturePanel;
     juce::TooltipWindow tips{this, 700};
-    juce::TextButton load, mutate, undo, reset, add, about, center, preview, customize, compact;
+    juce::TextButton load, mutate, undo, reset, add, about, center, preview, customize, compact,
+        pause, stop;
     juce::ComboBox language, animations, playbackMode, sliceCount, pitchMode;
     juce::Label pitchLabel;
     SampleDeck deck;
@@ -75,6 +77,8 @@ class RastroEditor : public juce::AudioProcessorEditor,
     std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> regionAttach;
     std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> loopAttach;
     std::vector<std::unique_ptr<Knob>> sampleKnobs, macros;
+    juce::Component rackContent;
+    juce::Viewport rackViewport;
     std::array<std::unique_ptr<Card>, rastro::moduleCount> cards;
     std::array<juce::TextButton, 5> learns;
     juce::MidiKeyboardComponent keyboard;

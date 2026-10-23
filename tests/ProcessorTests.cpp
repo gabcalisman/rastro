@@ -839,7 +839,7 @@ void visualStageTests()
     editor->synchroniseUi();
     checkUiLayout(*editor);
     auto *macro = findComponent(*editor, "parameter_presence");
-    check(editor->getWidth() == 1100 && editor->getHeight() == 760,
+    check(editor->getWidth() == 1100 && editor->getHeight() == 840,
           "initial window fits the requested normal DAW size");
     check(macro && macro->getHeight() >= 90, "large actual macro control");
     p.set("colourSet", 1);
@@ -875,7 +875,7 @@ void visualStageTests()
     from->mouseDrag(drag);
     from->mouseUp(drag);
     editor->synchroniseUi();
-    check(p.settings().order[0] == 5 && from->getX() == 20,
+    check(p.settings().order[0] == 5 && from->getX() == 0,
           "rack drag order matches actual DSP order");
     p.moveModule(0, 5);
     editor->synchroniseUi();
@@ -949,7 +949,7 @@ void visualStageTests()
     editor->synchroniseUi();
     clickUi(*editor, "compactMode");
     editor->synchroniseUi();
-    check(editor->getHeight() == 700 && p.value("uiCompact") == 1,
+    check(editor->getHeight() == 760 && p.value("uiCompact") == 1,
           "compact mode selected and stored");
     checkUiLayout(*editor);
     check(macro->getHeight() >= 60,
@@ -1732,6 +1732,8 @@ void parentVisibilityTests()
     window.clearContentComponent();
 }
 #include "AppearanceIntegration.h"
+#include "ConceptIntegration.h"
+#include "RackDanceIntegration.h"
 int main()
 {
     juce::ScopedJuceInitialiser_GUI gui;
@@ -1884,6 +1886,8 @@ int main()
         }
     visualStageTests();
     appearanceWorkshopTests();
+    rackDanceTests();
+    conceptCollectionTests();
     std::cout << "PASS: legacy migration, six-module state/order, XY mouse/keyboard/CC, exact "
                  "undo/session history, reactive/frozen avatar; WAV/AIFF mono/stereo, MIDI "
                  "offsets, release, state/sample/rack/language/CC "

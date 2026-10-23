@@ -16,8 +16,8 @@ parser.add_argument('--before-commit', default='234af84', help='Historical scree
 parser.add_argument('--before', type=Path, help='Optional historical screenshots: before-interface.png and before-character.png')
 args = parser.parse_args()
 shots = [
-    ('standard', 'Instrumento — tamanho padrão · 1100×760'),
-    ('compact', 'Instrumento — compacto 1000×700'),
+    ('standard', 'Instrumento — tamanho padrão · 1100×840'),
+    ('compact', 'Instrumento — compacto 1000×760'),
     ('colours', 'Personalizador — CORES'),
     ('knobs', 'Personalizador — KNOBS e prévia interativa'),
     ('character', 'Personalizador — PERSONAGEM'),
@@ -34,6 +34,18 @@ shots += [('adsr-compact', 'ADSR — quatro knobs e gráfico no compacto'),
           ('capture-loaded', 'CAPTURAR — tomada carregada na waveform'),
           ('capture-insert', 'RASTRO Capture — painel do insert gravando')]
 shots += [('slice-room', 'Sampler — Slice e marcadores no novo layout')]
+shots += [(f'concept-base-{i}', f'Criatura {i} — base sem itens opcionais') for i in range(1,5)]
+shots += [(f'concept-outfit-{i}', f'Coleção {i} — figurino e instrumento equipados') for i in range(1,5)]
+shots += [(f'concept-dance-{i}-{frame}', f'Coleção {i} — dança visual, quadro {frame}') for i in range(1,5) for frame in range(3)]
+shots += [('concept-compact', 'Coleção — personalizador compacto'), ('concept-minimum', 'Coleção — janela mínima e seletor rolado')]
+
+shots += [(f'rack-{name}', f'Rack — janela {name}, inteira') for name in ['standard', 'compact', 'minimum', 'minimum-scrolled', 'large']]
+shots += [(f'dance-preview-{i}', f'PRÉVIA sem áudio — coreografia {i}') for i in range(3)]
+shots += [('dance-reduced', 'PRÉVIA — modo reduzido'), ('dance-off', 'DANÇA — desligada'),
+          ('dance-playback-paused', 'Playback real — pausado, pose mantida'),
+          ('dance-playback-stopped', 'Playback real — parado, pose natural')]
+shots += [(f'knob-{where}-{i}', f'Hardware {i} — {where}') for i in range(10) for where in ['customizer', 'applied']]
+
 shots += [(f'room-{i}', f'Cenário original — opção {i}') for i in range(4)]
 shots += [('room-customizer', 'Personalizador — CENÁRIO'), ('dance-customizer', 'Personalizador — DANÇA'), ('rack-customizer', 'Personalizador — RACK e bloqueios JAM')]
 shots += [(f'creature-{species}-{presentation}', f'Criatura {species} — apresentação {presentation}') for species in [1, 2] for presentation in range(3)]
@@ -53,7 +65,7 @@ def source_name(key):
     special={'synth':'rastro-instrument-panel.png','patches':'rastro-patch-panel.png','patches-compact':'rastro-patch-compact.png','capture':'rastro-capture-receiver.png'}
     if key in special: return special[key]
     if key.startswith('before-'): return f'{key}.png'
-    if key.startswith(('character-', 'capture-', 'room-', 'creature-', 'dance-customizer', 'rack-customizer')) or key in ('adsr-compact', 'slice-room'): return f'rastro-{key}.png'
+    if key.startswith(('character-', 'capture-', 'room-', 'creature-', 'dance-', 'rack-', 'knob-', 'concept-')) or key in ('adsr-compact', 'slice-room'): return f'rastro-{key}.png'
     return f'rastro-{key}.png' if key.startswith(('palette-', 'hardware-')) else f'rastro-final-{key}.png'
 def output_name(key):
     aliases = {'standard':'instrumento', 'compact':'compacto', 'colours':'cores',

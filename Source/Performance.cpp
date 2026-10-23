@@ -1,5 +1,6 @@
 #include "Performance.h"
 #include "CharacterArtwork.h"
+#include "ConceptCreatures.h"
 #include "SceneArtwork.h"
 #include "Visuals.h"
 namespace
@@ -147,6 +148,45 @@ bool RastroAvatar::update(int animationMode)
 {
     bool modeChanged = mode != animationMode;
     mode = animationMode;
+    bool appearanceChanged = false;
+    for (size_t i = 0; i < seenAppearance.size(); ++i)
+    {
+        float value = p.value(visuals::visualIds[i]);
+        appearanceChanged |= value != seenAppearance[i];
+        seenAppearance[i] = value;
+    }
+    if (mode == 0)
+        visualPreview = previewPaused = false;
+    auto stop = p.stopSerial.load();
+    if (seenStop != stop)
+    {
+        seenStop = stop;
+        setPreview(false);
+        modeChanged = true;
+    }
+    auto pause = p.pauseSerial.load();
+    if (seenPause != pause)
+    {
+        seenPause = pause;
+        visualPreview = false;
+        previewPaused = false;
+    }
+    // Pause is a hold, not a slow decay. Off always shows the natural pose.
+    if (mode > 0 && (p.playbackTransport == 1 || previewPaused))
+    {
+        if (appearanceChanged)
+            repaint();
+        return appearanceChanged;
+    }
+    if (p.playbackTransport == 2 && !visualPreview)
+    {
+        resume();
+        bool changed = modeChanged || appearanceChanged || lastFrame != std::array<float, 32>{};
+        lastFrame = {};
+        if (changed)
+            repaint();
+        return changed;
+    }
     unsigned serial = p.engine.noteSerial.load(std::memory_order_relaxed);
     unsigned events = serial - lastNote;
     lastNote = serial;
@@ -238,11 +278,22 @@ bool RastroAvatar::update(int animationMode)
         if (activity == 0 && std::abs(swing) < .0001f && std::abs(lift) < .0001f)
             swing = swingVelocity = lift = liftVelocity = 0;
     }
+    if (visualPreview && mode > 0)
+    {
+        // Synthetic visual beat only: no MIDI, engine calls, audio parameters or DSP writes.
+        float bpm = p.hostBpm > 0 ? p.hostBpm.load() : p.value("tempo");
+        previewClock += dt * std::clamp(bpm, 30.f, 300.f) / 60;
+        float beat = previewClock - std::floor(previewClock);
+        level = .1f;
+        note = .6f * std::exp(-beat * 9);
+        x = p.value("playX");
+        y = p.value("playY");
+    }
     if (mode > 0)
         dance.step(dt, std::min(1.f, level * 7 + note), note, x, y,
                    p.hostBpm > 0 ? p.hostBpm.load() : p.value("tempo"),
                    p.hostPlaying ? p.hostBeat.load() : -1.f, controlPulse,
-                   int(p.value("danceStyle")), p.value("danceAmount"));
+                   int(p.value("danceStyle")), p.value("danceAmount"), mode == 1);
     std::array<float, 32> frame{};
     std::array<float, 12> original{level, wobble, dust,  crush, tail,          note,
                                    x,     y,      swing, lift,  swingVelocity, liftVelocity};
@@ -257,7 +308,9 @@ bool RastroAvatar::update(int animationMode)
     frame[24] = dance.shoulder;
     frame[25] = dance.head;
     frame[26] = dance.pulse;
-    bool changed = modeChanged || frame != lastFrame;
+    frame[27] = dance.torso;
+    frame[28] = dance.bounce;
+    bool changed = modeChanged || appearanceChanged || frame != lastFrame;
     lastFrame = frame;
     if (changed)
         repaint();
@@ -279,6 +332,12 @@ void RastroAvatar::paint(juce::Graphics &g)
                                         : 1.f) *
                            std::min(1.3f, p.value("danceAmount"));
     const float energy = std::min(1.f, level * 7), impact = note * strength;
+    if (visualPreview)
+    {
+        g.setColour(pal.secondary);
+        g.drawText(previewPaused ? "PREVIEW II" : "PREVIEW", getWidth() - 104, 4, 90, 18,
+                   juce::Justification::right);
+    }
     const float activity = std::min(1.f, energy + note);
     float posture = (y - .5f) * 2 * activity * strength;
     float sway =
@@ -286,7 +345,9 @@ void RastroAvatar::paint(juce::Graphics &g)
     float pose = swing * strength;
     auto poseTransform =
         juce::AffineTransform::scale(1 - posture * .10f, 1 + posture * .12f).rotated(sway);
-    auto actorBounds = juce::Rectangle<float>(-104, -108, 208, 240);
+    auto actorBounds = p.value("creatureModel") > .5f
+                           ? juce::Rectangle<float>(-110, -140, 220, 278)
+                           : juce::Rectangle<float>(-104, -122, 208, 254);
     auto stage = box.withTrimmedTop(24).reduced(4, 2);
     float scale = std::min(stage.getWidth() / actorBounds.getWidth(),
                            stage.getHeight() / actorBounds.getHeight());
@@ -364,7 +425,10 @@ void RastroAvatar::paint(juce::Graphics &g)
     g.drawLine(16, stage.getBottom(), getWidth() - 16.f, stage.getBottom(), 1);
     juce::Graphics::ScopedSaveState state(g);
     g.addTransform(poseTransform.scaled(scale).translated(cx, cy));
-    drawRastroCharacter(g, p, dance, strength, impact, energy, posture, x);
+    if (p.value("creatureModel") > .5f)
+        drawConceptCreature(g, p, dance, strength, impact, energy, x);
+    else
+        drawRastroCharacter(g, p, dance, strength, impact, energy, posture, x);
     auto dark = juce::Colour(0xff191c2a);
     if (crush * strength > .1f)
     {

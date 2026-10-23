@@ -10,7 +10,22 @@ bool SampleDeck::update(int animationMode)
     auto block = p.engine.blockSerial.load(std::memory_order_relaxed);
     idleTime = block == lastBlock ? std::min(1.f, idleTime + dt) : 0;
     lastBlock = block;
-    bool fresh = idleTime < .3f;
+    if (seenStop != p.stopSerial.load())
+    {
+        seenStop = p.stopSerial.load();
+        angle = level = 0;
+        playing = false;
+        repaint();
+        return true;
+    }
+    if (p.playbackTransport == 1)
+    {
+        playing = false;
+        if (oldPlaying || mode != oldMode)
+            repaint();
+        return oldPlaying || mode != oldMode;
+    }
+    bool fresh = idleTime < .3f && p.playbackTransport == 0;
     playing = fresh && p.engine.playbackActive.load(std::memory_order_relaxed);
     float peak = fresh ? p.engine.meter.load(std::memory_order_relaxed) : 0;
     if (!std::isfinite(peak))
@@ -98,8 +113,10 @@ void SampleDeck::paint(juce::Graphics &g)
     auto needle = cosmic ? pal.highlight : juce::Colour(0xffa04428);
     g.setColour(ink);
     g.setFont(juce::Font(juce::FontOptions(10, juce::Font::bold)));
-    g.drawText(playing ? "PLAY / OUT" : "STOP / OUT", meter.getX() + 5, meter.getY() + 1, 65, 13,
-               juce::Justification::left);
+    g.drawText(p.playbackTransport == 1 ? "PAUSE / OUT"
+               : playing                ? "PLAY / OUT"
+                                        : "STOP / OUT",
+               meter.getX() + 5, meter.getY() + 1, 65, 13, juce::Justification::left);
     float db = juce::Decibels::gainToDecibels(level, -60.f);
     g.setFont(juce::Font(juce::FontOptions(11)));
     g.drawText((level > 0 ? juce::String(db, 0) : "--") + " dBFS", meter.getX() + 5,

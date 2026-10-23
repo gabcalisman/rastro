@@ -119,6 +119,20 @@ juce::AudioProcessorValueTreeState::ParameterLayout RastroProcessor::layout()
         add(id, 0, 4, 0, 1);
     for (auto id : rastro::jamLockIds)
         add(id, 0, 1, 0, 1);
+    add("creatureModel", 0, 4, 0, 1);
+    add("stageHeadwear", 0, 3, 0, 1);
+    add("stageShirt", 0, 3, 0, 1);
+    add("stageJacket", 0, 4, 0, 1);
+    add("stagePants", 0, 4, 0, 1);
+    add("stageShoes", 0, 4, 0, 1);
+    add("stageHeadphones", 0, 1, 0, 1);
+    add("stagePatch", 0, 5, 0, 1);
+    add("stageLanyard", 0, 1, 0, 1);
+    add("stageJewelry", 0, 1, 0, 1);
+    add("stageEarring", 0, 1, 0, 1);
+    add("instrumentEdition", 0, 4, 0, 1);
+    add("glassesEdition", 0, 1, 0, 1);
+    add("knobEdition", 0, 6, 0, 1); // Additional hardware styles; old normalized ranges unchanged.
     return l;
 }
 RastroProcessor::RastroProcessor(bool directCaptureForTests)
@@ -137,6 +151,11 @@ RastroProcessor::RastroProcessor(bool directCaptureForTests)
 void RastroProcessor::prepareToPlay(double sr, int)
 {
     engine.prepare(sr);
+    playbackTransport = 0;
+    stopRequest = false;
+    transportGain = 1;
+    previousTransport = 0;
+    lastTransportOutput[0] = lastTransportOutput[1] = 0;
     if (directInput)
         capture.prepare(sr);
     monitorGain = 0;
@@ -252,7 +271,9 @@ void RastroProcessor::processBlock(juce::AudioBuffer<float> &b, juce::MidiBuffer
         if (auto pos = ph->getPosition())
         {
             if (wasHostPlaying && !pos->getIsPlaying())
-                engine.allOff();
+                stopPlayback();
+            else if (!wasHostPlaying && pos->getIsPlaying() && playbackTransport == 2)
+                playbackTransport = 0;
             wasHostPlaying = pos->getIsPlaying();
             hostPlaying = wasHostPlaying;
             if (auto beat = pos->getPpqPosition())
@@ -275,14 +296,21 @@ void RastroProcessor::processBlock(juce::AudioBuffer<float> &b, juce::MidiBuffer
         engine.clearVoices();
         previousSource = s;
     }
+    if (stopRequest.exchange(false))
+    {
+        // Prepared buffers only; no allocation, locks or file/UI work. Discard effect tails too.
+        engine.reset();
+        engine.position = p.start;
+    }
     const bool queueOverflow = overflow.exchange(false);
     auto rd = keyRead.load();
     auto wr = keyWrite.load(std::memory_order_acquire);
     while (rd != wr)
     {
         auto e = keyEvents[rd++ % 256];
-        if (e.on)
+        if (e.on && playbackTransport != 1)
         {
+            playbackTransport = 0;
             engine.noteOn(e.note, e.velocity, s, p);
             midiFlash = 8;
         }
@@ -295,6 +323,7 @@ void RastroProcessor::processBlock(juce::AudioBuffer<float> &b, juce::MidiBuffer
     int preview = previewRequest.exchange(0);
     if (preview > 0)
     {
+        playbackTransport = 0;
         auto audition = p;
         audition.mode = 0;
         audition.loop = 0;
@@ -318,8 +347,9 @@ void RastroProcessor::processBlock(juce::AudioBuffer<float> &b, juce::MidiBuffer
                 continue;
             }
             auto m = meta.getMessage();
-            if (m.isNoteOn())
+            if (m.isNoteOn() && playbackTransport != 1)
             {
+                playbackTransport = 0;
                 engine.noteOn(m.getNoteNumber(), m.getFloatVelocity(), s, p, m.getChannel());
                 midiFlash = 8;
             }
@@ -368,10 +398,32 @@ void RastroProcessor::processBlock(juce::AudioBuffer<float> &b, juce::MidiBuffer
             inputR = 0;
         monitorGain += (capture.monitor.load() ? .1f - monitorGain : -monitorGain) * .01f;
         float l = 0, r = 0;
-        engine.frame(l, r, s, p);
-        if (p.transportValid && p.transportPlaying)
+        int transport = playbackTransport.load(std::memory_order_relaxed);
+        if (transport != previousTransport)
+        {
+            if (transport == 0)
+                transportGain = 0;
+            previousTransport = transport;
+        }
+        if (transport == 0)
+        {
+            engine.frame(l, r, s, p);
+            transportGain = std::min(1.f, transportGain + 1.f / 64);
+            l *= transportGain;
+            r *= transportGain;
+            lastTransportOutput[0] = l;
+            lastTransportOutput[1] = r;
+        }
+        else
+        {
+            // Fade the last output without advancing sample, envelope, LFO or effect state.
+            transportGain = std::max(0.f, transportGain - 1.f / 64);
+            l = lastTransportOutput[0] * transportGain;
+            r = lastTransportOutput[1] * transportGain;
+        }
+        if (p.transportValid && p.transportPlaying && transport == 0)
             p.transportBeat += p.tempo / (60 * getSampleRate());
-        if (captureInputs > 0)
+        if (captureInputs > 0 && transport == 0)
         {
             l = std::clamp(l + inputL * monitorGain, -1.f, 1.f);
             r = std::clamp(r + inputR * monitorGain, -1.f, 1.f);
@@ -384,7 +436,10 @@ void RastroProcessor::processBlock(juce::AudioBuffer<float> &b, juce::MidiBuffer
             b.setSample(1, i, r);
         }
     }
-    engine.endBlock();
+    if (playbackTransport == 0)
+        engine.endBlock();
+    else
+        engine.meter = 0;
     midi.clear();
 }
 void RastroProcessor::importFileAsync(juce::File file,

@@ -1,6 +1,7 @@
 #pragma once
 #include "DanceMotion.h"
 #include "Processor.h"
+#include "StageWardrobe.h"
 #include "Visuals.h"
 // Original vector costume/creature artwork, drawn only on the message thread.
 inline void drawRastroCharacter(juce::Graphics &g, RastroProcessor &p,
@@ -10,7 +11,7 @@ inline void drawRastroCharacter(juce::Graphics &g, RastroProcessor &p,
     auto pal = visuals::palette(p);
     int skin = int(p.value("avatarColour")), body = int(p.value("avatarBody")),
         presentation = int(p.value("avatarPresentation")), clothes = int(p.value("avatarClothes")),
-        instrument = int(p.value("avatarInstrument"));
+        instrument = p.value("instrumentEdition") > .5f ? 1 : int(p.value("avatarInstrument"));
     auto enamel = skin ? visuals::accent(skin - 1) : pal.highlight;
     int species = int(p.value("avatarSpecies")), finish = int(p.value("avatarMaterial"));
     if (finish == 1)
@@ -77,7 +78,16 @@ inline void drawRastroCharacter(juce::Graphics &g, RastroProcessor &p,
         leg.quadraticTo(foot, y + 3, foot - side * 17, y - 2);
         leg.quadraticTo(knee - side * 13, 83, side * 7, 55);
         leg.closeSubPath();
-        material(leg, fabric.brighter(.35f), shadow, side * 7, 60, side * 43, 114);
+        material(leg,
+                 p.value("stagePants") > .5f
+                     ? (p.value("stagePants") == 2 ? juce::Colour(0xff681d35) : wardrobe::ink)
+                     : fabric.brighter(.35f),
+                 shadow, side * 7, 60, side * 43, 114);
+        {
+            juce::Graphics::ScopedSaveState clipped(g);
+            g.reduceClipRegion(leg);
+            wardrobe::legDetails(g, int(p.value("stagePants")), knee, y, side);
+        }
         juce::Path seam;
         seam.startNewSubPath(side * 23, 60);
         seam.quadraticTo(knee, 85, foot + side * 8, y - 7);
@@ -90,11 +100,34 @@ inline void drawRastroCharacter(juce::Graphics &g, RastroProcessor &p,
         shoe.lineTo(foot - 20, y + 9);
         shoe.quadraticTo(foot - 23, y + 2, foot - 17, y - 5);
         shoe.closeSubPath();
-        material(shoe, silver, juce::Colour(0xff777f94), foot - 10, y - 6, foot + 15, y + 9);
-        line(foot - 18, y + 6, foot + 22, y + 6, 3, ink);
-        for (int i = 0; i < 3; ++i)
-            line(foot - 9 + i * 5, y - 2, foot - 6 + i * 5, y + 1, 1, ink);
+        if (p.value("stageShoes") > .5f)
+            wardrobe::shoe(g, int(p.value("stageShoes")), foot, y, side);
+        else
+        {
+            material(shoe, silver, juce::Colour(0xff777f94), foot - 10, y - 6, foot + 15, y + 9);
+            line(foot - 18, y + 6, foot + 22, y + 6, 3, ink);
+            for (int i = 0; i < 3; ++i)
+                line(foot - 9 + i * 5, y - 2, foot - 6 + i * 5, y + 1, 1, ink);
+        }
     }
+    juce::Graphics::ScopedSaveState upperBody(g);
+    g.addTransform(juce::AffineTransform::rotation(dance.torso * .10f * strength, 0, 57)
+                       .translated(dance.hip * 6 * strength, dance.bounce * 8 * strength));
+    // Both wrists and instrument use exactly the same anchors and transform.
+    float instrumentAngle = (instrument == 1 ? -.16f : .08f) + dance.shoulder * .05f * strength;
+    auto instrumentTransform = juce::AffineTransform::rotation(instrumentAngle, 0, 45);
+    auto handPoint = [&](int hand)
+    {
+        float tap = (hand == 0 ? dance.armLeft : dance.armRight) * strength;
+        if (p.value("instrumentEdition") == 3)
+            return juce::Point<float>(hand == 0 ? -23.f : 24.f,
+                                      45 + (hand ? 8 : 0) - std::max(0.f, tap) * 3);
+        float hx =
+            instrument == 1 ? (hand == 0 ? -18.f + tap * 8 : 51.f) : (hand == 0 ? -14.f : 22.f);
+        float hy = instrument == 1 ? (hand == 0 ? 47.f - std::max(0.f, tap) * 2 : 37.f)
+                                   : (hand == 0 ? 45.f : 57.f) - std::max(0.f, tap) * 4;
+        return juce::Point<float>(hx, hy);
+    };
     // Padded sleeves and articulated forearms have volume and joined cuffs.
     for (float side : {-1.f, 1.f})
     {
@@ -103,14 +136,26 @@ inline void drawRastroCharacter(juce::Graphics &g, RastroProcessor &p,
         float ex = side * 53 + arm * 7, ey = 39 - arm * 10,
               hx = instrument ? side * 45 : side * 69 + arm * 9,
               hy = instrument ? 45 + arm * 6 : 24 - arm * 29 - impact * 2;
+        if (instrument)
+        {
+            auto wrist = handPoint(side < 0 ? 0 : 1).transformedBy(instrumentTransform);
+            hx = wrist.x;
+            hy = wrist.y;
+            ex = side * 55;
+            ey = 35 + std::abs(arm) * 5;
+        }
         juce::Path sleeve;
         sleeve.startNewSubPath(side * 33, shoulder - 5);
         sleeve.quadraticTo(side * 48, shoulder - 9, ex + side * 8, ey - 5);
         sleeve.lineTo(ex - side * 7, ey + 10);
         sleeve.quadraticTo(side * 30, shoulder + 17, side * 33, shoulder - 5);
         sleeve.closeSubPath();
-        material(sleeve, fabric.brighter(.35f), fabric.darker(.4f), side * 31, shoulder, ex,
-                 ey + 8);
+        auto sleeveFabric = p.value("stageJacket") > .5f   ? wardrobe::ink
+                            : p.value("stageShirt") > 1.5f ? wardrobe::cream
+                            : p.value("stageShirt") > .5f  ? juce::Colour(0xff752538)
+                                                           : fabric;
+        material(sleeve, sleeveFabric.brighter(.35f), sleeveFabric.darker(.4f), side * 31, shoulder,
+                 ex, ey + 8);
         juce::Path forearm;
         forearm.startNewSubPath(ex, ey);
         forearm.quadraticTo((ex + hx) / 2 - side * 6, (ey + hy) / 2 + 3, hx, hy);
@@ -118,12 +163,15 @@ inline void drawRastroCharacter(juce::Graphics &g, RastroProcessor &p,
         stroke(forearm, enamel.darker(.3f), 16);
         stroke(forearm, silver.withAlpha(.35f), 2);
         line(hx - side * 5, hy + 6, hx + side * 5, hy + 6, 5, ink);
-        g.setGradientFill(juce::ColourGradient(silver, hx - 6, hy - 5, enamel.darker(.4f), hx + 9,
-                                               hy + 8, false));
-        g.fillRoundedRectangle(hx - 8, hy - 7, 16, 15, 6);
-        line(hx - 5, hy - 3, hx + 3, hy - 4, 1, shadow);
-        g.setColour(silver);
-        g.fillEllipse(hx - side * 9 - 3, hy - 1, 7, 8);
+        if (!instrument)
+        {
+            g.setGradientFill(juce::ColourGradient(silver, hx - 6, hy - 5, enamel.darker(.4f),
+                                                   hx + 9, hy + 8, false));
+            g.fillRoundedRectangle(hx - 8, hy - 7, 16, 15, 6);
+            line(hx - 5, hy - 3, hx + 3, hy - 4, 1, shadow);
+            g.setColour(silver);
+            g.fillEllipse(hx - side * 9 - 3, hy - 1, 7, 8);
+        }
     }
     float shoulders = presentation == 1   ? 42.f
                       : presentation == 2 ? 35.f
@@ -139,46 +187,70 @@ inline void drawRastroCharacter(juce::Graphics &g, RastroProcessor &p,
     coat.quadraticTo(-shoulders - 3, 31, -shoulders, 10);
     coat.closeSubPath();
     material(coat, fabric.brighter(.5f), shadow, -35, 3, 37, 72);
-    juce::Path panel;
-    panel.startNewSubPath(-27, 8);
-    panel.quadraticTo(-12, 4, -3, 13);
-    panel.lineTo(5, 50);
-    panel.lineTo(-16, 58);
-    panel.closeSubPath();
-    g.setColour(enamel.withAlpha(clothes == 1 ? .7f : .2f));
-    g.fillPath(panel);
-    // Satin lapels, stitching, zipper, pleated sleeves, shaped hem and brushed buckle.
-    for (float side : {-1.f, 1.f})
+    if (p.value("stageShirt") > .5f || p.value("stageJacket") > .5f)
+        wardrobe::top(g, p, coat);
+    else
     {
-        juce::Path lapel;
-        lapel.startNewSubPath(side * 24, 7);
-        lapel.lineTo(side * 8, 37);
-        lapel.lineTo(side * 3, 18);
-        lapel.lineTo(side * 11, 5);
-        lapel.closeSubPath();
-        material(lapel, clothes == 2 ? silver : trim, trim.darker(.5f), -20, 8, 20, 37);
-        line(side * 32, 38, side * 23, 56, 1, silver.withAlpha(.5f));
-        for (int i = 0; i < 3; ++i)
-            line(side * (29 + i * 3), 14 + i * 2, side * (33 + i * 2), 24 + i * 2, 1, shadow);
-    }
-    line(0, 30, 0, 62, 1.5f, silver);
-    for (int i = 0; i < 5; ++i)
-        line(-2, 36 + i * 4, 2, 36 + i * 4, 1, shadow);
-    line(-29, 61, 29, 61, 4, enamel.darker(.2f));
-    g.setColour(silver);
-    g.fillRoundedRectangle(-6, 58, 12, 7, 2);
-    g.setColour(shadow);
-    g.fillRoundedRectangle(-3, 60, 6, 3, 1);
-    g.setColour(trim);
-    g.fillRoundedRectangle(18, 40, 9, 3, 1);
-    line(-26, 46, -16, 44, 2, silver);
-    if (clothes == 2)
+        juce::Path panel;
+        panel.startNewSubPath(-27, 8);
+        panel.quadraticTo(-12, 4, -3, 13);
+        panel.lineTo(5, 50);
+        panel.lineTo(-16, 58);
+        panel.closeSubPath();
+        g.setColour(enamel.withAlpha(clothes == 1 ? .7f : .2f));
+        g.fillPath(panel);
+        // Satin lapels, stitching, zipper, pleated sleeves, shaped hem and brushed buckle.
         for (float side : {-1.f, 1.f})
+        {
+            juce::Path lapel;
+            lapel.startNewSubPath(side * 24, 7);
+            lapel.lineTo(side * 8, 37);
+            lapel.lineTo(side * 3, 18);
+            lapel.lineTo(side * 11, 5);
+            lapel.closeSubPath();
+            material(lapel, clothes == 2 ? silver : trim, trim.darker(.5f), -20, 8, 20, 37);
+            line(side * 32, 38, side * 23, 56, 1, silver.withAlpha(.5f));
             for (int i = 0; i < 3; ++i)
-            {
-                g.setColour(silver.withAlpha(.09f));
-                g.fillRoundedRectangle(side * 19 - 6, 35 + i * 7, 12, 4, 2);
-            }
+                line(side * (29 + i * 3), 14 + i * 2, side * (33 + i * 2), 24 + i * 2, 1, shadow);
+        }
+        line(0, 30, 0, 62, 1.5f, silver);
+        for (int i = 0; i < 5; ++i)
+            line(-2, 36 + i * 4, 2, 36 + i * 4, 1, shadow);
+        line(-29, 61, 29, 61, 4, enamel.darker(.2f));
+        g.setColour(silver);
+        g.fillRoundedRectangle(-6, 58, 12, 7, 2);
+        g.setColour(shadow);
+        g.fillRoundedRectangle(-3, 60, 6, 3, 1);
+        g.setColour(trim);
+        g.fillRoundedRectangle(18, 40, 9, 3, 1);
+        line(-26, 46, -16, 44, 2, silver);
+        if (clothes == 2)
+            for (float side : {-1.f, 1.f})
+                for (int i = 0; i < 3; ++i)
+                {
+                    g.setColour(silver.withAlpha(.09f));
+                    g.fillRoundedRectangle(side * 19 - 6, 35 + i * 7, 12, 4, 2);
+                }
+    }
+    if (p.value("stageLanyard") > .5f)
+    {
+        juce::Path l;
+        l.startNewSubPath(32, 60);
+        l.cubicTo(78, 85, 67, 109, 40, 79);
+        stroke(l, wardrobe::orange, 4);
+    }
+    if (p.value("stageJewelry") > .5f)
+    {
+        juce::Path l;
+        l.startNewSubPath(-18, 1);
+        l.quadraticTo(0, 32, 18, 1);
+        stroke(l, wardrobe::gold, 2);
+        g.setColour(wardrobe::gold);
+        g.fillEllipse(-5, 15, 10, 10);
+    }
+    if (p.value("stageShirt") < .5f && p.value("stageJacket") < .5f &&
+        p.value("stageHeadwear") < .5f)
+        wardrobe::badge(g, int(p.value("stagePatch")), 24, 24, 6);
     g.setGradientFill(juce::ColourGradient(silver, -8, -7, enamel.darker(.5f), 10, 13, false));
     g.fillRoundedRectangle(-9, -9, 18, 26, 6);
     line(-8, 5, 8, 5, 2, shadow);
@@ -305,7 +377,7 @@ inline void drawRastroCharacter(juce::Graphics &g, RastroProcessor &p,
             }
         }
         line(11, -18, 15, -16, 1, ink);
-        int horns = int(p.value("avatarHorns"));
+        int horns = p.value("stageHeadwear") > .5f ? 0 : int(p.value("avatarHorns"));
         if (horns)
             for (float side : {-1.f, 1.f})
             {
@@ -315,7 +387,7 @@ inline void drawRastroCharacter(juce::Graphics &g, RastroProcessor &p,
                 fin.closeSubPath();
                 material(fin, silver, shadow, side * 22, -88, side * 31, -59);
             }
-        int hair = int(p.value("avatarHair"));
+        int hair = p.value("stageHeadwear") > .5f ? 0 : int(p.value("avatarHair"));
         if (hair)
         {
             juce::Path plume;
@@ -337,7 +409,14 @@ inline void drawRastroCharacter(juce::Graphics &g, RastroProcessor &p,
             ridge.quadraticTo(-3, -96, 23, -76);
             stroke(ridge, trim.withAlpha(.8f), 1.7f);
         }
-        int glasses = int(p.value("avatarGlasses"));
+        wardrobe::hat(g, p, species ? 48.f : 39.f);
+        if (p.value("stageHeadphones") > .5f)
+            wardrobe::phones(g, species ? 53.f : 44.f);
+        if (p.value("stageEarring") > .5f)
+            wardrobe::star(g, 44, -20, 6, wardrobe::gold);
+        if (p.value("glassesEdition") > .5f)
+            wardrobe::glasses(g, 3);
+        int glasses = p.value("glassesEdition") > .5f ? 0 : int(p.value("avatarGlasses"));
         if (glasses == 1)
         {
             for (float side : {-1.f, 1.f})
@@ -370,7 +449,7 @@ inline void drawRastroCharacter(juce::Graphics &g, RastroProcessor &p,
             line(-23, -94, -25, -80, 1, silver);
             line(23, -94, 25, -80, 1, silver);
         }
-        if (int(p.value("avatarAccessory")) == 1)
+        if (int(p.value("avatarAccessory")) == 1 && p.value("stageHeadphones") < .5f)
         {
             juce::Path band;
             band.startNewSubPath(-34, -33);
@@ -405,49 +484,58 @@ inline void drawRastroCharacter(juce::Graphics &g, RastroProcessor &p,
         line(-27, 10, 30, 57, 4, shadow);
         line(-26, 10, 31, 57, 1.3f, silver);
         juce::Graphics::ScopedSaveState hardware(g);
-        g.addTransform(juce::AffineTransform::rotation(instrument == 1 ? -.16f : .08f, 0, 45));
-        juce::Path casing;
-        casing.addRoundedRectangle(-52, 32, 104, 34, 7);
-        if (instrument == 1)
-            casing.addRoundedRectangle(41, 26, 27, 18, 5);
-        material(casing, ink.brighter(.3f), shadow, -45, 30, 48, 66);
-        line(-44, 35, 37, 35, 1, trim);
-        if (instrument == 1)
-        {
-            g.setColour(silver);
-            g.fillRoundedRectangle(-43, 40, 70, 20, 2);
-            for (int i = 0; i < 10; ++i)
-            {
-                line(-43 + i * 7, 40, -43 + i * 7, 60, .8f, ink);
-                if (i % 7 != 2 && i % 7 != 6)
-                    line(-39 + i * 7, 40, -39 + i * 7, 51, 4, ink);
-            }
-            g.setColour(trim);
-            g.fillRoundedRectangle(33, 43, 11, 6, 2);
-            for (int i = 0; i < 2; ++i)
-            {
-                g.setColour(silver);
-                g.fillEllipse(33 + i * 8, 54, 4, 4);
-            }
-        }
+        g.addTransform(instrumentTransform);
+        if (p.value("instrumentEdition") > .5f)
+            wardrobe::instrument(g, int(p.value("instrumentEdition")), energy);
         else
         {
-            for (int row = 0; row < 2; ++row)
-                for (int col = 0; col < 4; ++col)
+            juce::Path casing;
+            casing.addRoundedRectangle(-52, 32, 104, 34, 7);
+            if (instrument == 1)
+                casing.addRoundedRectangle(41, 26, 27, 18, 5);
+            material(casing, ink.brighter(.3f), shadow, -45, 30, 48, 66);
+            line(-44, 35, 37, 35, 1, trim);
+            if (instrument == 1)
+            {
+                g.setColour(silver);
+                g.fillRoundedRectangle(-43, 40, 70, 20, 2);
+                for (int i = 0; i < 10; ++i)
                 {
-                    auto colour = (row + col) % 2 ? trim : enamel;
-                    g.setColour(colour.withAlpha(.4f + .5f * energy));
-                    g.fillRoundedRectangle(-23 + col * 16, 39 + row * 12, 12, 9, 2);
+                    line(-43 + i * 7, 40, -43 + i * 7, 60, .8f, ink);
+                    if (i % 7 != 2 && i % 7 != 6)
+                        line(-39 + i * 7, 40, -39 + i * 7, 51, 4, ink);
                 }
-            g.setColour(silver);
-            g.fillRoundedRectangle(-42, 41, 12, 7, 2);
-            g.setColour(ink);
-            g.fillRect(-39, 43, 6, 3);
+                g.setColour(trim);
+                g.fillRoundedRectangle(33, 43, 11, 6, 2);
+                for (int i = 0; i < 2; ++i)
+                {
+                    g.setColour(silver);
+                    g.fillEllipse(33 + i * 8, 54, 4, 4);
+                }
+            }
+            else
+            {
+                for (int row = 0; row < 2; ++row)
+                    for (int col = 0; col < 4; ++col)
+                    {
+                        auto colour = (row + col) % 2 ? trim : enamel;
+                        g.setColour(colour.withAlpha(.4f + .5f * energy));
+                        g.fillRoundedRectangle(-23 + col * 16, 39 + row * 12, 12, 9, 2);
+                    }
+                g.setColour(silver);
+                g.fillRoundedRectangle(-42, 41, 12, 7, 2);
+                g.setColour(ink);
+                g.fillRect(-39, 43, 6, 3);
+            }
         }
         // Hands rest on the instrument, with note/energy-driven finger accents. No idle playing.
         for (int hand = 0; hand < 2; ++hand)
         {
-            float hx = hand == 0 ? -20.f : 35.f, hy = 45 - impact * (hand ? 2 : 4);
+            auto wrist = handPoint(hand);
+            float hx = wrist.x, hy = wrist.y;
+            float articulation =
+                std::max(0.f, (hand == 0 ? dance.armLeft : dance.armRight) * strength);
+
             g.setColour(ink);
             g.fillRoundedRectangle(hx - 9, hy - 5, 20, 14, 5);
             g.setColour(enamel);
@@ -456,7 +544,7 @@ inline void drawRastroCharacter(juce::Graphics &g, RastroProcessor &p,
             {
                 g.setColour(enamel.darker(.45f));
                 g.drawLine(hx - 4 + finger * 4, hy, hx - 4 + finger * 4,
-                           hy + 5 + (finger == 1 ? impact * 3 : 0), 1);
+                           hy + 4 + (finger == 1 ? articulation * 3 : impact), 1);
             }
         }
     }

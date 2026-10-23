@@ -5,7 +5,7 @@ class SampleDeck : public juce::Component, public juce::SettableTooltipClient
 {
     RastroProcessor &p;
     float angle = 0, level = 0, idleTime = .3f;
-    unsigned lastBlock = 0;
+    unsigned lastBlock = 0, seenStop = 0;
     int mode = 2;
     bool playing = false;
 

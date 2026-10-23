@@ -75,16 +75,28 @@
     if (sc === "lab") renderLabScreen();
     if (sc === "perform") renderLibrary();
     $("#appBg").style.backgroundImage = sc === "locker" ? "url(" + roomFile() + ")" : "";
-    renderRack(); placeKey = "";
+    renderRack(); placeKey = ""; syncMainTabs();
+    if (sc === "palco") $("#jamPatch").textContent = $("#patchName").textContent;
+    $("#jam").classList.toggle("on", sc === "palco");
     setTimeout(function () { sizeCanvas(); buildKeys(); }, 0);
   }
   function setEtab(t) {
     document.body.dataset.etab = t;
-    $$("#editTabs button").forEach(function (b) { b.classList.toggle("on", b.dataset.etab === t); });
+    syncMainTabs();
     if (t === "fx") renderFxDetail();
     setTimeout(function () { sizeCanvas(); }, 0);
   }
-  $$("#editTabs button").forEach(function (b) { b.addEventListener("click", function () { setEtab(b.dataset.etab); }); });
+  // Main tabs: PLAY (sample) · SOM (instrument) · RACK (fx) · PATCHES (lab) · ESTÚDIO (locker)
+  const MAIN = { play: ["limpo", "sample"], som: ["limpo", "instrument"], rack: ["limpo", "fx"], patches: ["lab"], estudio: ["locker"] };
+  function currentMain() {
+    const sc = screen(), et = document.body.dataset.etab;
+    if (sc === "lab") return "patches"; if (sc === "locker") return "estudio";
+    if (sc === "limpo") return et === "instrument" ? "som" : et === "fx" ? "rack" : "play";
+    return "";
+  }
+  function syncMainTabs() { const m = currentMain(); $$("#editTabs button").forEach(function (b) { b.classList.toggle("on", b.dataset.main === m); }); }
+  function setMain(m) { const t = MAIN[m]; if (!t) return; if (t[1]) setEtab(t[1]); if (screen() !== t[0]) setScreen(t[0]); syncMainTabs(); }
+  $$("#editTabs button").forEach(function (b) { b.addEventListener("click", function () { setMain(b.dataset.main); }); });
   // menu
   const menu = $("#menu");
   function toggleMenu(e) { menu.hidden = !menu.hidden; if (e) e.stopPropagation(); }
@@ -838,7 +850,7 @@
   $("#labVar").addEventListener("click", function () {
     if (!sample.loaded) { toast("Escolha um som primeiro."); return; }
     R.call("jam").then(function (can) { $("#undoJam").disabled = !can; });
-    toast("Variação criada: o JAM mexeu nos efeitos ativos. Desfazer no MACROS ou no ↶."); $("#labBubble").textContent = "Gostou dessa variação?";
+    toast("Variação criada nos efeitos ligados. Desfazer em MACROS (DESFAZER VARIAÇÃO)."); $("#labBubble").textContent = "Gostou dessa variação?";
   });
   $("#labPause").addEventListener("click", function () { R.call("patchSearchPause"); });
   $("#labCancel").addEventListener("click", function () { R.call("patchSearchCancel"); });
@@ -1021,8 +1033,9 @@
     let ty = vy0 + topPad - yTop * s + (Math.cos(now / 6100) * 4 - my * 9) * amp;
     if (scr === "locker") {
       // fitting room: the character stands between the side panels, about 450 px tall on screen, feet near y 640
-      s = Math.max(405 / (520 * k), visW / (S.w - 60), visH / (S.h - 40)) * life;
-      tx = 240 + 47 / k - S.feet[0] * s; ty = vy0 + 640 / k - S.feet[1] * s;
+      // ESTÚDIO: the character stands in the left frame (centre x 361 px), about 620 px tall, feet near y 850
+      s = Math.max(620 / (520 * k), visW / (S.w - 60), visH / (S.h - 40)) * life;
+      tx = 240 + (361 - 720) / k - S.feet[0] * s; ty = vy0 + 850 / k - S.feet[1] * s;
     }
     tx = Math.min(vx0, Math.max(vx0 + visW - S.w * s, tx)); ty = Math.min(vy0, Math.max(vy0 + visH - S.h * s, ty));
     cam = { tx: tx, ty: ty, s: s, vx0: vx0, vy0: vy0, visW: visW, visH: visH };
@@ -1247,7 +1260,7 @@
       if (this.state.done[id] || !this.state.on) return;
       const c = CHALLENGES.filter(function (x) { return x.id === id; })[0];
       this.state.done[id] = Date.now(); popup("DESAFIO!", 240, 200, "#ffd27a"); toast("Desafio concluído: " + c.name + " (+" + c.xp + " XP)", 4000);
-      this.award(c.xp, "challenge"); if (screen() === "locker") renderChallenges();
+      this.award(c.xp, "challenge"); if (screen() === "locker") renderLocker();
     },
     check: function () {
       const f = this.flags;
@@ -1270,52 +1283,28 @@
 
   /* ================= LOCKER ================= */
   let animMode = 2, lkCat = "looks", lockerPup = null, instFilter = "all";
-  const LK_CATS = [["headwear", "Headwear", "hat", "em breve"], ["audio", "Audio", "phones", "em breve"], ["eyewear", "Eyewear", "glasses", "em breve"],
-    ["looks", "Outfits", "jacket", "visuais completos"], ["inst", "Instruments", "guitar", "pose e gestos"], ["knobs", "Knobs", "knob", "coleção"], ["palettes", "Palettes", "palette", "cores"],
-    ["stage", "Cenário", "room", "onde ele toca"], ["dance", "Dança", "dance", "estilos e tempo"], ["glow", "Brilho", "glow", "cor da luz"], ["react", "Reatividade", "spark", "intensidade visual"],
-    ["guests", "Convidados", "face", "outros personagens"], ["saved", "Meus looks", "look", "salvos"]];
-  // Gab's item art. Outfits and instruments map to the painted looks (they work). Headwear, audio and eyewear
-  // are shown as "EM BREVE": they need the character art in separate parts before they can be worn.
+  // ESTÚDIO (Locker). WARDROBE = complete looks; MIX & MATCH = one slot at a time.
+  // Real today: outfits (complete painted looks), instruments, knobs, palettes, stage, dance, glow, reactivity.
+  // Hair, headwear, eyes and audio need the character art in separate layers: shown as EM BREVE, never as working.
+  const LK_CATS = [["hair", "Hair", "face", "em breve"], ["headwear", "Headwear", "hat", "em breve"], ["eyewear", "Eyes", "glasses", "em breve"], ["audio", "Audio", "phones", "em breve"],
+    ["looks", "Outfit", "jacket", "visual completo"], ["inst", "Instruments", "guitar", "pose e gestos"], ["knobs", "Knobs", "knob", "todos os knobs reais"], ["palettes", "Palette", "palette", "cores da interface"],
+    ["stage", "Stage", "room", "onde ele toca"], ["dance", "Dança", "dance", "estilos e tempo"], ["glow", "Brilho", "glow", "cor da luz"], ["react", "Reatividade", "spark", "intensidade visual"],
+    ["guests", "Convidados", "face", "outros personagens"], ["saved", "Meus looks", "look", "salvos"], ["challenges", "Desafios", "star", "XP opcional"]];
   const OUTFIT_ART = { keytar: "it_o_varsity", guitar: "it_o_utility", bass: "it_o_disco", pads: "it_o_holo" };
   const INST_ART = { keytar: "it_keytar", guitar: "it_guitar", bass: "it_bass", pads: "it_pads" };
+  const INST_NAME = { keytar: "Keytar", guitar: "Guitarra estrela", bass: "Baixo", pads: "Controlador", none: "Sem instrumento" };
   const SOON = {
-    headwear: [["it_h_beanie", "Gorro Estrela"], ["it_h_bucket", "Bucket Swirl"], ["it_h_aviator", "Aviador"], ["it_h_fedora", "Fedora Psicodélico"], ["it_h_visor", "Viseira Neon"], ["it_h_cap", "Boné Cyber"]],
-    audio: [["it_a_orbit", "Neon Orbit"], ["it_a_studio", "Studio Chrome"], ["it_a_retro", "Retro Groove"], ["it_a_velocity", "Velocity Ice"]],
-    eyewear: [["it_e_visor", "Visor Violeta"], ["it_e_round", "Redondo Âmbar"], ["it_e_tri", "Triângulo Cyber"], ["it_e_ice", "Ski Ice"], ["it_e_sport", "Sport Sunset"], ["it_e_cat", "Gatinho Neon"]],
-    looks: [["it_o_neon", "Jaqueta Neon"], ["it_o_silver", "Bomber Prata"], ["it_o_swirl", "Camisa Swirl"], ["it_o_jersey", "Camisa Verde-Amarela"]]
+    hair: [["it_hr_flame", "Retro Wave"], ["it_hr_curls", "Curl Cloud"], ["it_hr_spikes", "Chrome Quiff"], ["it_hr_orbit", "Orbit Locs"]],
+    headwear: [["it_h_beanie_night", "Gorro Noite"], ["it_h_cap_sunset", "Boné Sunset"], ["it_h_bucket_violet", "Bucket Violeta"], ["it_h_beanie", "Gorro Estrela"], ["it_h_bucket", "Bucket Swirl"], ["it_h_aviator", "Aviador"], ["it_h_fedora", "Fedora Psicodélico"], ["it_h_visor", "Viseira Neon"], ["it_h_cap", "Boné Cyber"]],
+    audio: [["it_a_inear_cyan", "In-ear Ciano"], ["it_a_inear_sun", "In-ear Sunset"], ["it_a_inear_violet", "In-ear Violeta"], ["it_a_orbit", "Neon Orbit"], ["it_a_studio", "Studio Chrome"], ["it_a_retro", "Retro Groove"], ["it_a_velocity", "Velocity Ice"]],
+    eyewear: [["it_e_visor_sun", "Visor Sunset"], ["it_e_round_gold", "Redondo Dourado"], ["it_e_rect_violet", "Retângulo Violeta"], ["it_e_visor", "Visor Violeta"], ["it_e_round", "Redondo Âmbar"], ["it_e_tri", "Triângulo Cyber"], ["it_e_ice", "Ski Ice"], ["it_e_sport", "Sport Sunset"], ["it_e_cat", "Gatinho Neon"]],
+    looks: [["it_o_neon", "Jaqueta Neon"], ["it_o_silver", "Bomber Prata"], ["it_o_swirl", "Camisa Swirl"]]
   };
-  const SLOT_CIRCLES = [["phones", "audio", -225, -250], ["jacket", "looks", -245, -140], ["shoe", "looks", -215, -30], ["glasses", "eyewear", 225, -250], ["guitar", "inst", 245, -140], ["pants", "looks", 215, -30]];
+  let lkMode = "wardrobe";
   let lockerBuilt = false;
-  function buildLocker() {
-    // the character is the real one standing on the stage platform behind; this layer only draws the slot circles
-    const svg = $("#lockerSvg"); svg.innerHTML = ""; svg.setAttribute("viewBox", "-280 -330 560 380");
-    svg.innerHTML = '<g id="lkLines"></g><g id="lkSlots"></g>';
-    const lines = $("#lkLines", svg), slots = $("#lkSlots", svg);
-    SLOT_CIRCLES.forEach(function (c) {
-      const ln = document.createElementNS(NS, "path"); ln.setAttribute("class", "slot-line"); ln.dataset.k = c[0]; lines.appendChild(ln);
-      const g = document.createElementNS(NS, "g"); g.setAttribute("class", "slot-b"); g.dataset.k = c[0]; g.setAttribute("transform", "translate(" + c[2] + " " + c[3] + ")"); g.setAttribute("role", "button"); g.setAttribute("tabindex", "0");
-      g.innerHTML = '<circle class="ring" r="28"/><g class="sic" transform="translate(-13 -13) scale(1.1)">' + ICO.I[c[0]] + '</g>';
-      g.querySelector(".sic svg").setAttribute("width", 24); g.querySelector(".sic svg").setAttribute("height", 24);
-      g.addEventListener("click", function () { lkCat = c[1]; renderLocker(); });
-      slots.appendChild(g);
-    });
-    lockerBuilt = true;
-  }
+  function buildLocker() { $("#lockerSvg").innerHTML = ""; lockerBuilt = true; }
   function flash(el) { el.style.boxShadow = "0 0 26px rgba(255,179,64,.8)"; setTimeout(function () { el.style.boxShadow = ""; }, 600); }
-  function lockerLines() {
-    if (!puppet || !puppet.points || !rig.pos || !rig.pos.getScreenCTM) return;
-    const svg = $("#lockerSvg"), m1 = rig.pos.getScreenCTM(), m2 = svg.getScreenCTM();
-    if (!m1 || !m2) return;
-    const inv = m2.inverse(), map = { phones: "phones", jacket: "top", shoe: "shoes", glasses: "eyes", guitar: "inst", pants: "bottom" };
-    $$("#lkLines .slot-line").forEach(function (ln) {
-      const c = SLOT_CIRCLES.filter(function (x) { return x[0] === ln.dataset.k; })[0], q = puppet.points[map[c[0]]];
-      if (!q) return;
-      const sx0 = q[0] * m1.a + q[1] * m1.c + m1.e, sy0 = q[0] * m1.b + q[1] * m1.d + m1.f;
-      const tx = sx0 * inv.a + sy0 * inv.c + inv.e, ty = sx0 * inv.b + sy0 * inv.d + inv.f, sx = c[2] + (c[2] < 0 ? 28 : -28);
-      ln.setAttribute("d", "M" + sx + " " + c[3] + " H" + ((sx + tx) / 2).toFixed(1) + " L" + tx.toFixed(1) + " " + ty.toFixed(1));
-      ln.parentNode.parentNode.querySelector('.slot-b[data-k="' + c[0] + '"]').classList.toggle("on", lkCat === c[1]);
-    });
-  }
+  function lockerLines() { /* the slot circles were replaced by the RASTRO summary card */ }
   function itemCard(opts) {
     const b = document.createElement("button"); b.className = "it" + (opts.worn ? " worn" : "") + (opts.locked ? " locked" : "");
     b.innerHTML = '<div class="thumb">' + opts.thumb + '</div><b>' + opts.name + '</b><small>' + opts.note + '</small>' + (opts.worn ? '<span class="badge" data-ic="check"></span><span class="eq">EQUIPPED</span>' : "") + (opts.locked ? '<span class="lock" data-ic="lock"></span>' : "");
@@ -1327,23 +1316,56 @@
       click: function () { toast("Em breve: para vestir " + name + " o personagem precisa vir em partes separadas (cabeça, tronco, braços). A peça ainda não funciona, por isso está marcada."); } });
     b.classList.add("soon"); b.insertAdjacentHTML("beforeend", '<span class="soon-tag">EM BREVE</span>'); return b;
   }
+  function lookThumb(k) { const L = PUP.LOOKS[k]; return L.outfit ? '<img src="' + L.img + '.png" alt="" class="full">' : OUTFIT_ART[k] ? '<img src="' + OUTFIT_ART[k] + '.jpg" alt="">' : '<img src="' + L.img + '.png" alt="" class="full">'; }
+  function wearLook(k) { const L = PUP.LOOKS[k]; if (L.level > game.state.level) { toast("Libera no nível " + L.level + " (faltam " + game.xpTo(L.level) + " XP)."); return; } look.pose = k; if (charKind !== "alien") gesture("avatarCharacter", 6); saveLook(); applyLook(); }
+  function renderWardrobe() {
+    const w = $("#lkWardrobe"); w.innerHTML = "";
+    Object.keys(PUP.LOOKS).forEach(function (k) {
+      const L = PUP.LOOKS[k], locked = L.level > game.state.level, on = look.pose === k && charKind === "alien";
+      const b = document.createElement("button"); b.className = "wcard" + (on ? " on" : "") + (locked ? " locked" : "");
+      b.innerHTML = '<div class="wc-head"><b>' + L.name.split(" · ")[0] + '</b><span class="wc-xp">' + (locked ? "🔒 " + game.xpTo(L.level) + " XP" : "NV " + L.level) + '</span></div>' +
+        '<div class="wc-art"><img src="' + L.img + '.png" alt=""></div><small>' + (L.inst === "none" ? "sem instrumento" : INST_NAME[L.inst]) + '</small>' + (on ? '<span class="badge" data-ic="check"></span>' : "");
+      ICO.hydrate(b); b.addEventListener("click", function () { wearLook(k); }); w.appendChild(b);
+    });
+  }
+  function renderSummary() {
+    const L = PUP.LOOKS[look.pose], box = $("#lkSumList"), dn = AL.DANCES.filter(function (d) { return d.id === look.dance; })[0];
+    const rows = [["looks", "jacket", "OUTFIT", L.name.split(" · ")[0]], ["inst", "guitar", "INSTRUMENTO", INST_NAME[L.inst]], ["knobs", "knob", "KNOBS", knobById(look.knob).name],
+      ["stage", "room", "STAGE", ART.roomNames[Math.round(v("sceneRoom"))] || "—"], ["dance", "dance", "DANÇA", dn ? dn.pt : "—"]];
+    box.innerHTML = "";
+    rows.forEach(function (r) {
+      const b = document.createElement("button"); b.className = "sum-row" + (lkMode === "mix" && lkCat === r[0] ? " on" : "");
+      b.innerHTML = '<i data-ic="' + r[1] + '"></i><span><small>' + r[2] + '</small><b>' + r[3] + '</b></span><em data-ic="right"></em>';
+      ICO.hydrate(b); b.addEventListener("click", function () { lkMode = "mix"; lkCat = r[0]; renderLocker(); }); box.appendChild(b);
+    });
+  }
   function renderLocker() {
     if (!lockerBuilt) buildLocker();
     game.hud();
+    document.body.dataset.lkm = lkMode;
+    $$("#lkModeSeg button").forEach(function (b) { b.classList.toggle("on", b.dataset.lkm === lkMode); });
+    $("#lkSayT").textContent = lkMode === "wardrobe" ? "LOOKS COMPLETOS" : "MIX & MATCH / ITEM SLOTS";
+    $("#lkSayS").textContent = lkMode === "wardrobe" ? "Escolha um visual inteiro. Toque notas para ver ele dançar." : "Uma peça de cada vez. Só o visual muda, nunca o som.";
+    renderSummary();
+    if (lkMode === "wardrobe") { renderWardrobe(); return; }
     const cats = $("#lkCats"); cats.innerHTML = "";
     LK_CATS.forEach(function (c) {
       const b = document.createElement("button"); b.className = lkCat === c[0] ? "on" : "";
       b.innerHTML = '<i data-ic="' + c[2] + '"></i><span>' + c[1] + '<small>' + c[3] + '</small></span>'; ICO.hydrate(b);
       b.addEventListener("click", function () { lkCat = c[0]; renderLocker(); }); cats.appendChild(b);
     });
-    const grid = $("#itemGrid"); grid.innerHTML = ""; grid.className = "item-grid";
+    const grid = $("#itemGrid"); grid.innerHTML = ""; grid.className = "item-grid three";
     const title = LK_CATS.filter(function (c) { return c[0] === lkCat; })[0];
     $("#slotTitle").textContent = title ? title[1].toUpperCase() : ""; $("#slotNote").textContent = "";
-    if (lkCat === "headwear" || lkCat === "audio" || lkCat === "eyewear") {
-      $("#slotNote").textContent = "em breve: precisa da arte em partes";
+    if (lkCat === "hair" || lkCat === "headwear" || lkCat === "audio" || lkCat === "eyewear") {
+      $("#slotNote").textContent = "em breve: precisa do personagem em camadas";
       SOON[lkCat].forEach(function (it) { grid.appendChild(soonCard(it[0], it[1])); });
-    } else if (lkCat === "knobs" || lkCat === "palettes") {
-      const target = lkCat === "knobs" ? "#lkKnobs" : "#lkPalettes"; lkCat = "looks"; renderLocker(); flash($(target)); return;
+    } else if (lkCat === "knobs") {
+      $("#slotNote").textContent = "muda todos os knobs reais"; grid.className = "item-grid knobs"; renderKnobs(grid);
+    } else if (lkCat === "palettes") {
+      $("#slotNote").textContent = "tema da interface inteira"; grid.className = "item-grid one"; renderPalettes(grid);
+    } else if (lkCat === "challenges") {
+      $("#slotNote").textContent = "opcional · XP só libera visual"; grid.className = "item-grid one"; renderChallenges(grid, 99);
     } else if (lkCat === "stage") {
       $("#slotNote").textContent = "o quarto também reage ao som";
       ART.rooms.forEach(function (rk, i) {
@@ -1351,15 +1373,15 @@
           click: function () { gesture("sceneRoom", i); setTimeout(renderLocker, 50); } }));
       });
     } else if (lkCat === "looks") {
-      $("#slotNote").textContent = "roupa e instrumento vêm juntos na arte pintada";
+      $("#slotNote").textContent = "nesta fase a roupa vem com a pose pintada";
       Object.keys(PUP.LOOKS).forEach(function (k) {
         const L = PUP.LOOKS[k], locked = L.level > game.state.level;
-        grid.appendChild(itemCard({ thumb: OUTFIT_ART[k] ? '<img src="' + OUTFIT_ART[k] + '.jpg" alt="">' : '<img src="' + L.img + '.png" alt="">', name: L.name, note: locked ? lockedNote(L.level) : look.pose === k ? "equipado" : "liberado", worn: look.pose === k && charKind === "alien", locked: locked,
+        grid.appendChild(itemCard({ thumb: lookThumb(k), name: L.name.split(" · ")[0], note: locked ? lockedNote(L.level) : look.pose === k ? "equipado" : "liberado", worn: look.pose === k && charKind === "alien", locked: locked,
           click: function () { if (locked) { toast("Libera no nível " + L.level + " (faltam " + game.xpTo(L.level) + " XP)."); return; } look.pose = k; if (charKind !== "alien") gesture("avatarCharacter", 6); saveLook(); applyLook(); } }));
       });
       SOON.looks.forEach(function (it) { grid.appendChild(soonCard(it[0], it[1])); });
     } else if (lkCat === "inst") {
-      lkCat = "looks"; renderLocker(); flash($("#lkInst")); return;
+      $("#slotNote").textContent = "cada instrumento tem pose e gestos próprios"; renderInst(grid);
     } else if (lkCat === "dance") {
       AL.DANCES.forEach(function (d) {
         const locked = d.level > game.state.level;
@@ -1404,7 +1426,6 @@
         b.appendChild(del); grid.appendChild(b);
       });
     }
-    renderInst(); renderKnobs(); renderPalettes(); renderChallenges();
   }
   function reactKnob(parent, size) {
     // VISUAL REACTIVITY lives in the look (presentation only). A tiny fake-param object lets the knob widget drive it.
@@ -1416,37 +1437,34 @@
     k.addEventListener("dblclick", function () { look.react = 1; P.__react.v = 1; saveLook(); });
     return k;
   }
-  function renderInst() {
-    const chips = $("#instChips"); chips.innerHTML = "";
+  function renderInst(grid) {
+    const chips = document.createElement("div"); chips.className = "chips"; chips.style.gridColumn = "1 / -1"; grid.appendChild(chips);
     [["all", "ALL"], ["keytar", "KEYTARS"], ["guitar", "GUITARS"], ["bass", "BASS"], ["pads", "SYNTHS"]].forEach(function (c) {
-      const b = document.createElement("button"); b.className = instFilter === c[0] ? "on" : ""; b.textContent = c[1]; b.addEventListener("click", function () { instFilter = c[0]; renderInst(); }); chips.appendChild(b);
+      const b = document.createElement("button"); b.className = instFilter === c[0] ? "on" : ""; b.textContent = c[1]; b.addEventListener("click", function () { instFilter = c[0]; renderLocker(); }); chips.appendChild(b);
     });
-    const grid = $("#instGrid"); grid.innerHTML = "";
     Object.keys(PUP.LOOKS).forEach(function (k) {
-      const L = PUP.LOOKS[k]; if (instFilter !== "all" && L.inst !== instFilter) return;
+      const L = PUP.LOOKS[k]; if (L.inst === "none" || (instFilter !== "all" && L.inst !== instFilter)) return;
       const locked = L.level > game.state.level, name = { keytar: "Keytar", guitar: "Guitarra estrela", bass: "Baixo", pads: "Controlador" }[L.inst] + (k === "disco" ? " 70s" : "");
       grid.appendChild(itemCard({ thumb: '<img src="' + INST_ART[L.inst] + '.jpg" alt="">', name: name, note: locked ? lockedNote(L.level) : "pose e gestos próprios", worn: look.pose === k && charKind === "alien", locked: locked,
-        click: function () { if (locked) { toast("Libera no nível " + L.level + "."); return; } look.pose = k; if (charKind !== "alien") gesture("avatarCharacter", 6); saveLook(); applyLook(); } }));
+        click: function () { wearLook(k); } }));
     });
   }
   function knobPreview(k) {
     const d = document.createElement("div"); d.className = "kp knob kp-img"; d.style.setProperty("--ks", "64px"); d.style.setProperty("--kr", "40deg");
     d.innerHTML = KIMG_HTML; knobVars(d, k); return d;
   }
-  function renderKnobs() {
-    const kg = $("#knobChoices"); kg.innerHTML = "";
+  function renderKnobs(kg) {
     KNOBS.forEach(function (k) {
       const locked = k.level > game.state.level, on = look.knob === k.id;
       const b = document.createElement("button"); b.className = "kchoice" + (on ? " on" : "") + (locked ? " locked" : "");
       b.appendChild(knobPreview(k));
       b.insertAdjacentHTML("beforeend", '<b>' + k.name + '</b><small>' + (locked ? "🔒 nível " + k.level : on ? "EQUIPPED" : k.kind) + '</small>' + (on ? '<span class="badge" data-ic="check"></span>' : ""));
       ICO.hydrate(b);
-      b.addEventListener("click", function () { if (locked) { toast("Libera no nível " + k.level + " (faltam " + game.xpTo(k.level) + " XP)."); return; } look.knob = k.id; applyKnobClass(); saveLook(); renderKnobs(); });
+      b.addEventListener("click", function () { if (locked) { toast("Libera no nível " + k.level + " (faltam " + game.xpTo(k.level) + " XP)."); return; } look.knob = k.id; applyKnobClass(); saveLook(); renderLocker(); });
       kg.appendChild(b);
     });
   }
-  function renderPalettes() {
-    const pg = $("#paletteChoices"); pg.innerHTML = "";
+  function renderPalettes(pg) {
     const cur = paletteFor(v("colourSet"));
     PALETTES.forEach(function (p) {
       const locked = p.level > game.state.level;
@@ -1456,10 +1474,10 @@
       pg.appendChild(b);
     });
   }
-  function renderChallenges() {
-    const list = $("#challengeList"); list.innerHTML = "";
-    CHALLENGES.filter(function (c) { return !game.state.done[c.id]; }).slice(0, 2).forEach(function (c) {
-      const d = document.createElement("div"); d.className = "ch"; d.innerHTML = '<div style="flex:1"><b>' + c.name + '</b>' + c.text + '</div><span class="xpv">+' + c.xp + ' XP</span>'; list.appendChild(d);
+  function renderChallenges(list, n) {
+    CHALLENGES.forEach(function (c) {
+      const done = !!game.state.done[c.id];
+      const d = document.createElement("div"); d.className = "ch" + (done ? " done" : ""); d.innerHTML = '<div style="flex:1"><b>' + c.name + (done ? " ✓" : "") + '</b>' + c.text + '</div><span class="xpv">+' + c.xp + ' XP</span>'; list.appendChild(d);
     });
   }
   function setupLocker() {
@@ -1474,7 +1492,7 @@
       game.state.looks.push({ name: "Look " + (game.state.looks.length + 1), pose: look.pose, dance: look.dance, glow: look.glow, knob: look.knob }); game.save(); toast("Look salvo em Meus looks.");
       if (screen() === "locker") renderLocker();
     });
-    $("#lkTake").addEventListener("click", function () { lkCat = "react"; renderLocker(); });
+    $$("#lkModeSeg button").forEach(function (b) { b.addEventListener("click", function () { lkMode = b.dataset.lkm; renderLocker(); }); });
   }
   function setupOptions() {
     watch("sceneRoom", function (x) { if (charSvg && sceneKind !== ART.rooms[Math.round(x)]) buildStage(); });
@@ -1482,7 +1500,7 @@
       const p = paletteFor(x);
       PALETTES.forEach(function (q) { if (q.cls) document.body.classList.remove(q.cls); });
       if (p.cls) document.body.classList.add(p.cls);
-      readPalette(); drawEnv(); drawFilter(); drawLfo(); if (screen() === "locker") renderPalettes();
+      readPalette(); drawEnv(); drawFilter(); drawLfo(); if (screen() === "locker") renderLocker();
     });
     watch("avatarCharacter", function (x) {
       const k = SPECIES[Math.round(x)] || "alien";
@@ -1493,11 +1511,19 @@
     watch("animation", function (x) { animMode = Math.round(x); document.body.classList.toggle("anim-off", animMode === 0); });
     const gameRefresh = seg("#gameSeg", "game", function () { return game.state.on ? 1 : 0; }, function (x) { game.state.on = x; game.save(); game.hud(); gameRefresh(); });
     gameRefresh();
+    // JAM = performance mode (character, patch, keyboard, essential controls). Same state, nothing is lost.
+    let beforeJam = "limpo";
     $("#jam").addEventListener("click", function () {
-      R.call("jam").then(function (can) { $("#undoJam").disabled = !can; });
-      jamBurst = 1; motion.hit = true; spawnNotes(240, 220, 6, .9); game.award(5, "jam"); popup("JAM!", 240, 190, "#ffb340");
+      if (screen() === "palco") { setScreen(beforeJam === "palco" ? "limpo" : beforeJam); return; }
+      beforeJam = screen(); setScreen("palco");
     });
-    $("#undoJam").addEventListener("click", function () { R.call("undoJam").then(function (can) { $("#undoJam").disabled = !can; }); toast("Voltou à combinação anterior ao JAM."); });
+    $("#jamExit").addEventListener("click", function () { setScreen(beforeJam === "palco" ? "limpo" : beforeJam); });
+    // VARIAR FX (formerly the JAM button): new values only on the effects that are on; undo keeps working
+    $("#varyFx").addEventListener("click", function () {
+      R.call("jam").then(function (can) { $("#undoJam").disabled = !can; });
+      jamBurst = 1; motion.hit = true; spawnNotes(240, 220, 6, .9); game.award(5, "jam"); popup("VARIOU!", 240, 190, "#ffb340");
+    });
+    $("#undoJam").addEventListener("click", function () { R.call("undoJam").then(function (can) { $("#undoJam").disabled = !can; }); toast("Voltou à combinação anterior à variação."); });
   }
 
   /* ================= transport, language ================= */
@@ -1693,6 +1719,7 @@
     if (game.state.lang === "en") setLang("en"); else setLang("pt");
     refreshUserPatches();
     $("#undoJam").disabled = !init.canUndoJam;
+    new MutationObserver(function () { $("#jamPatch").textContent = $("#patchName").textContent; }).observe($("#patchName"), { childList: true, characterData: true, subtree: true });
     if (R.simulated) toast("Prévia no navegador com motor simulado. No plugin, tudo usa o áudio real.", 4200);
     requestAnimationFrame(frame);
   }

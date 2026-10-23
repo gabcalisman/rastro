@@ -27,7 +27,7 @@
       <button id="redoBtn" class="hbtn icon" data-ic="redo" title="Refazer" disabled></button>
       <span class="hsep"></span>
       <button id="dice" class="hbtn" title="RANDOMIZE: sorteia um patch novo (envelope, filtro, LFO, voz e efeitos). O atual fica em A; o novo toca em B."><i data-ic="dice"></i><span>RANDOMIZE</span></button>
-      <button id="jam" class="jam-btn" title="JAM: variação dos efeitos ativos. Não mexe no sample, raiz, trims nem modo."><i data-ic="wave"></i>JAM</button>
+      <button id="jam" class="jam-btn" title="JAM: modo de performance. Esconde os painéis e deixa personagem, patch, teclado e controles essenciais. Clique de novo para voltar."><i data-ic="wave"></i>JAM</button>
       <div class="gtransport" role="group" aria-label="Transporte interno do RASTRO (não controla o Logic)">
         <button id="tPlay" class="tbtn" data-ic="play" title="Tocar a prévia do sample ou retomar" aria-label="Tocar"></button>
         <button id="tPause" class="tbtn" data-ic="pause" title="Pausar: para a prévia e congela a animação, guardando a posição" aria-label="Pausar"></button>
@@ -46,11 +46,13 @@
     <button data-nav="lab"><i data-ic="lab"></i><span>PATCH LAB</span></button>
   </nav>
 
-  <!-- LIMPO edit tabs -->
-  <nav id="editTabs" class="edit-tabs">
-    <button data-etab="sample"><i data-ic="wave"></i>SAMPLE</button>
-    <button data-etab="instrument"><i data-ic="sliders"></i>INSTRUMENT</button>
-    <button data-etab="fx"><i data-ic="cube"></i>FX</button>
+  <!-- main tabs: PLAY · SOM · RACK · PATCHES · ESTÚDIO (JAM is a mode, in the header) -->
+  <nav id="editTabs" class="edit-tabs main-tabs">
+    <button data-main="play" title="Carregar, arrastar ou capturar áudio; waveform; modo de reprodução; teclado"><i data-ic="wave"></i>PLAY</button>
+    <button data-main="som" title="ADSR, filtro, LFO, polifonia, pitch e performance"><i data-ic="sliders"></i>SOM</button>
+    <button data-main="rack" title="Cadeia de efeitos: a ordem é a ordem do som"><i data-ic="cube"></i>RACK</button>
+    <button data-main="patches" title="Salvar, carregar, comparar e organizar sons"><i data-ic="folder"></i>PATCHES</button>
+    <button data-main="estudio" title="Personagem, guarda-roupa, instrumentos, knobs, cenário e cores"><i data-ic="hanger"></i>ESTÚDIO</button>
   </nav>
 
   <!-- ================= browser (PERFORM) ================= -->
@@ -75,6 +77,7 @@
     <div id="pausedBadge" class="paused-badge" hidden>❚❚ PAUSADO</div>
     <div id="palcoLogo" class="logo palco-logo" aria-hidden="true"></div>
     <button id="palcoMenu" class="hbtn icon palco-menu" data-ic="menu" title="Menu"></button>
+    <div id="jamTop" class="jam-top"><div class="jam-patch"><small>PATCH</small><b id="jamPatch">—</b></div><button id="jamExit" class="jam-btn on" title="Sair do modo JAM (volta para a aba em que você estava)"><i data-ic="wave"></i>SAIR DO JAM</button></div>
     <div id="palcoBar" class="palco-bar">
       <button id="stripBtn" class="strip-toggle" data-ic="up" title="Mostrar ou esconder a faixa"></button>
       <div class="pb-inner">
@@ -181,7 +184,8 @@
   <section id="macroPanel" class="panel">
     <div class="panel-head"><h2>MACROS</h2></div>
     <div class="knob-grid" id="macroKnobs"></div>
-    <button id="undoJam" class="chip-btn wide" disabled title="Volta à combinação anterior ao JAM">DESFAZER JAM</button>
+    <button id="varyFx" class="chip-btn wide" title="VARIAR FX: sorteia valores novos só nos efeitos ligados. Não mexe no sample, raiz, trims nem modo; não liga nem desliga módulos.">VARIAR FX</button>
+    <button id="undoJam" class="chip-btn wide" disabled title="Volta à combinação anterior à última variação">DESFAZER VARIAÇÃO</button>
     <div class="dice-row"><button id="diceKeep" class="chip-btn" disabled title="Ficar com o patch sorteado">FICAR</button><button id="diceBack" class="chip-btn" disabled title="Voltar ao patch de antes do RANDOMIZE">VOLTAR</button></div>
   </section>
 
@@ -206,8 +210,13 @@
 
   <!-- ================= LOCKER ================= -->
   <section id="lkLevel" class="panel lk-level"><span class="lk-star" data-ic="star"></span><b>LVL <span id="lkLvl">1</span></b><div class="bar"><div id="lkBar"></div></div><span id="lkXp" class="mono">0 / 100 XP</span></section>
-  <section id="lkCats" class="panel lk-cats"></section>
-  <section id="lkItems" class="panel lk-items"><div class="panel-head"><h2 id="slotTitle">AUDIO</h2><span id="slotNote" class="hint"></span></div><div class="item-grid" id="itemGrid"></div></section>
+  <section id="lkSummary" class="panel lk-summary"><h3>RASTRO</h3><small>CUSTOMIZE YOUR LOOK</small><div id="lkSumList"></div></section>
+  <section id="lkRight" class="panel lk-right">
+    <div class="lk-top"><div class="seg lk-mode" id="lkModeSeg"><button data-lkm="wardrobe"><i data-ic="hanger"></i>WARDROBE</button><button data-lkm="mix"><i data-ic="sliders"></i>MIX &amp; MATCH</button></div>
+      <div class="lk-say"><b id="lkSayT">LOOKS COMPLETOS</b><small id="lkSayS">Escolha um visual inteiro. Toque notas para ver ele dançar.</small></div></div>
+    <div id="lkWardrobe" class="wardrobe"></div>
+    <div id="lkMix" class="lk-mix"><div id="lkCats" class="lk-cats"></div><div id="lkItems" class="lk-items"><div class="panel-head"><h2 id="slotTitle">AUDIO</h2><span id="slotNote" class="hint"></span></div><div class="item-grid" id="itemGrid"></div></div></div>
+  </section>
   <section id="lockerPanel" class="lk-stage" aria-label="Personagem e espaços equipáveis"><svg id="lockerSvg" viewBox="-330 -350 660 390" preserveAspectRatio="xMidYMid meet"></svg>
     <div class="locker-actions"><button id="lookUndo" class="chip-btn" disabled>↶ DESFAZER</button><button id="lookRandom" class="chip-btn">SORTEAR VISUAL</button><button id="lookSave" class="chip-btn">SALVAR LOOK</button></div></section>
   <section id="lkInst" class="panel lk-inst"><div class="panel-head"><h2>INSTRUMENTS</h2><div class="chips" id="instChips"></div></div><div class="item-grid three" id="instGrid"></div></section>

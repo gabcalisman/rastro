@@ -131,3 +131,11 @@ Separe: o que já existia; o que mudou; o que ficou incompleto; testes que passa
 - Personagem com sensação 3D: pulos com squash na aterrissagem (Disco/Funk/Expressivo), giro falso (yaw), inclinação, luz de contorno, respiração e balanço parado. Dança só com som; no Locker, prévia leve.
 - **Knobs = imagens do Gab** (`ui/knob_*.png`, 43 modelos). Vista de cima: a imagem gira. Vista 3/4: só o topo gira, recortado na elipse do topo. Look salvo com `knob` em texto; índices antigos são migrados.
 - **Locker** sobre o palco real (o quarto ocupa a janela). Itens com a arte do Gab (`ui/it_*.jpg`). Outfits e instrumentos funcionam (trocam o visual pintado completo). Chapéus, fones, óculos e as 4 roupas novas aparecem como **EM BREVE**: precisam da arte em partes.
+
+## Decisões (23/10/2026, tarde) — abas do prompt e Estúdio
+
+- Abas principais: **PLAY** (sample), **SOM** (instrumento), **RACK** (efeitos), **PATCHES** (biblioteca + Patch Lab + A/B), **ESTÚDIO** (Locker). Por baixo, são as telas Limpo/Lab/Locker de antes; nada de estado foi perdido.
+- **JAM agora é modo de performance** (botão no topo): mostra personagem, patch, teclado e a faixa X/Y; "SAIR DO JAM" volta à aba anterior. A antiga ação JAM (variar os efeitos ligados) virou **VARIAR FX** em MACROS, com DESFAZER VARIAÇÃO. O motor e o nome interno (`jam`) não mudaram.
+- **ESTÚDIO** no estilo das referências: moldura com o personagem à esquerda (cartão RASTRO com o resumo do look), à direita **WARDROBE** (looks completos em cartões) e **MIX & MATCH** (categorias + itens). Knobs, paletas, instrumentos, cenário e desafios ficam dentro do MIX & MATCH.
+- 9 roupas novas da folha do Gab (`ui/al_o_*.png`) são visuais completos de verdade (sem instrumento, mão apontando). Cabelo, chapéu, olhos e áudio continuam **EM BREVE** (as folhas novas viram miniaturas, mas o corpo ainda não está em camadas).
+- Expressão: olhos brilham a cada nota (intensidade = velocity) e a boca se abre em acentos fortes.

@@ -16,6 +16,11 @@
     pads: { img: "al_pads", w: 463, inst: "pads", name: "Hoodie Holo · Pads", head: [210, 102, 92, 98], neck: [205, 195], hip: [210, 420], feet: 668, pads: [[222, 280], [334, 300]], level: 3 },
     disco: { img: "al_disco", w: 381, inst: "keytar", name: "Flare 70s · Keytar", head: [165, 112, 80, 98], neck: [160, 200], hip: [170, 400], feet: 668, keys: [[92, 330], [250, 272]], level: 4 }
   };
+  // Outfit sheet from Gab (9 complete looks, no instrument in hand: the free hand points, the other rests on the hip).
+  [["velvet", "Velvet Sunset", 446, 232, 1], ["neonwave", "Neon Wave", 453, 234, 1], ["verdeamarela", "Verde-Amarela", 444, 226, 1], ["college", "College Violeta", 438, 226, 2],
+   ["chrome", "Chrome Cargo", 450, 235, 2], ["flower", "Flower Power", 427, 217, 3], ["knit", "Retro Knit", 428, 220, 3], ["circuit", "Circuit Tailor", 436, 231, 4], ["starpilot", "Star Pilot", 433, 214, 5]].forEach(function (o) {
+    LOOKS["o_" + o[0]] = { img: "al_o_" + o[0], w: o[2], inst: "none", name: o[1], head: [o[3], 118, 98, 100], neck: [o[3] - 8, 208], hip: [o[3] - 6, 330], feet: 668, level: o[4], outfit: true };
+  });
   let uid = 0;
   function el(parent, tag, attrs) { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); parent.appendChild(e); return e; }
   function create(parent, lookId) {
@@ -35,7 +40,7 @@
       '<mask id="' + id + 'mG" maskUnits="userSpaceOnUse" x="0" y="0" width="' + W + '" height="' + H + '"><image href="' + ghref + '" width="' + W + '" height="' + H + '"/></mask>' +
       '<mask id="' + id + 'mR" maskUnits="userSpaceOnUse" x="-40" y="-40" width="' + (W + 80) + '" height="' + (H + 80) + '"><image href="' + ghref + '" width="' + W + '" height="' + H + '"/><image class="rimcut" href="' + ghref + '" width="' + W + '" height="' + H + '" style="filter:brightness(0)" transform="translate(10 0)"/></mask>' +
       '<radialGradient id="' + id + 'au"><stop offset="0" stop-color="#fff" stop-opacity=".6" class="a0"/><stop offset="1" stop-color="#fff" stop-opacity="0" class="a1"/></radialGradient>';
-    const R = { root: root, id: id, look: lookId, L: L, springs: {}, t: 0, st: { hit: 0, hitV: 0, nod: 0, nodV: 0, strum: 0, strumV: 0, press: 0, hop: 0, hopV: 0, sq: 0, sqV: 0, lastHop: -1, air: false } };
+    const R = { root: root, id: id, look: lookId, L: L, springs: {}, t: 0, st: { eye: 0, mouth: 0, hit: 0, hitV: 0, nod: 0, nodV: 0, strum: 0, strumV: 0, press: 0, hop: 0, hopV: 0, sq: 0, sqV: 0, lastHop: -1, air: false } };
     R.aura = el(root, "ellipse", { cx: W / 2, cy: H * .45, rx: W * .62, ry: H * .52, fill: "url(#" + id + "au)", opacity: ".4" });
     R.shadow = el(root, "ellipse", { cx: L.hip[0], cy: L.feet + 4, rx: W * .38, ry: 12, fill: "rgba(0,0,0,.45)" });
     // "whole" carries the game-feel body motion: hops with squash on landing, fake turning (yaw), lean.
@@ -56,6 +61,13 @@
     // rim light: the painted silhouette lit from the side the body turns away from (sells the volume)
     R.rimG = el(R.head.parentNode, "g", { opacity: "0" }); el(R.rimG, "rect", { x: 0, y: 0, width: W, height: H, fill: "#ffffff", mask: "url(#" + id + "mR)" }); el(R.head, "image", { href: href, width: W, height: H, mask: "url(#" + id + "mH)" });
     R.stops = defs.querySelectorAll("#" + id + "au stop"); R.rimCut = defs.querySelector(".rimcut");
+    // expression: soft glows over the painted eyes and mouth (eyes flash on notes, mouth opens on accents)
+    defs.insertAdjacentHTML("beforeend", '<radialGradient id="' + id + 'eg"><stop offset="0" stop-color="#bff8ff" stop-opacity=".95"/><stop offset=".45" stop-color="#2fe0ff" stop-opacity=".5"/><stop offset="1" stop-color="#2fe0ff" stop-opacity="0"/></radialGradient>' +
+      '<radialGradient id="' + id + 'mg"><stop offset="0" stop-color="#ffd0f4" stop-opacity=".95"/><stop offset=".5" stop-color="#ff4fd8" stop-opacity=".5"/><stop offset="1" stop-color="#ff4fd8" stop-opacity="0"/></radialGradient>');
+    const ex = L.eyes || [hx - 4, hy + 22], mo = L.mouth || [hx + 10, hy + 62];
+    R.eyeG = el(R.head, "ellipse", { cx: ex[0], cy: ex[1], rx: hrx * .62, ry: 26, fill: "url(#" + id + "eg)", opacity: 0, style: "mix-blend-mode:screen" });
+    R.mouthG = el(R.head, "ellipse", { cx: mo[0], cy: mo[1], rx: 30, ry: 16, fill: "url(#" + id + "mg)", opacity: 0, style: "mix-blend-mode:screen" });
+    R.mo = mo;
     R.update = function (s, dt) { update(R, s, dt); };
     R.pose = function () { R.springs = {}; update(R, { alive: 0 }, 0); };
     update(R, { alive: 0 }, 0);
@@ -74,6 +86,14 @@
     R.t += dt;
     const amp = s.amp === undefined ? 1 : s.amp, alive = (s.alive || 0) * amp, I = (s.intensity === undefined ? .8 : s.intensity) * alive;
     const D = window.RastroAlien && window.RastroAlien.dance ? window.RastroAlien.dance(s.style || "groove", s.beats || 0) : { hipX: 0, hipY: 0, hipR: 0, torR: 0, chestX: 0, headR: 0, headY: 0, inst: 0 };
+    if (s.hit) { st.eye = Math.max(st.eye, .45 + (s.vel || .7) * .55); if ((s.vel || .7) > .78) st.mouth = 1; }
+    st.eye = Math.max(0, st.eye - dt * 2.6); st.mouth = Math.max(0, st.mouth - dt * 2.2);
+    if (R.eyeG) {
+      const amp0 = s.amp === undefined ? 1 : s.amp;
+      R.eyeG.setAttribute("opacity", (Math.min(1, st.eye * .8 + (s.glowAmt || 0) * .15) * Math.min(1, amp0 + .3)).toFixed(2));
+      R.mouthG.setAttribute("opacity", (st.mouth * .85 * Math.min(1, amp0 + .3)).toFixed(2));
+      R.mouthG.setAttribute("ry", (10 + st.mouth * 10).toFixed(1));
+    }
     if (s.hit) { const v = (s.vel || .7) * amp; st.hitV += 70 * v; st.nodV += 150 * v; st.strumV += (st.strum > 0 ? -1 : 1) * 260 * v; st.press = 1; }
     st.hitV += (-st.hit * 380 - st.hitV * 28) * dt; st.hit += st.hitV * dt;
     st.nodV += (-st.nod * 240 - st.nodV * 22) * dt; st.nod += st.nodV * dt;

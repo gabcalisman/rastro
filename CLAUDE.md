@@ -147,3 +147,9 @@ Separe: o que já existia; o que mudou; o que ficou incompleto; testes que passa
 - Novos parâmetros de som (anexados): `bDiffusion` (BLOOM, difusão por dois allpass, padrão 0,6) e `wWidth` (WOBBLE, defasagem L/R, padrão 0,5). Sessões antigas restauram 0 = som idêntico ao anterior.
 - Testes novos (suíte dsp): cada controle de cada módulo muda o som; bypass e Mix 0 saem idênticos ao seco; o bypass faz fade (o teste falha se o fade for removido); largura 0 fica mono e largura alta abre o estéreo.
 - A antiga macro "JAM %" virou **VARIAÇÃO** (mesmo parâmetro `mutation`).
+
+## Princípio (23/10/2026): aventura sônica premium
+
+- O RASTRO PLAY é **um produto de áudio premium acima de tudo**, com a experiência de ser (talvez) o primeiro synth gamificado. O jogo serve ao som, nunca o contrário.
+- Todo efeito novo precisa soar como plugin profissional: sem aliasing audível (oversampling onde houver distorção), parâmetros suavizados, sem cliques, ganho controlado, testes de qualidade além de "funciona".
+- Ordem acordada: fechar o PR #2 (validação no Logic + etapa de som: rack expansível, TAPE, COMP, EQ, SIDECHAIN) antes do PR #3 (protótipo do personagem 3D com visual 2.5D).

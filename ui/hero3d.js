@@ -151,15 +151,19 @@
     const neck = new T.Group(); neck.position.set(0, .42, 0); chest.add(neck);
     const head = new T.Group(); head.position.set(0, .3, .02); neck.add(head);
     const skull = new T.Mesh(new T.SphereGeometry(.36, 40, 30), skin); skull.scale.set(1, .96, .92); head.add(skull);
+    const flames = [];
     // crest: three glossy black flames curling up and back, each with a neon edge
     [[V(-.05, .28, .08), V(.02, .52, .02), V(.18, .66, -.12), V(.3, .6, -.2), .13],
      [V(.06, .3, -.06), V(.12, .5, -.14), V(.26, .55, -.3), V(.36, .44, -.34), .1],
      [V(-.16, .22, .02), V(-.24, .42, -.02), V(-.12, .58, -.1), V(-.02, .6, -.14), .09]].forEach(function (c, i) {
-      const curve = new T.CatmullRomCurve3(c.slice(0, 4));
-      head.add(new T.Mesh(taperedTube(curve, c[4], .012, 40, 14), skin));
+      // each flame hangs from a pivot at its root so physics can swing it (see "secondary motion")
+      const pivot = new T.Group(); pivot.position.copy(c[0]); head.add(pivot); flames.push({ g: pivot, i: i });
+      const local = c.slice(0, 4).map(function (p) { return p.clone().sub(c[0]); });
+      const curve = new T.CatmullRomCurve3(local);
+      pivot.add(new T.Mesh(taperedTube(curve, c[4], .012, 40, 14), skin));
       // neon edge runs along the outer (upper-back) side of the flame, starting above the skull
-      const edge = new T.CatmullRomCurve3(c.slice(1, 4).map(function (p) { return p.clone().add(V(0, c[4] * .55, -c[4] * .35)); }));
-      head.add(new T.Mesh(taperedTube(edge, c[4] * .2, .005, 30, 6), i === 1 ? neonP : neonO));
+      const edge = new T.CatmullRomCurve3(local.slice(1, 4).map(function (p) { return p.clone().add(V(0, c[4] * .55, -c[4] * .35)); }));
+      pivot.add(new T.Mesh(taperedTube(edge, c[4] * .2, .005, 30, 6), i === 1 ? neonP : neonO));
     });
     // eyes: happy closed crescents; mouth: open smile
     const eyes = [];
@@ -168,7 +172,7 @@
     });
     const mouth = new T.Mesh(new T.CircleGeometry(.075, 20, Math.PI, Math.PI), mouthM); mouth.position.set(.0, -.11, .335); mouth.rotation.x = -.15; head.add(mouth);
     // headphones
-    const band = new T.Mesh(new T.TorusGeometry(.385, .024, 10, 32, Math.PI), gold); band.position.y = .02; band.scale.set(1, 1.05, 1); // ear to ear, over the top head.add(band);
+    const band = new T.Mesh(new T.TorusGeometry(.385, .024, 10, 32, Math.PI), gold); band.position.y = .02; band.scale.set(1, 1.05, 1); head.add(band); // ear to ear, over the top
     [-1, 1].forEach(function (sx) {
       const cup = new T.Mesh(new T.CylinderGeometry(.13, .13, .08, 24), gold); cup.rotation.z = Math.PI / 2; cup.position.set(sx * .36, .0, .0); head.add(cup);
       const ring = new T.Mesh(new T.TorusGeometry(.085, .02, 10, 28), neonP); ring.rotation.y = Math.PI / 2; ring.position.set(sx * .405, 0, 0); head.add(ring);
@@ -211,6 +215,53 @@
     keytar.position.set(-.16, .02, .27); keytar.rotation.set(-.12, .12, .42); chest.add(keytar);
     const keyLine = [V(.12, .0, .07), V(.56, .0, .07)], neckPoint = V(.86, .085, .07);
 
+    // ---------- physics: two coat-tail ribbons as verlet chains (gravity, inertia, fixed segment length) ----------
+    const SEG = 6, SEGLEN = .075;
+    const ribbons = [-1, 1].map(function (sx) {
+      const anchor = V(sx * .2, -.02, -.02); // on the jacket hem, in chest space
+      const pts = [], prev = [], meshes = [];
+      for (let i = 0; i <= SEG; i++) { pts.push(V(sx * .2, .8 - i * SEGLEN, 0)); prev.push(pts[i].clone()); }
+      for (let i = 0; i < SEG; i++) { const m = limb(.03 - i * .003, .026 - i * .003, SEGLEN, lapelM); root.add(m); meshes.push(m); }
+      return { sx: sx, anchor: anchor, pts: pts, prev: prev, meshes: meshes };
+    });
+    function stepRibbons(dt, hipVel) {
+      if (dt <= 0) return;
+      const h = Math.min(dt, 1 / 30), g = -9.8 * .55, damp = .965;
+      chest.updateMatrixWorld(true);
+      ribbons.forEach(function (rb) {
+        const a = rb.anchor.clone(); chest.localToWorld(a); root.worldToLocal(a);
+        rb.pts[0].copy(a); rb.prev[0].copy(a);
+        for (let i = 1; i <= SEG; i++) {
+          const p = rb.pts[i], q = rb.prev[i], vx = (p.x - q.x) * damp, vy = (p.y - q.y) * damp, vz = (p.z - q.z) * damp;
+          q.copy(p); p.x += vx; p.y += vy + g * h * h; p.z += vz - .002; // slight pull backwards so they hang behind the legs
+        }
+        for (let it = 0; it < 4; it++)
+          for (let i = 1; i <= SEG; i++) {
+            const a0 = rb.pts[i - 1], b0 = rb.pts[i], d = b0.clone().sub(a0), len = d.length() || 1e-6;
+            b0.copy(a0).addScaledVector(d, SEGLEN / len);
+            if (b0.y < .02) b0.y = .02; // the floor
+          }
+        for (let i = 0; i < SEG; i++) aim(rb.meshes[i], rb.pts[i], rb.pts[i + 1]);
+      });
+    }
+    // ---------- the groove loop (Gab's 6-pose reference sheet), one pose per beat, blended ----------
+    // hx hip side, dp knee dip, yw body turn, lb lean (+ forward), ht head tilt, kt keytar tilt,
+    // lf/rf [side, forward, lift] for each foot, up = free arm raised
+    const GROOVE = [
+      { hx: 0, dp: .03, yw: .12, lb: -.12, ht: -.08, kt: .16, lf: [0, 0, 0], rf: [.02, .04, .07], up: 0 },   // 1 lean back, toe tap
+      { hx: -.08, dp: .07, yw: -.2, lb: .02, ht: .06, kt: 0, lf: [-.1, 0, 0], rf: [0, 0, 0], up: 0 },        // 2 slide left
+      { hx: 0, dp: .04, yw: .55, lb: 0, ht: .1, kt: .06, lf: [0, -.04, .03], rf: [0, .06, 0], up: 0 },        // 3 turn
+      { hx: .05, dp: .12, yw: .1, lb: .18, ht: .14, kt: -.06, lf: [0, 0, 0], rf: [.02, .1, 0], up: 0 },       // 4 lean in, knees bent
+      { hx: .09, dp: .06, yw: -.35, lb: .04, ht: -.04, kt: .04, lf: [0, 0, 0], rf: [.1, 0, .04], up: 0 },     // 5 slide around
+      { hx: 0, dp: .02, yw: .05, lb: -.18, ht: -.2, kt: .25, lf: [0, 0, 0], rf: [0, 0, 0], up: 1 }            // 6 accent pose
+    ];
+    const ease3 = function (x) { return x * x * (3 - 2 * x); };
+    function groovePose(b) {
+      const n = Math.floor(b), f = ease3(b - n), A = GROOVE[((n % 6) + 6) % 6], B = GROOVE[(((n + 1) % 6) + 6) % 6], o = {};
+      for (const k in A) o[k] = Array.isArray(A[k]) ? A[k].map(function (v, i) { return v + (B[k][i] - v) * f; }) : A[k] + (B[k] - A[k]) * f;
+      return o;
+    }
+
     // soft contact shadow on the platform
     const sh = document.createElement("canvas"); sh.width = sh.height = 64; const sg = sh.getContext("2d"), grd = sg.createRadialGradient(32, 32, 2, 32, 32, 32);
     grd.addColorStop(0, "rgba(0,0,0,.65)"); grd.addColorStop(1, "rgba(0,0,0,0)"); sg.fillStyle = grd; sg.fillRect(0, 0, 64, 64);
@@ -249,36 +300,38 @@
       // note accents
       if (s.hit) { const v = (s.vel || .7) * Math.max(.3, amp); R.hitKick = 1; R.press = 1; if (v > .78 || style === "disco" && Math.random() < .3) R.accent = 1; spring(st, "nod", 0, 1, 0, 0); st.nod.v += 3.2 * v; st.dip.v += 1.6 * v; }
       R.hitKick = Math.max(0, R.hitKick - dt * 3); R.press = Math.max(0, R.press - dt * 7); R.accent = Math.max(0, R.accent - dt * 1.4);
-      // ---- body motion: weight shift, knee bounce on the beat, hip twist, counter-rotating chest ----
-      const sway = Math.sin(b2 * Math.PI), bounce = .5 + .5 * Math.cos(2 * Math.PI * b2);
-      const twist = (style === "disco" ? .32 : style === "funk" ? .22 : .14) * Math.sin(b2 * Math.PI) * I;
-      const hipX = spring(st, "hx", .085 * sway * I, 9, dt);
-      const dip = spring(st, "dip", (style === "funk" ? .085 : .06) * bounce * I + .02 * R.hitKick, 14, dt);
-      const yaw = spring(st, "yaw", twist + (s.look || 0) * .28, 6, dt);
-      const breathe = Math.sin(R.t * 1.7) * .006;
+      // ---- body motion: the groove loop poses blended beat by beat, plus a bounce on every beat ----
+      const G = groovePose(b2), bounce = Math.pow(.5 + .5 * Math.cos(2 * Math.PI * b2), 2), sway = Math.sin(b2 * Math.PI);
+      const styleK = style === "disco" ? 1.15 : style === "funk" ? 1.1 : style === "half" ? .8 : 1;
+      // idle life: breathing, slow weight shifts and looking around when there is no sound
+      const idle = 1 - clamp(alive * 2, 0, 1), breathe = Math.sin(R.t * 1.6) * (.006 + .008 * idle);
+      const idleShift = Math.sin(R.t * .35) * .03 * idle, idleLook = Math.sin(R.t * .23) * .35 * idle + Math.sin(R.t * .71) * .1 * idle;
+      const hipX = spring(st, "hx", G.hx * I * styleK + idleShift, 9, dt);
+      const dip = spring(st, "dip", (G.dp + .04 * bounce) * I * styleK + .02 * R.hitKick, 14, dt);
+      const yaw = spring(st, "yaw", G.yw * I + (s.look || 0) * .28 + idleLook * .4, 6, dt);
+      const lean = spring(st, "lean", G.lb * I, 8, dt);
       hips.position.set(hipX, .82 - dip + breathe * .5, 0);
-      hips.rotation.set(0, yaw, -sway * .06 * I);
-      chest.rotation.set(.05 + dip * .9, -yaw * .55, sway * .1 * I);
-      chest.scale.set(1, 1 + breathe, 1);
-      const nod = spring(st, "nod", .14 * I * Math.cos(2 * Math.PI * b2 - .7), 10, dt);
-      neck.rotation.set(nod * .5, (s.look || 0) * .25, -sway * .08 * I);
-      head.rotation.set(nod * .6 - .04, (s.look || 0) * .2 + yaw * .2, Math.sin(b2 * Math.PI + .6) * .12 * I);
-      // ---- feet: planted; the unloaded foot taps / steps out on its beat ----
+      hips.rotation.set(0, yaw, -sway * .05 * I);
+      chest.rotation.set(.05 + lean + dip * .6, -yaw * .4, sway * .08 * I);
+      chest.scale.set(1 + breathe * .6, 1 + breathe, 1 + breathe * .6);
+      const nod = spring(st, "nod", .12 * I * Math.cos(2 * Math.PI * b2 - .7) + G.ht * I, 10, dt);
+      neck.rotation.set(nod * .5, (s.look || 0) * .25 + idleLook * .5, -sway * .07 * I);
+      head.rotation.set(nod * .6 - .04 - lean * .4, (s.look || 0) * .2 + yaw * .15 + idleLook * .5, Math.sin(b2 * Math.PI + .6) * .1 * I);
+      keytar.rotation.set(-.12, .12, .42 + spring(st, "kt", G.kt * I, 9, dt));
+      // ---- feet from the pose (side, forward, lift); IK bends the knees, the hips stay over the feet ----
       hips.updateMatrixWorld(true);
-      const beatN = Math.floor(b2), free = beatN % 2 === 0 ? 1 : -1;
       legs.forEach(function (lg) {
-        const isFree = lg.sx === free && I > .05;
-        const lift = isFree ? Math.max(0, Math.sin(Math.PI * (b2 - beatN))) * .09 * I : 0;
-        const out = isFree ? .05 * I * Math.sin(Math.PI * (b2 - beatN)) : 0;
-        const fx = spring(st, "fx" + lg.sx, lg.sx * (.17 + out), 12, dt), fy = spring(st, "fy" + lg.sx, lift, 16, dt);
-        lg.foot.set(fx, fy, lg.sx * .02);
+        const F = lg.sx < 0 ? G.lf : G.rf;
+        const fx = spring(st, "fx" + lg.sx, lg.sx * .17 + F[0] * I, 12, dt), fz = spring(st, "fz" + lg.sx, lg.sx * .02 + F[1] * I, 12, dt), fy = spring(st, "fy" + lg.sx, F[2] * I, 16, dt);
+        lg.foot.set(fx, Math.max(0, fy), fz);
         const hipJ = tmp.set(lg.sx * .1, -.05, 0); hips.localToWorld(hipJ); root.worldToLocal(hipJ);
         const ankle = tmp2.copy(lg.foot).add(V(0, .1, 0));
         pole.copy(hipJ).add(V(lg.sx * .12, -.3, 1));
         const end = ik(hipJ, L.thigh, L.shin, ankle, pole, lg.knee);
         aim(lg.thigh, hipJ, lg.knee); aim(lg.shin, lg.knee, end);
-        lg.shoe.position.set(end.x, end.y - .1, end.z); lg.shoe.rotation.set(fy * 1.6, lg.sx * .12 + yaw * .3, 0);
+        lg.shoe.position.set(end.x, end.y - .1, end.z); lg.shoe.rotation.set(fy * 2.2, lg.sx * .12 + yaw * .5, 0);
       });
+      R.poseUp = G.up * I;
       // ---- arms: one hand plays the keys (follows pitch, presses on notes), the other holds the neck
       //      and throws up a point on accents. Always exactly two hands. ----
       keytar.updateMatrixWorld(true); chest.updateMatrixWorld(true);
@@ -292,7 +345,7 @@
           target.y += .02 * Math.sin(R.t * 9) * (s.playing ? 1 : 0) * alive;
         } else {
           const n = neckPoint.clone(); keytar.localToWorld(n); root.worldToLocal(n);
-          const up = V(.52, 1.92, .25), k = spring(st, "acc", R.accent > .2 && alive > .2 ? 1 : 0, 7, dt);
+          const up = V(.52, 1.92, .25), k = spring(st, "acc", Math.max(R.accent > .2 && alive > .2 ? 1 : 0, R.poseUp || 0), 7, dt);
           target = n.lerp(up, clamp(k, 0, 1));
         }
         pole.copy(sh0).add(V(a.sx * .6, -.6, -.5));
@@ -300,6 +353,18 @@
         aim(a.up, sh0, a.elbow); aim(a.fo, a.elbow, end);
         a.hand.position.copy(end); a.hand.quaternion.copy(a.fo.quaternion);
       });
+      // ---- secondary motion (physics): crest flames lag behind head movement, ribbons swing with gravity ----
+      head.updateMatrixWorld(true);
+      const hp = V(); head.getWorldPosition(hp);
+      if (!R.hp) { R.hp = hp.clone(); R.hv = V(); }
+      const hv = dt > 0 ? hp.clone().sub(R.hp).divideScalar(dt) : V(), acc = dt > 0 ? hv.clone().sub(R.hv).divideScalar(dt) : V();
+      R.hp.copy(hp); R.hv.copy(hv);
+      flames.forEach(function (fl, i) {
+        const wF = 9 + i * 2;
+        const rx = spring(st, "flx" + i, clamp(acc.y * .012 + hv.z * .05, -.35, .35), wF, dt), rz = spring(st, "flz" + i, clamp(-acc.x * .012 - head.rotation.z * .6, -.4, .4), wF, dt);
+        fl.g.rotation.set(rx + Math.sin(R.t * 2.1 + i) * .02 * (1 - idle * .5), 0, rz);
+      });
+      stepRibbons(dt, hv);
       // ---- face: blink, eyes flash on notes, smile opens on accents ----
       if (R.t > R.blinkAt) { R.blink = 1; R.blinkAt = R.t + 2.5 + Math.random() * 3; }
       R.blink = Math.max(0, R.blink - dt * 8);

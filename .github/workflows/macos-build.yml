@@ -1,0 +1,165 @@
+name: macOS build
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: macos-build-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: AU, VST3 and Standalone (universal)
+    runs-on: macos-15-intel
+    timeout-minutes: 40
+    env:
+      BUILD_DIR: build-macos-ci
+      PACKAGE_NAME: RASTRO-macOS-universal
+      SOURCE_COMMIT: ${{ github.event.pull_request.head.sha || github.sha }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Show toolchain
+        run: |
+          uname -m
+          sw_vers
+          xcodebuild -version
+          cmake --version
+
+      - name: Configure universal Release build
+        run: >-
+          cmake -S . -B "$BUILD_DIR" -G Xcode
+          -DCMAKE_OSX_ARCHITECTURES="arm64;x86_64"
+          -DCMAKE_OSX_DEPLOYMENT_TARGET=12.0
+          -DCMAKE_XCODE_ATTRIBUTE_CODE_SIGNING_ALLOWED=NO
+
+      - name: Build all Mac formats and DSP tests
+        run: >-
+          cmake --build "$BUILD_DIR" --config Release
+          --target Rastro_AU Rastro_VST3 Rastro_Standalone RastroCapture_AU RastroCapture_VST3
+          rastro_tests rastro_character_tests rastro_playback_tests rastro_mp3_tests rastro_synth_tests
+          rastro_capture_tests rastro_timing_tests rastro_patch_tests rastro_recording_tests rastro_capture_bridge_tests
+          --parallel 3
+
+      - name: Run native DSP, codec and capture tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          ctest --test-dir "$BUILD_DIR" -C Release --output-on-failure | tee native-tests.log
+
+      - name: Validate both VST3s with pluginval 1.0.3
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --location --retry 3 https://github.com/Tracktion/pluginval/releases/download/v1.0.3/pluginval_macOS.zip -o "$RUNNER_TEMP/pluginval.zip"
+          ditto -x -k "$RUNNER_TEMP/pluginval.zip" "$RUNNER_TEMP/pluginval"
+          validator="$RUNNER_TEMP/pluginval/pluginval.app/Contents/MacOS/pluginval"
+          test -x "$validator"
+          "$validator" --strictness-level 5 --random-seed 42 --validate "$PWD/$BUILD_DIR/Rastro_artefacts/Release/VST3/RASTRO.vst3" 2>&1 | tee pluginval-play.log
+          "$validator" --strictness-level 5 --random-seed 42 --validate "$PWD/$BUILD_DIR/RastroCapture_artefacts/Release/VST3/RASTRO Capture.vst3" 2>&1 | tee pluginval-capture.log
+
+      - name: Verify architectures and ad-hoc sign bundles
+        shell: bash
+        run: |
+          set -euo pipefail
+          root="$BUILD_DIR/Rastro_artefacts/Release"
+          for bundle in "$root/AU/RASTRO.component" "$root/VST3/RASTRO.vst3" "$root/Standalone/RASTRO.app" "$BUILD_DIR/RastroCapture_artefacts/Release/AU/RASTRO Capture.component" "$BUILD_DIR/RastroCapture_artefacts/Release/VST3/RASTRO Capture.vst3"; do
+            executable="$bundle/Contents/MacOS/$(basename "$bundle" | sed 's/\.[^.]*$//')"
+            test -f "$executable"
+            lipo -archs "$executable"
+            lipo "$executable" -verify_arch arm64 x86_64
+            codesign --force --sign - --timestamp=none "$bundle"
+            codesign --verify --deep --strict --verbose=2 "$bundle"
+          done
+
+      - name: Validate both Audio Units with auval
+        shell: bash
+        run: |
+          set -euo pipefail
+          component_dir="$HOME/Library/Audio/Plug-Ins/Components"
+          mkdir -p "$component_dir"
+          ditto "$BUILD_DIR/Rastro_artefacts/Release/AU/RASTRO.component" "$component_dir/RASTRO.component"
+          ditto "$BUILD_DIR/RastroCapture_artefacts/Release/AU/RASTRO Capture.component" "$component_dir/RASTRO Capture.component"
+          /usr/libexec/PlistBuddy -c 'Print :AudioComponents' "$component_dir/RASTRO.component/Contents/Info.plist"
+          /usr/libexec/PlistBuddy -c 'Print :AudioComponents' "$component_dir/RASTRO Capture.component/Contents/Info.plist"
+          # pluginval may have started the registrar before these AUs were installed.
+          # Refresh only this disposable runner's process, then allow discovery to finish.
+          killall -9 AudioComponentRegistrar 2>/dev/null || true
+          for attempt in {1..10}; do
+            auval -a > au-components.log 2>&1
+            if grep -E 'aumu[[:space:]]+Rstr[[:space:]]+GbCa' au-components.log && grep -E 'aufx[[:space:]]+Rcpt[[:space:]]+GbCa' au-components.log; then
+              break
+            fi
+            sleep 2
+          done
+          cat au-components.log
+          auval -v aumu Rstr GbCa 2>&1 | tee auval-play.log
+          auval -v aufx Rcpt GbCa 2>&1 | tee auval-capture.log
+
+      - name: Package bundles with Mac permissions and symlinks
+        shell: bash
+        run: |
+          set -euo pipefail
+          root="$BUILD_DIR/Rastro_artefacts/Release"
+          package="staging/$PACKAGE_NAME"
+          mkdir -p "$package/AU" "$package/VST3" "$package/Standalone" dist
+          ditto "$root/AU/RASTRO.component" "$package/AU/RASTRO.component"
+          ditto "$root/VST3/RASTRO.vst3" "$package/VST3/RASTRO.vst3"
+          ditto "$root/Standalone/RASTRO.app" "$package/Standalone/RASTRO.app"
+          ditto "$BUILD_DIR/RastroCapture_artefacts/Release/AU/RASTRO Capture.component" "$package/AU/RASTRO Capture.component"
+          ditto "$BUILD_DIR/RastroCapture_artefacts/Release/VST3/RASTRO Capture.vst3" "$package/VST3/RASTRO Capture.vst3"
+          cp README.md "$package/README.md"
+          cp docs/INSTALL-MAC.txt "$package/INSTALL-MAC.txt"
+          ditto docs/previews "$package/Previews"
+          {
+            echo "RASTRO by Gab Calisman"
+            echo "Source commit: $SOURCE_COMMIT"
+            echo "Tested checkout (PR merge commit for PR runs): $(git rev-parse HEAD)"
+            echo "Runner architecture: $(uname -m)"
+            echo "Bundle architectures: arm64 + x86_64 (verified with lipo)"
+            echo "Minimum deployment target: macOS 12.0; Logic has its own OS requirements."
+            echo "Checks: PLAY AU/VST3/Standalone + Capture AU/VST3 built; ten native suites including CoreAudio M4A/capture IPC passed; both VST3s passed pluginval 1.0.3 level 5 seed 42; both AUs passed auval; signatures verified."
+            echo "Ad-hoc signed for testing; NOT Developer ID signed or notarized."
+            echo "Native arm64 execution, hardware audio/MIDI and Logic Pro playback NOT tested."
+            sw_vers
+            xcodebuild -version
+            for binary in "$package"/*/*.*/Contents/MacOS/*; do
+              echo "$binary: $(lipo -archs "$binary")"
+            done
+          } > "$package/BUILD-INFO.txt"
+          mkdir -p dist/report
+          cp "$package/BUILD-INFO.txt" native-tests.log pluginval-play.log pluginval-capture.log auval-play.log auval-capture.log au-components.log dist/report/
+          ditto -c -k --sequesterRsrc --keepParent "$package" "dist/$PACKAGE_NAME.zip"
+          (cd dist && shasum -a 256 "$PACKAGE_NAME.zip" > "$PACKAGE_NAME.zip.sha256")
+          cp "dist/$PACKAGE_NAME.zip.sha256" dist/report/
+          {
+            echo "### Download RASTRO"
+            echo "Artifact: **$PACKAGE_NAME** (contains a bundle-preserving ZIP and its SHA-256)."
+            echo "Built PLAY AU, VST3 and Standalone + Capture AU/VST3 for **arm64 + x86_64**, deployment target macOS 12.0."
+            echo "Ad-hoc signed, not notarized. Both AUs passed auval; no Logic Pro playback test was performed."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload downloadable Mac ZIP
+        uses: actions/upload-artifact@v4
+        with:
+          name: RASTRO-macOS-universal
+          path: |
+            dist/RASTRO-macOS-universal.zip
+            dist/RASTRO-macOS-universal.zip.sha256
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 0
+
+      - name: Upload small verification report
+        uses: actions/upload-artifact@v4
+        with:
+          name: RASTRO-macOS-build-report
+          path: dist/report/
+          if-no-files-found: error
+          retention-days: 14

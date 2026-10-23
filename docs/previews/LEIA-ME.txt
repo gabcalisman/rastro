@@ -1,0 +1,2 @@
+Extraia o ZIP e abra ABRIR-PREVIAS.html por duplo clique. Não exige internet.
+As capturas são reais, feitas no Linux. Não demonstram execução no macOS/Logic.

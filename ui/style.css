@@ -684,3 +684,4 @@ body[data-lkm="mix"] .lk-mix { display: flex; }
 #macroPanel .knob-grid { gap: 2px 4px; }
 #macroPanel .dice-row .chip-btn { padding: 0 4px; font-size: 9.5px; white-space: nowrap; }
 #macroPanel .dice-row { margin-top: 6px; }
+body[data-screen="locker"] #popups, body[data-screen="locker"] #pausedBadge { display: none; }

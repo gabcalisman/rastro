@@ -10,21 +10,24 @@
   const f1 = function (n) { return (Math.round(n * 10) / 10).toString(); };
   // Measured on each picture (pixels of the 700-px-high PNG).
   const LOOKS = {
-    keytar: { img: "al_keytar", w: 461, inst: "keytar", name: "Varsity · Keytar", head: [225, 112, 98, 100], neck: [215, 205], hip: [230, 385], feet: 668, keys: [[150, 300], [292, 250]], level: 1 },
     guitar: { img: "al_guitar", w: 490, inst: "guitar", name: "Techwear · Guitarra", head: [180, 112, 96, 98], neck: [175, 205], hip: [230, 400], feet: 668, strum: [178, 330], fret: [[250, 290], [372, 172]], level: 1 },
     bass: { img: "al_bass", w: 469, inst: "bass", name: "Disco Suit · Baixo", head: [195, 95, 96, 98], neck: [190, 190], hip: [200, 410], feet: 668, strum: [128, 322], fret: [[240, 240], [380, 120]], level: 2 },
     pads: { img: "al_pads", w: 463, inst: "pads", name: "Hoodie Holo · Pads", head: [210, 102, 92, 98], neck: [205, 195], hip: [210, 420], feet: 668, pads: [[222, 280], [334, 300]], level: 3 },
-    disco: { img: "al_disco", w: 381, inst: "keytar", name: "Flare 70s · Keytar", head: [165, 112, 80, 98], neck: [160, 200], hip: [170, 400], feet: 668, keys: [[92, 330], [250, 272]], level: 4 }
+    disco: { img: "al_disco", w: 381, inst: "keytar", name: "Flare 70s · Keytar", head: [165, 112, 80, 98], neck: [160, 200], hip: [170, 400], feet: 668, keys: [[92, 330], [250, 272]], level: 1 }
   };
   // Outfit sheet from Gab (9 complete looks, no instrument in hand: the free hand points, the other rests on the hip).
   [["velvet", "Velvet Sunset", 446, 232, 1], ["neonwave", "Neon Wave", 453, 234, 1], ["verdeamarela", "Verde-Amarela", 444, 226, 1], ["college", "College Violeta", 438, 226, 2],
    ["chrome", "Chrome Cargo", 450, 235, 2], ["flower", "Flower Power", 427, 217, 3], ["knit", "Retro Knit", 428, 220, 3], ["circuit", "Circuit Tailor", 436, 231, 4], ["starpilot", "Star Pilot", 433, 214, 5]].forEach(function (o) {
     LOOKS["o_" + o[0]] = { img: "al_o_" + o[0], w: o[2], inst: "none", name: o[1], head: [o[3], 118, 98, 100], neck: [o[3] - 8, 208], hip: [o[3] - 6, 330], feet: 668, level: o[4], outfit: true };
   });
+  // The "Varsity · Keytar" picture (al_keytar.png) was generated with THREE hands; it is withdrawn until
+  // it is redrawn with two. Saved looks that used it open with the Flare 70s keytar instead.
+  const ALIAS = { keytar: "disco" };
   let uid = 0;
   function el(parent, tag, attrs) { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); parent.appendChild(e); return e; }
   function create(parent, lookId) {
-    const id = "pp" + (++uid), L = LOOKS[lookId] || LOOKS.keytar, W = L.w, H = 700;
+    lookId = LOOKS[lookId] ? lookId : ALIAS[lookId] || "disco";
+    const id = "pp" + (++uid), L = LOOKS[lookId], W = L.w, H = 700;
     const root = el(parent, "g", { class: "puppet" });
     const href = L.img + ".png", ghref = L.img + "_glow.png";
     const hx = L.head[0], hy = L.head[1], hrx = L.head[2], hry = L.head[3], hip = L.hip[1];
@@ -159,5 +162,5 @@
     }
     R.points = { head: [L.head[0], L.head[1] - L.head[3] * .7], phones: [L.head[0] - L.head[2] * .8, L.head[1] + 10], eyes: [L.head[0] + 20, L.head[1] + 20], top: [L.hip[0] - 40, L.hip[1] - 120], bottom: [L.hip[0] - 30, L.hip[1] + 100], shoes: [L.hip[0] + 80, L.feet - 30], inst: L.keys ? L.keys[1] : L.fret ? L.fret[1] : L.pads ? L.pads[1] : [W / 2, 300] };
   }
-  window.RastroPuppet = { LOOKS: LOOKS, create: create };
+  window.RastroPuppet = { LOOKS: LOOKS, ALIAS: ALIAS, create: create };
 })();

@@ -958,14 +958,14 @@
   const DEFAULT_STYLE = { bounce: 1, sway: 1, nod: 1, dip: 1, lean: .3, hop: 0, nodHit: 1, jitter: 0 };
   let charKind = "alien", rig = {}, charSvg = null, sceneKind = "", sc = {}, puppet = null;
   const motion = { squash: 0, squashV: 0, strike: 0, look: 0, energy: 0, shake: 0, shakeT: 9, alive: 0, lastSound: -1e9, nod: 0, nodV: 0, dark: 0, lfoPhase: 0, peak: .05, hit: false, pitch: .5, pad: 0, x: 240, y: 412, rot: 0 };
-  const look = { pose: "keytar", dance: "groove", sync: 1, bpm: 110, strip: 1, knob: "kn_00", glow: "auto", react: 1, kb: 0 };
+  const look = { pose: "disco", dance: "groove", sync: 1, bpm: 110, strip: 1, knob: "kn_00", glow: "auto", react: 1, kb: 0 };
   let lookTimer = 0;
   function saveLook() { clearTimeout(lookTimer); lookTimer = setTimeout(function () { R.call("lookSet", JSON.stringify(look)); }, 300); }
   function readLook(json) {
     try {
       const o = JSON.parse(json || "null");
       if (o) {
-        if (PUP.LOOKS[o.pose]) look.pose = o.pose;
+        if (PUP.LOOKS[o.pose]) look.pose = o.pose; else if (PUP.ALIAS[o.pose]) look.pose = PUP.ALIAS[o.pose];
         if (AL.DANCES.some(function (d) { return d.id === o.dance; })) look.dance = o.dance;
         look.sync = o.sync === 0 ? 0 : 1; look.bpm = clamp(Math.round(o.bpm || 110), 60, 180); look.strip = o.strip === 0 ? 0 : 1;
         if (typeof o.knob === "number") look.knob = OLD_KNOB[clamp(Math.round(o.knob), 0, 23)];
@@ -1027,10 +1027,10 @@
     const S = ART.stage, yTop = 150, yBot = 805;
     let s = (visH - bottomPad - topPad) / (yBot - yTop);
     s = Math.max(s, visW / (S.w - 60), visH / (S.h - 40));
-    const life = 1 + (.012 * Math.sin(now / 5200) + .022 * groove * onBeat * react) * amp + jamBurst * .03;
+    const life = 1 + .006 * groove * onBeat * react * amp + jamBurst * .01; // the room stays still: no drifting painting
     s *= 1.03 * life;
-    let tx = 240 - S.feet[0] * s + (Math.sin(now / 7300) * 7 - mx * 22) * amp;
-    let ty = vy0 + topPad - yTop * s + (Math.cos(now / 6100) * 4 - my * 9) * amp;
+    let tx = 240 - S.feet[0] * s;
+    let ty = vy0 + topPad - yTop * s;
     if (scr === "locker") {
       // fitting room: the character stands between the side panels, about 450 px tall on screen, feet near y 640
       // ESTÚDIO: the character stands in the left frame (centre x 361 px), about 620 px tall, feet near y 850
@@ -1420,8 +1420,8 @@
       const save = document.createElement("button"); save.className = "gold-btn"; save.style.gridColumn = "1 / -1"; save.textContent = "SALVAR LOOK ATUAL";
       save.addEventListener("click", function () { $("#lookSave").click(); }); grid.appendChild(save);
       game.state.looks.forEach(function (lk, i) {
-        const L = PUP.LOOKS[lk.pose] || PUP.LOOKS.keytar;
-        const b = itemCard({ thumb: '<img src="' + L.img + '.png" alt="">', name: lk.name, note: (lk.dance || "") + " · clique para vestir", worn: false, locked: false, click: function () { look.pose = lk.pose || look.pose; if (lk.dance) look.dance = lk.dance; if (lk.glow) look.glow = lk.glow; if (typeof lk.knob === "number") look.knob = OLD_KNOB[lk.knob] || look.knob; else if (lk.knob) look.knob = lk.knob; saveLook(); applyLook(); toast("Look vestido: " + lk.name); } });
+        const L = PUP.LOOKS[lk.pose] || PUP.LOOKS[PUP.ALIAS[lk.pose]] || PUP.LOOKS.disco;
+        const b = itemCard({ thumb: '<img src="' + L.img + '.png" alt="">', name: lk.name, note: (lk.dance || "") + " · clique para vestir", worn: false, locked: false, click: function () { look.pose = PUP.LOOKS[lk.pose] ? lk.pose : PUP.ALIAS[lk.pose] || look.pose; if (lk.dance) look.dance = lk.dance; if (lk.glow) look.glow = lk.glow; if (typeof lk.knob === "number") look.knob = OLD_KNOB[lk.knob] || look.knob; else if (lk.knob) look.knob = lk.knob; saveLook(); applyLook(); toast("Look vestido: " + lk.name); } });
         const del = document.createElement("span"); del.className = "eq"; del.style.cursor = "pointer"; del.textContent = "APAGAR"; del.addEventListener("click", function (e) { e.stopPropagation(); game.state.looks.splice(i, 1); game.save(); renderLocker(); });
         b.appendChild(del); grid.appendChild(b);
       });
@@ -1674,9 +1674,10 @@
         if (rig["c-head"]) setT(rig["c-head"], "rotate(" + (Math.sin(beatClock * Math.PI * 2 + .6) * 3.5 * dance + motion.look * 2.5).toFixed(2) + " " + rig.pivot[0] + " " + rig.pivot[1] + ")");
       }
       const camRot = Math.sin(now / 320) * camWob * 1.4 * amp;
-      $("#stageArt").style.transform = "translate(" + shake.toFixed(2) + "px," + (shake * .6).toFixed(2) + "px) rotate(" + camRot.toFixed(2) + "deg)";
+      // notes no longer shake the whole painting; only WOBBLE + pad X (a real effect) sways the camera
+      $("#stageArt").style.transform = camRot ? "rotate(" + camRot.toFixed(2) + "deg)" : "";
       if (sc.world) { stageCam(now, groove, onBeat, react, amp); stepWorld(now, dt, { glow: glow, react: react, beat: beatClock, onBeat: onBeat, groove: groove, energy: motion.energy, alive: alive, env: envL, bloom: bloomV, lfo: lfo, res: res, cut: synthOn ? cutT : .5 }); }
-      setT(sc.room, "translate(" + (sc.ox - mx * 60).toFixed(1) + " " + (-18 - my * 8).toFixed(1) + ") scale(" + sc.scale.toFixed(4) + ")");
+      setT(sc.room, "translate(" + sc.ox.toFixed(1) + " -18) scale(" + sc.scale.toFixed(4) + ")");
       sc.spk.forEach(function (g) { const cx = g.getAttribute("cx"), cy = g.getAttribute("cy"); g.setAttribute("opacity", ((motion.energy * .7 + onBeat * groove * .4) * react).toFixed(2)); g.setAttribute("transform", "translate(" + cx + " " + cy + ") scale(" + (.8 + motion.energy * .4 + onBeat * groove * .25).toFixed(2) + ") translate(" + (-cx) + " " + (-cy) + ")"); });
       setA(sc.bloomVeil, "opacity", (bloomV * (sc.world ? .1 : .25) * react).toFixed(3));
       setA(sc.darkVeil, "opacity", motion.dark.toFixed(3));

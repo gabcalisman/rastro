@@ -153,3 +153,9 @@ Separe: o que já existia; o que mudou; o que ficou incompleto; testes que passa
 - O RASTRO PLAY é **um produto de áudio premium acima de tudo**, com a experiência de ser (talvez) o primeiro synth gamificado. O jogo serve ao som, nunca o contrário.
 - Todo efeito novo precisa soar como plugin profissional: sem aliasing audível (oversampling onde houver distorção), parâmetros suavizados, sem cliques, ganho controlado, testes de qualidade além de "funciona".
 - Ordem acordada: fechar o PR #2 (validação no Logic + etapa de som: rack expansível, TAPE, COMP, EQ, SIDECHAIN) antes do PR #3 (protótipo do personagem 3D com visual 2.5D).
+
+## Correção (23/10/2026, 17h) — personagem
+
+- O visual "Varsity · Keytar" (`al_keytar.png`) tinha **três mãos** na arte gerada. Retirado até ser redesenhado; looks salvos com ele abrem com o Flare 70s (keytar, duas mãos), que virou o padrão.
+- O cenário não se mexe mais sozinho (sem respiração de câmera, sem seguir o mouse, sem tremer a cada nota). Só as luzes e o personagem reagem; a câmera só balança com WOBBLE + eixo X (efeito real).
+- Limite honesto: com uma pintura única por pose, o personagem só consegue balançar, inclinar e pular; braços e pernas não mudam de pose. Para ele ficar vivo de verdade é preciso arte de animação (quadros de dança, ou partes separadas, ou modelo 3D). Conferir sempre a contagem de mãos e braços em toda arte nova antes de usar.

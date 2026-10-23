@@ -1116,6 +1116,7 @@
   $("#stage").addEventListener("pointerleave", function () { mouseX = mouseY = 0; });
   $("#stage").addEventListener("pointerdown", function (e) { if (e.target.closest("button, .palco-bar")) return; motion.hit = true; spawnNotes(240, 250, 2, .6); });
   function spawnNotes(x, y, count, vel) {
+    return; // floating note/star glyphs removed (Gab: they looked cheap)
     if (animMode < 2 || !charSvg || paused) return;
     const g = $("#notesP", charSvg), glyphs = ["♪", "♫", "✦"];
     if (!g) return;

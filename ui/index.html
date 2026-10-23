@@ -1,0 +1,211 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>RASTRO Play</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body class="theme-sunset">
+<div id="frame">
+<div id="app">
+
+  <!-- leaves behind the panels, never over controls -->
+  <div id="leaves" aria-hidden="true"></div>
+
+  <header id="top">
+    <div class="logo" aria-label="RASTRO Play by Gab Calisman">
+      <span class="logo-main">RASTRO</span><span class="logo-play">Play</span>
+      <span class="logo-by">by Gab Calisman</span>
+    </div>
+    <div class="top-group">
+      <button id="jam" class="btn btn-hot" title="JAM: cria uma variação dos efeitos ativos. Não mexe no sample, raiz, cortes, pitch nem modo.">JAM</button>
+      <button id="undoJam" class="btn" title="Volta exatamente à combinação anterior ao JAM" disabled>Desfazer</button>
+    </div>
+    <div class="top-group top-info">
+      <span id="midiDot" class="dot" title="Atividade MIDI"></span>
+      <span id="bpm" title="Tempo do host (HOST) ou tempo manual">— BPM</span>
+    </div>
+    <div class="top-group top-right">
+      <div class="seg" id="themeSeg" role="group" aria-label="Tema">
+        <button data-theme="sunset" title="Pôr do sol">☀︎ Sunset</button>
+        <button data-theme="night" title="Noite neon">☾ Noite</button>
+      </div>
+      <div class="seg" id="charSeg" role="group" aria-label="Personagem">
+        <button data-char="nova" title="Nova">Nova</button>
+        <button data-char="fuzz" title="Fuzz">Fuzz</button>
+      </div>
+      <button id="settingsBtn" class="btn btn-icon" title="Ajustes de animação e jogo" aria-label="Ajustes">⚙︎</button>
+    </div>
+  </header>
+
+  <!-- SAMPLE -->
+  <section id="samplePanel" class="panel">
+    <div class="panel-head">
+      <h2>SAMPLE</h2>
+      <span id="sampleName" class="sample-name">Arraste um áudio aqui</span>
+      <button id="importBtn" class="btn btn-small btn-hot">IMPORTAR</button>
+    </div>
+    <div id="waveBox" class="wave-box" tabindex="0" aria-label="Forma de onda. Arraste os marcadores; + e − dão zoom.">
+      <canvas id="wave"></canvas>
+      <div id="dropHint" class="drop-hint">Solte o áudio para importar</div>
+      <div id="emptyHint" class="empty-hint">
+        <b>Comece aqui</b><span>Arraste um WAV, AIFF, MP3 ou M4A — ou clique em IMPORTAR.</span>
+      </div>
+    </div>
+    <div class="wave-bar">
+      <span id="markerInfo" class="mono">IN 0 ms · OUT 0 ms</span>
+      <div class="zoom">
+        <button class="btn btn-mini" data-zoom="out" title="Afastar (−)">−</button>
+        <button class="btn btn-mini" data-zoom="in" title="Aproximar (+)">+</button>
+        <button class="btn btn-mini" data-zoom="all" title="Sample inteiro">ALL</button>
+        <button class="btn btn-mini" data-zoom="sel" title="Voltar à seleção">SEL</button>
+      </div>
+    </div>
+    <div class="mode-row">
+      <div class="seg seg-wide" id="modeSeg" role="group" aria-label="Modo de reprodução">
+        <button data-mode="0" title="Toca o trecho até o fim, mesmo soltando a tecla">One Shot</button>
+        <button data-mode="1" title="Repete o trecho">Loop</button>
+        <button data-mode="2" title="Toca de trás para frente">Reverse</button>
+        <button data-mode="3" title="Vai e volta">Ping-Pong</button>
+        <button data-mode="4" title="Cada nota toca um corte">Slice</button>
+      </div>
+      <button id="loopBtn" class="toggle" title="LOOP independente do modo: repete a região sem mudar o modo">LOOP</button>
+    </div>
+    <div class="sample-controls">
+      <div class="knob-row" id="sampleKnobs"></div>
+      <div class="side-stack">
+        <div class="seg seg-small" id="pitchSeg" role="group" aria-label="Pitch mode">
+          <button data-pitch="0" title="REPITCH: muda altura e velocidade pela distância da raiz">REPITCH</button>
+          <button data-pitch="1" title="FIXED PITCH: mantém altura e velocidade originais">FIXED</button>
+        </div>
+        <div class="slice-ctl" id="sliceCtl">
+          <button class="btn btn-mini" data-slices="-1" aria-label="Menos cortes">−</button>
+          <span id="sliceCount" class="mono">8 cortes</span>
+          <button class="btn btn-mini" data-slices="1" aria-label="Mais cortes">+</button>
+        </div>
+        <button id="previewBtn" class="btn btn-small" title="Ouve o trecho selecionado pelo rack">▶ Ouvir</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- STAGE -->
+  <section id="stage" class="panel stage" aria-label="Palco do personagem">
+    <div id="stageArt"></div>
+    <div id="fx-pixels" class="fx-layer"></div>
+    <div id="fx-crumble" class="fx-layer"></div>
+    <div id="hud">
+      <div class="hud-level">
+        <span id="lvlBadge" class="lvl-badge">NV 1</span>
+        <div class="xp"><div id="xpFill"></div></div>
+        <span id="xpText" class="xp-text">0 / 100 XP</span>
+      </div>
+      <div class="hud-combo"><span id="comboNum">0</span><small>COMBO</small></div>
+    </div>
+    <div id="popups"></div>
+    <div id="groove" class="groove">
+      <b>GROOVE</b>
+      <div id="grooveBars" class="groove-bars"></div>
+      <button id="collectionBtn" class="chip" title="Itens desbloqueados tocando">COLEÇÃO <span id="collectionCount">0/8</span></button>
+    </div>
+  </section>
+
+  <!-- RACK -->
+  <section id="rackPanel" class="panel">
+    <div class="panel-head">
+      <h2>EFFECT RACK</h2>
+      <span class="hint">arraste ↕</span>
+      <button id="addModule" class="btn btn-small" title="Adicionar módulo removido" aria-label="Adicionar módulo">+</button>
+    </div>
+    <div id="rack" class="rack"></div>
+  </section>
+
+  <!-- BOTTOM -->
+  <section id="envPanel" class="panel">
+    <div class="panel-head">
+      <h2>AMP ENVELOPE</h2>
+      <button id="synthBtn" class="toggle toggle-small" title="Liga filtro, envelope de filtro e LFO. O ADSR também vale em Gate/Hold.">SYNTH</button>
+    </div>
+    <div class="env-graph"><svg id="envSvg" viewBox="0 0 270 70" preserveAspectRatio="none"></svg></div>
+    <div class="knob-row" id="envKnobs"></div>
+    <div id="envNote" class="panel-note"></div>
+  </section>
+
+  <section id="filterPanel" class="panel">
+    <div class="panel-head"><h2>FILTER · LFO</h2>
+      <div class="seg seg-small" id="lfoTargetSeg" role="group" aria-label="Destino do LFO">
+        <button data-lfo="0">Cutoff</button><button data-lfo="1">Pitch</button>
+      </div>
+    </div>
+    <div class="knob-row" id="filterKnobs"></div>
+    <div class="knob-row" id="lfoKnobs"></div>
+  </section>
+
+  <section id="voicePanel" class="panel">
+    <div class="panel-head"><h2>VOZ</h2></div>
+    <div class="seg seg-small seg-wide" id="voiceSeg" role="group" aria-label="Modo de voz">
+      <button data-voice="0">Poly</button><button data-voice="1">Mono</button><button data-voice="2">Legato</button>
+    </div>
+    <div class="seg seg-small seg-wide" id="trigSeg" role="group" aria-label="Disparo">
+      <button data-trig="0" title="Comportamento legado de cada modo">Por modo</button><button data-trig="1" title="Ignora o soltar da tecla">One Shot</button><button data-trig="2" title="Soltar a tecla inicia o release do ADSR">Gate</button>
+    </div>
+    <div class="knob-row" id="voiceKnobs"></div>
+  </section>
+
+  <section id="playPanel" class="panel">
+    <div class="panel-head"><h2>PLAY</h2><span id="padInfo" class="hint mono">X 50% · Y 50%</span></div>
+    <div class="play-wrap">
+      <div id="pad" class="pad" tabindex="0" aria-label="Pad PLAY: X estável para wobble, Y limpo para degradado">
+        <span class="pad-l pad-tl">DEGRADADO</span><span class="pad-l pad-bl">LIMPO · ESTÁVEL</span><span class="pad-l pad-br">WOBBLE</span>
+        <div id="padTrail"></div>
+        <div id="padDot" class="pad-dot"></div>
+      </div>
+      <div class="knob-grid" id="macroKnobs"></div>
+    </div>
+    <div id="padNote" class="panel-note"></div>
+  </section>
+
+  <footer id="keys" aria-label="Teclado">
+    <div class="oct">
+      <button class="btn btn-mini" id="octDown" aria-label="Oitava abaixo">◀</button>
+      <span id="octLabel" class="mono">C3</span>
+      <button class="btn btn-mini" id="octUp" aria-label="Oitava acima">▶</button>
+    </div>
+    <div id="keyboard" class="keyboard"></div>
+  </footer>
+
+  <div id="toast" class="toast" role="status"></div>
+
+  <div id="settings" class="sheet" hidden>
+    <div class="sheet-card">
+      <div class="panel-head"><h2>AJUSTES</h2><button class="btn btn-small" data-close>Fechar</button></div>
+      <label class="row">Animação
+        <div class="seg seg-small" id="animSeg">
+          <button data-anim="2">Completa</button><button data-anim="1">Reduzida</button><button data-anim="0">Desligada</button>
+        </div>
+      </label>
+      <label class="row">Camada de jogo
+        <div class="seg seg-small" id="gameSeg">
+          <button data-game="1">Ligada</button><button data-game="0">Modo PRO</button>
+        </div>
+      </label>
+      <p class="fine">Pontos, nível e coleção ficam guardados neste computador. Não mudam o som. O teclado do computador toca notas: A W S E D F T G Y H U J K · Z/X troca a oitava.</p>
+    </div>
+  </div>
+
+  <div id="collection" class="sheet" hidden>
+    <div class="sheet-card">
+      <div class="panel-head"><h2>COLEÇÃO</h2><button class="btn btn-small" data-close>Fechar</button></div>
+      <p class="fine">Toque, crie e acerte o tempo para ganhar XP. Cada nível libera um item. Clique num item liberado para vestir.</p>
+      <div id="collectionGrid" class="collection-grid"></div>
+    </div>
+  </div>
+
+  <div id="addMenu" class="menu" hidden></div>
+</div>
+</div>
+<script src="bridge.js"></script>
+<script src="art.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,236 @@
+/* RASTRO art — original vector illustrations built as rigs (separate parts) so they can react
+   to the sound. Provisional art: the final illustrations will replace these parts one by one. */
+(function () {
+  "use strict";
+  const OL = 'class="ol"';
+
+  /* ---------------- stage scene ---------------- */
+  function bulbs() {
+    let s = "", i;
+    for (i = 0; i < 13; i++) {
+      const x = 20 + i * 37, y = 26 + Math.sin(i / 12 * Math.PI) * 16;
+      s += '<line x1="' + x + '" y1="' + (y - 6) + '" x2="' + x + '" y2="' + y + '" class="wire"/>' +
+           '<circle class="bulb" data-i="' + i + '" cx="' + x + '" cy="' + (y + 5) + '" r="5.2"/>';
+    }
+    return '<path class="wire" d="M0 18 Q240 66 480 18" fill="none"/>' + s;
+  }
+  function city() {
+    const b = [[0, 230], [40, 205], [70, 222], [96, 180], [130, 214], [160, 192], [196, 168], [226, 200], [258, 174], [290, 210], [320, 186], [352, 204], [384, 176], [420, 214], [452, 196], [480, 230]];
+    let d = "M0 330 L0 " + b[0][1], w = "";
+    for (let i = 1; i < b.length; i++) { d += " L" + b[i][0] + " " + b[i - 1][1] + " L" + b[i][0] + " " + b[i][1]; }
+    d += " L480 330 Z";
+    for (let i = 0; i < 46; i++) {
+      const x = 12 + (i * 53) % 456, y = 200 + (i * 37) % 70;
+      w += '<rect class="win" data-i="' + i + '" x="' + x + '" y="' + y + '" width="5" height="7" rx="1"/>';
+    }
+    return '<path class="city" d="' + d + '"/>' + w;
+  }
+  function records(x, y, n) {
+    let s = "";
+    const cols = ["rec1", "rec2", "rec3", "rec4"];
+    for (let i = 0; i < n; i++) s += '<rect class="' + cols[i % 4] + '" ' + OL + ' x="' + (x + i * 9) + '" y="' + (y - 34 - (i % 3) * 3) + '" width="9" height="' + (34 + (i % 3) * 3) + '" rx="1.5"/>';
+    return s;
+  }
+  function leaf(x, y, r, s, cls) {
+    return '<g class="' + (cls || "") + '" style="transform-origin:' + x + 'px ' + y + 'px"><g class="leaf" transform="translate(' + x + ' ' + y + ') rotate(' + r + ') scale(' + s + ')">' +
+      '<path class="leafA" ' + OL + ' d="M0 0 C 18 -40 70 -62 118 -50 C 104 -8 58 22 0 0 Z"/>' +
+      '<path class="vein" d="M2 0 C 36 -14 74 -30 112 -48 M38 -14 l10 14 M62 -26 l10 15 M84 -36 l8 12 M40 -16 l-4 -14 M66 -28 l-4 -15"/></g></g>';
+  }
+  function monstera(x, y, r, s) {
+    return '<g class="leaf sway2" transform="translate(' + x + ' ' + y + ') rotate(' + r + ') scale(' + s + ')">' +
+      '<path class="leafB" ' + OL + ' d="M0 0 C -10 -50 30 -96 80 -100 C 132 -102 160 -60 150 -18 L 126 -30 L 136 -2 L 104 -20 L 106 10 L 74 -8 L 68 22 L 44 0 L 30 20 Z"/>' +
+      '<path class="vein" d="M4 -4 C 40 -40 90 -70 140 -64"/></g>';
+  }
+  function scene() {
+    return '<svg viewBox="0 0 480 452" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">' +
+      '<defs>' +
+      '<linearGradient id="gSky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" class="sky1"/><stop offset=".55" class="sky2"/><stop offset="1" class="sky3"/></linearGradient>' +
+      '<radialGradient id="gGlow"><stop offset="0" class="glow0"/><stop offset="1" class="glow1"/></radialGradient>' +
+      '<radialGradient id="gSpot" cx=".5" cy=".5" r=".5"><stop offset="0" class="spot0"/><stop offset="1" class="spot1"/></radialGradient>' +
+      '<linearGradient id="gLamp" x1="0" y1="0" x2="0" y2="1"><stop offset="0" class="lamp0"/><stop offset="1" class="lamp1"/></linearGradient>' +
+      '<clipPath id="cWin"><circle cx="240" cy="186" r="140"/></clipPath>' +
+      '<clipPath id="cLamp"><path d="M-14 -70 Q0 -84 14 -70 L22 0 L-22 0 Z"/></clipPath>' +
+      '</defs>' +
+      // window view
+      '<g clip-path="url(#cWin)"><g id="pxSky"><rect x="-40" y="0" width="560" height="360" fill="url(#gSky)"/>' +
+      '<g id="stars">' + Array.from({ length: 34 }, function (_, i) { return '<circle class="star" data-i="' + i + '" cx="' + ((i * 97) % 470 + 5) + '" cy="' + ((i * 61) % 150 + 50) + '" r="' + (i % 3 ? 1.1 : 1.8) + '"/>'; }).join("") + '</g>' +
+      '<circle id="sun" class="sun" cx="240" cy="200" r="58"/><g id="sunBands"><rect x="170" y="196" width="140" height="5" class="band"/><rect x="170" y="210" width="140" height="7" class="band"/><rect x="170" y="226" width="140" height="9" class="band"/></g></g>' +
+      '<g id="pxCity">' + city() + '</g></g>' +
+      // wall with round window hole
+      '<path class="wall" fill-rule="evenodd" d="M-20 -20 H500 V470 H-20 Z M240 46 A140 140 0 1 0 240.1 46 Z"/>' +
+      '<rect class="wall2" x="-20" y="318" width="520" height="40"/><path class="trim" d="M-20 318 H500"/>' +
+      '<circle ' + OL + ' class="frame" cx="240" cy="186" r="140" fill="none" stroke-width="9"/>' +
+      '<path class="mullion" d="M240 46 V326 M100 186 H380"/>' +
+      '<circle ' + OL + ' cx="240" cy="186" r="140" fill="none"/>' +
+      bulbs() +
+      // hanging plant
+      '<g id="hangPlant" class="sway" style="transform-origin:58px 0px"><path class="wire" d="M58 0 V58"/>' + leaf(58, 82, 150, .5) + leaf(58, 82, 210, .45) + leaf(58, 82, 100, .42) +
+      '<path ' + OL + ' class="pot" d="M40 60 H76 L70 88 H46 Z"/></g>' +
+      // shelf with records + tape deck
+      '<g id="shelf"><rect ' + OL + ' class="wood" x="10" y="150" width="104" height="10" rx="3"/>' + records(18, 150, 8) +
+      '<rect ' + OL + ' class="wood" x="10" y="232" width="104" height="10" rx="3"/>' +
+      '<g id="deck"><rect ' + OL + ' class="deck" x="18" y="190" width="88" height="42" rx="6"/><rect class="deckWin" x="26" y="196" width="72" height="22" rx="4"/>' +
+      '<g class="reel" id="reel1" transform="translate(44 207)"><circle ' + OL + ' class="reelC" r="9"/><path class="spoke" d="M0 -8 V8 M-8 0 H8"/></g>' +
+      '<g class="reel" id="reel2" transform="translate(80 207)"><circle ' + OL + ' class="reelC" r="9"/><path class="spoke" d="M0 -8 V8 M-8 0 H8"/></g>' +
+      '<rect class="vu" id="vu" x="30" y="222" width="0" height="5" rx="2"/></g></g>' +
+      // neon sign right
+      '<g id="neon" transform="translate(392 96) rotate(-6)"><rect ' + OL + ' class="neonBox" x="-44" y="-30" width="92" height="56" rx="10"/>' +
+      '<text class="neonText" x="2" y="10" text-anchor="middle">play</text></g>' +
+      // lava lamp
+      '<g id="lava" transform="translate(420 312)"><path ' + OL + ' class="lampBase" d="M-20 0 L20 0 L14 -14 L-14 -14 Z"/>' +
+      '<g transform="translate(0 -14)"><path ' + OL + ' fill="url(#gLamp)" d="M-14 -70 Q0 -84 14 -70 L22 0 L-22 0 Z"/>' +
+      '<g clip-path="url(#cLamp)"><ellipse id="blob1" class="blob" cx="-4" cy="-20" rx="9" ry="11"/><ellipse id="blob2" class="blob" cx="6" cy="-46" rx="7" ry="9"/><ellipse id="blob3" class="blob" cx="-2" cy="-62" rx="5" ry="6"/></g>' +
+      '<path ' + OL + ' class="lampBase" d="M-12 -70 Q0 -82 12 -70 L8 -86 L-8 -86 Z"/></g></g>' +
+      // floor
+      '<path class="floor" d="M-20 352 H500 V470 H-20 Z"/><path class="floorLine" d="M-20 352 H500"/>' +
+      '<ellipse id="rug" class="rug" ' + OL + ' cx="240" cy="410" rx="190" ry="34"/><ellipse class="rug2" cx="240" cy="410" rx="150" ry="24"/><ellipse class="rug3" cx="240" cy="410" rx="104" ry="15"/>' +
+      '<ellipse id="spot" cx="240" cy="408" rx="120" ry="26" fill="url(#gSpot)"/>' +
+      // speakers
+      speaker(18, 278, "L") + speaker(392, 270, "R") +
+      // crate
+      '<g><rect ' + OL + ' class="wood" x="96" y="352" width="66" height="44" rx="4"/>' + records(102, 360, 5) + '</g>' +
+      '<g id="ghosts"></g><g id="charLayer"></g>' +
+      '<g id="notesP"></g><g id="dustP"></g>' +
+      // foreground leaves
+      '<g id="fg">' + monstera(-34, 470, -18, .95) + monstera(512, 474, 196, .9) + leaf(-20, 300, -24, .8, "sway") + leaf(500, 330, 200, .75, "sway") + '</g>' +
+      '<rect id="bloomVeil" class="bloomVeil" x="0" y="0" width="480" height="452"/>' +
+      '</svg>';
+  }
+  function speaker(x, y, side) {
+    return '<g id="spk' + side + '" transform="translate(' + x + ' ' + y + ')"><rect ' + OL + ' class="spk" x="0" y="0" width="70" height="120" rx="8"/>' +
+      '<g transform="translate(35 38)"><circle ' + OL + ' class="cone" r="22"/><circle id="cone' + side + '1" class="coneIn" r="11"/></g>' +
+      '<g transform="translate(35 90)"><circle ' + OL + ' class="cone" r="15"/><circle id="cone' + side + '2" class="coneIn" r="7"/></g></g>';
+  }
+
+  /* ---------------- characters (rigged) ---------------- */
+  // Every character exposes: root, hips, legL, legR, torso, armL (playing hand), armR, head, hair,
+  // eyes (blink), pupils, mouth (open), instrument. Anchors for accessories in "anchors".
+  function nova() {
+    return {
+      anchors: { head: [0, -268], headW: 104, chest: [0, -176], back: [0, -190], top: [0, -326] },
+      svg:
+        '<g id="c-root">' +
+        '<g id="c-legL"><path ' + OL + ' class="pants" d="M-34 -124 L-8 -124 L-26 -18 L-56 -18 Z"/><path class="stripe" d="M-24 -118 L-44 -22"/>' +
+        '<path ' + OL + ' class="shoe" d="M-70 -4 C -70 -20 -54 -24 -30 -20 C -20 -18 -18 -6 -22 0 L -66 0 C -70 0 -70 -2 -70 -4 Z"/><path class="sole" d="M-70 -3 H-22"/></g>' +
+        '<g id="c-legR"><path ' + OL + ' class="pants" d="M8 -124 L34 -124 L56 -18 L26 -18 Z"/><path class="stripe" d="M24 -118 L44 -22"/>' +
+        '<path ' + OL + ' class="shoe" d="M70 -4 C 70 -20 54 -24 30 -20 C 20 -18 18 -6 22 0 L 66 0 C 70 0 70 -2 70 -4 Z"/><path class="sole" d="M70 -3 H22"/></g>' +
+        '<g id="c-torso"><path ' + OL + ' class="hood" d="M-44 -200 Q-54 -160 -42 -118 L42 -118 Q54 -160 44 -200 Q0 -214 -44 -200 Z"/>' +
+        '<path class="trimO" d="M0 -204 V-120"/><path ' + OL + ' class="hoodBack" d="M-30 -206 Q0 -222 30 -206 Q0 -196 -30 -206 Z"/>' +
+        '<path class="string" d="M-10 -202 V-176 M10 -202 V-180"/><path ' + OL + ' class="pocket" d="M-26 -150 H26 L20 -128 H-20 Z"/></g>' +
+        '<g id="c-armR"><path ' + OL + ' class="hood" d="M38 -196 C 64 -190 76 -178 80 -160 L 64 -152 C 58 -168 50 -176 34 -178 Z"/><circle ' + OL + ' class="skin" cx="78" cy="-152" r="10"/></g>' +
+        '<g id="c-inst" transform="translate(4 -150) rotate(-24)"><rect ' + OL + ' class="kt" x="-84" y="-16" width="112" height="34" rx="12"/>' +
+        '<rect class="ktKeys" x="-72" y="-8" width="80" height="18" rx="3"/>' + Array.from({ length: 9 }, function (_, i) { return '<path class="ktLine" d="M' + (-63 + i * 9) + ' -8 V10"/>'; }).join("") +
+        Array.from({ length: 6 }, function (_, i) { return '<rect class="ktBlack" x="' + (-66 + [0, 1, 3, 4, 5, 7][i] * 9) + '" y="-8" width="5" height="10"/>'; }).join("") +
+        '<rect ' + OL + ' class="ktNeck" x="26" y="-7" width="76" height="14" rx="5"/><rect ' + OL + ' class="kt" x="98" y="-11" width="24" height="22" rx="6"/>' +
+        '<circle class="ktDot" cx="-78" cy="0" r="3"/><circle class="ktDot" cx="16" cy="9" r="2.5"/></g>' +
+        '<g id="c-armL"><path ' + OL + ' class="hood" d="M-40 -194 C -62 -184 -66 -164 -54 -144 L -40 -150 C -46 -164 -42 -174 -30 -180 Z"/><circle id="c-hand" ' + OL + ' class="skin" cx="-46" cy="-142" r="10"/></g>' +
+        '<g id="c-head">' +
+        '<path ' + OL + ' class="skin" d="M-46 -262 L-74 -288 L-50 -248 Z"/><path ' + OL + ' class="skin" d="M46 -262 L74 -288 L50 -248 Z"/>' +
+        '<path ' + OL + ' class="skin" d="M-50 -268 C -52 -312 52 -312 50 -268 C 48 -238 22 -220 0 -218 C -22 -220 -48 -238 -50 -268 Z"/>' +
+        '<path class="skinShade" d="M-44 -246 C -30 -226 30 -226 44 -246 C 30 -232 -30 -232 -44 -246 Z"/>' +
+        '<circle class="spotS" cx="-24" cy="-296" r="4"/><circle class="spotS" cx="-12" cy="-302" r="2.6"/><circle class="spotS" cx="28" cy="-294" r="3"/>' +
+        '<g id="c-eyes"><g transform="translate(-19 -264) rotate(10)"><ellipse ' + OL + ' class="eye" rx="14" ry="10"/><ellipse class="pupil c-pupil" rx="4" ry="8"/><path class="lid" d="M-15 -2 Q0 -14 15 -2 L15 -12 L-15 -12 Z"/></g>' +
+        '<g transform="translate(19 -264) rotate(-10)"><ellipse ' + OL + ' class="eye" rx="14" ry="10"/><ellipse class="pupil c-pupil" rx="4" ry="8"/><path class="lid" d="M-15 -2 Q0 -14 15 -2 L15 -12 L-15 -12 Z"/></g></g>' +
+        '<g id="c-mouth"><path class="mouthLine" d="M-14 -238 Q2 -228 16 -240"/><path class="tooth" d="M6 -235 L9 -229 L12 -236 Z"/></g>' +
+        '<ellipse id="c-mouthOpen" class="mouthOpen" cx="1" cy="-236" rx="9" ry="0"/>' +
+        '<g id="c-hair"><path ' + OL + ' class="hair" d="M-56 -274 L-70 -300 L-44 -296 L-54 -330 L-22 -310 L-16 -344 L4 -314 L24 -342 L28 -308 L56 -326 L46 -294 L70 -298 L52 -268 C 34 -292 -30 -292 -56 -274 Z"/>' +
+        '<path class="hairShine" d="M-30 -304 L-18 -318 M12 -316 L20 -330"/></g>' +
+        '<path ' + OL + ' class="gold" d="M-62 -246 l3 6 6 1 -5 4 2 6 -6 -3 -6 3 2 -6 -5 -4 6 -1 Z"/>' +
+        '</g></g>'
+    };
+  }
+  function fur(cx, cy, r, n, amp, seed) {
+    let d = "";
+    for (let i = 0; i <= n; i++) {
+      const a = i / n * Math.PI * 2, rr = r + (i % 2 ? amp : -amp * .2) + Math.sin(i * 7.3 + seed) * amp * .4;
+      const x = cx + Math.cos(a) * rr, y = cy + Math.sin(a) * rr * 1.04;
+      d += (i ? " L" : "M") + x.toFixed(1) + " " + y.toFixed(1);
+    }
+    return d + " Z";
+  }
+  function fuzz() {
+    return {
+      anchors: { head: [0, -196], headW: 150, chest: [0, -120], back: [0, -150], top: [0, -268] },
+      svg:
+        '<g id="c-root">' +
+        '<g id="c-legL"><path ' + OL + ' class="pants" d="M-40 -64 L-12 -64 L-16 -16 L-46 -16 Z"/><path ' + OL + ' class="shoe" d="M-66 -2 C -66 -20 -46 -24 -20 -20 C -10 -16 -12 -4 -14 0 L -62 0 Z"/><path class="sole" d="M-66 -3 H-14"/></g>' +
+        '<g id="c-legR"><path ' + OL + ' class="pants" d="M12 -64 L40 -64 L46 -16 L16 -16 Z"/><path ' + OL + ' class="shoe" d="M66 -2 C 66 -20 46 -24 20 -20 C 10 -16 12 -4 14 0 L 62 0 Z"/><path class="sole" d="M66 -3 H14"/></g>' +
+        '<g id="c-torso"><path ' + OL + ' class="furB" d="' + fur(0, -150, 92, 64, 9, 1) + '"/><path class="furShade" d="' + fur(0, -120, 70, 40, 5, 3) + '"/>' +
+        '<path ' + OL + ' class="tee" d="M-56 -112 Q0 -96 56 -112 L50 -70 Q0 -60 -50 -70 Z"/><path class="teeStar" d="M0 -98 l4 8 9 1 -7 6 2 9 -8 -5 -8 5 2 -9 -7 -6 9 -1 Z"/></g>' +
+        '<g id="c-armR"><path ' + OL + ' class="furB" d="M70 -140 C 98 -134 104 -112 96 -96 L 80 -102 C 82 -114 76 -122 64 -124 Z"/></g>' +
+        '<g id="c-inst" transform="translate(0 -96) rotate(-20)"><rect ' + OL + ' class="kt" x="-84" y="-15" width="112" height="32" rx="12"/>' +
+        '<rect class="ktKeys" x="-72" y="-7" width="80" height="16" rx="3"/>' + Array.from({ length: 9 }, function (_, i) { return '<path class="ktLine" d="M' + (-63 + i * 9) + ' -7 V9"/>'; }).join("") +
+        '<rect ' + OL + ' class="ktNeck" x="26" y="-7" width="72" height="14" rx="5"/><rect ' + OL + ' class="kt" x="94" y="-11" width="24" height="22" rx="6"/></g>' +
+        '<g id="c-armL"><path ' + OL + ' class="furB" d="M-70 -140 C -96 -128 -96 -104 -80 -90 L -66 -98 C -74 -110 -72 -120 -60 -126 Z"/><circle id="c-hand" ' + OL + ' class="furB" cx="-72" cy="-92" r="11"/></g>' +
+        '<g id="c-head">' +
+        '<g id="c-eyes"><g transform="translate(0 -176)"><circle ' + OL + ' class="eye" r="30"/><circle class="iris" r="16"/><circle class="pupil c-pupil" r="8"/><circle class="shine" cx="-6" cy="-8" r="4"/><path class="lid lidF" d="M-31 -2 A31 31 0 0 1 31 -2 L31 -34 L-31 -34 Z"/></g></g>' +
+        '<g id="c-mouth"><path ' + OL + ' class="mouthDark" d="M-40 -132 Q0 -104 40 -132 Q0 -122 -40 -132 Z"/><path class="toothW" d="M-26 -129 l6 9 6 -7 M14 -127 l6 7 6 -9"/></g>' +
+        '<ellipse id="c-mouthOpen" class="mouthOpen" cx="0" cy="-124" rx="26" ry="0"/>' +
+        '<g id="c-hair"><path ' + OL + ' class="beanie" d="M-64 -214 C -64 -268 64 -268 64 -214 Z"/><rect ' + OL + ' class="beanieRim" x="-68" y="-222" width="136" height="16" rx="8"/>' +
+        '<circle ' + OL + ' class="badge" cx="34" cy="-240" r="10"/><path class="badgeFace" d="M29 -242 h0.1 M39 -242 h0.1 M29 -237 q5 5 10 0"/>' +
+        '<path ' + OL + ' class="phones" d="M-80 -196 C -80 -270 80 -270 80 -196" fill="none" stroke-width="6"/><rect ' + OL + ' class="phonesCup" x="-92" y="-206" width="20" height="34" rx="8"/><rect ' + OL + ' class="phonesCup" x="72" y="-206" width="20" height="34" rx="8"/></g>' +
+        '</g></g>'
+    };
+  }
+
+  /* ---------------- accessories (unlockables) ---------------- */
+  const items = [
+    { id: "shades", name: "Óculos Sunset", level: 2 },
+    { id: "chain", name: "Corrente de Ouro", level: 3 },
+    { id: "crown", name: "Coroa do Beat", level: 4 },
+    { id: "stars", name: "Estrelinhas", level: 5 },
+    { id: "halo", name: "Auréola de Vinil", level: 6 },
+    { id: "cape", name: "Capa de Fita", level: 7 },
+    { id: "cap", name: "Boné Neon", level: 8 },
+    { id: "wings", name: "Asas de Cassete", level: 9 }
+  ];
+  function accessory(id, a) {
+    const hx = a.head[0], hy = a.head[1], w = a.headW, cx = a.chest[0], cy = a.chest[1], bx = a.back[0], by = a.back[1], tx = a.top[0], ty = a.top[1];
+    switch (id) {
+      case "shades": return '<g transform="translate(' + hx + ' ' + (hy + 4) + ')"><circle ' + OL + ' class="shade" cx="-' + (w * .2) + '" cy="0" r="' + (w * .15) + '"/><circle ' + OL + ' class="shade" cx="' + (w * .2) + '" cy="0" r="' + (w * .15) + '"/><path class="ol" d="M-' + (w * .06) + ' -2 H' + (w * .06) + '"/><path class="glint" d="M-' + (w * .27) + ' -6 l6 -4"/></g>';
+      case "chain": return '<path class="goldLine" d="M' + (cx - 26) + ' ' + (cy - 26) + ' Q' + cx + ' ' + (cy + 8) + ' ' + (cx + 26) + ' ' + (cy - 26) + '" fill="none"/><circle ' + OL + ' class="gold" cx="' + cx + '" cy="' + (cy - 6) + '" r="8"/>';
+      case "crown": return '<path ' + OL + ' class="gold" transform="translate(' + tx + ' ' + (ty + 6) + ')" d="M-26 0 L-30 -30 L-14 -14 L0 -36 L14 -14 L30 -30 L26 0 Z"/>';
+      case "stars": return '<g class="orbit" transform="translate(' + hx + ' ' + hy + ')">' + [0, 120, 240].map(function (r) { return '<path ' + OL + ' class="gold" transform="rotate(' + r + ') translate(' + (w * .75) + ' 0) scale(.8)" d="M0 -10 l3 7 8 1 -6 5 2 8 -7 -4 -7 4 2 -8 -6 -5 8 -1 Z"/>'; }).join("") + '</g>';
+      case "halo": return '<g transform="translate(' + hx + ' ' + (hy - 6) + ')"><circle ' + OL + ' class="vinylH" r="' + (w * .72) + '"/><circle class="vinylG" r="' + (w * .55) + '"/><circle class="vinylL" r="' + (w * .14) + '"/></g>';
+      case "cape": return '<path ' + OL + ' class="cape" d="M' + (bx - 40) + ' ' + by + ' Q' + bx + ' ' + (by - 14) + ' ' + (bx + 40) + ' ' + by + ' L' + (bx + 64) + ' ' + (by + 130) + ' Q' + bx + ' ' + (by + 150) + ' ' + (bx - 64) + ' ' + (by + 130) + ' Z"/>';
+      case "cap": return '<g transform="translate(' + tx + ' ' + (ty + 18) + ')"><path ' + OL + ' class="capC" d="M-40 6 C -40 -34 40 -34 40 6 Z"/><path ' + OL + ' class="capC" d="M20 2 H72 Q72 12 20 12 Z"/><circle class="capDot" cx="0" cy="-12" r="5"/></g>';
+      case "wings": return '<g transform="translate(' + bx + ' ' + by + ')"><path ' + OL + ' class="wing" d="M-30 0 C -110 -60 -150 10 -120 40 C -96 26 -70 30 -30 20 Z"/><path ' + OL + ' class="wing" d="M30 0 C 110 -60 150 10 120 40 C 96 26 70 30 30 20 Z"/></g>';
+    }
+    return "";
+  }
+  const behind = { halo: 1, cape: 1, wings: 1 };
+
+  /* ---------------- module icons ---------------- */
+  function icon(m) {
+    const s = '<svg viewBox="0 0 56 52" class="card-art" aria-hidden="true">';
+    switch (m) {
+      case 0: return s + '<g class="ic-trail"><path class="ghostT" d="M14 44 V22 a14 14 0 0 1 28 0 V44 l-5 -4 -5 4 -4 -4 -5 4 -4 -4 Z"/></g><path ' + OL + ' class="ghostB" d="M14 44 V22 a14 14 0 0 1 28 0 V44 l-5 -4 -5 4 -4 -4 -5 4 -4 -4 Z"/><circle class="eyeD" cx="23" cy="24" r="2.6"/><circle class="eyeD" cx="33" cy="24" r="2.6"/></svg>';
+      case 1: return s + '<circle ' + OL + ' class="cookie" cx="26" cy="27" r="15"/><g class="crumbs"><rect ' + OL + ' class="cookie" x="42" y="12" width="7" height="7" rx="2"/><rect ' + OL + ' class="cookie" x="44" y="30" width="6" height="6" rx="2"/><rect ' + OL + ' class="cookie" x="38" y="42" width="5" height="5" rx="1"/></g><circle class="chip" cx="21" cy="23" r="2.4"/><circle class="chip" cx="30" cy="31" r="2.4"/><circle class="chip" cx="27" cy="20" r="1.8"/></svg>';
+      case 2: return s + '<g transform="translate(28 26)"><g class="petals">' + [0, 60, 120, 180, 240, 300].map(function (r) { return '<ellipse ' + OL + ' class="petal" transform="rotate(' + r + ') translate(0 -11)" rx="6" ry="10"/>'; }).join("") + '<circle ' + OL + ' class="core" r="7"/></g></g></svg>';
+      case 3: return s + '<path ' + OL + ' class="jelly" d="M8 40 C 8 18 48 18 48 40 Z"/><path class="wave1" d="M6 46 q6 -6 11 0 t11 0 t11 0 t11 0"/><circle class="eyeD" cx="22" cy="30" r="2.3"/><circle class="eyeD" cx="34" cy="30" r="2.3"/></svg>';
+      case 4: return s + '<g class="spin"><circle ' + OL + ' class="vinyl" cx="28" cy="26" r="19"/><circle class="groove" cx="28" cy="26" r="13"/><circle class="label" cx="28" cy="26" r="6"/></g><g class="specks"><circle cx="8" cy="10" r="1.6"/><circle cx="48" cy="8" r="1.3"/><circle cx="50" cy="44" r="1.7"/><circle cx="6" cy="42" r="1.2"/></g></svg>';
+      case 5: return s + '<g class="px">' + [[12, 14], [20, 14], [28, 14], [12, 22], [20, 22], [28, 22], [36, 22], [20, 30], [28, 30], [36, 30], [28, 38], [36, 38]].map(function (p, i) { return '<rect ' + OL + ' class="pxr pxr' + (i % 3) + '" x="' + p[0] + '" y="' + p[1] + '" width="8" height="8"/>'; }).join("") + '</g></svg>';
+    }
+    return s + '</svg>';
+  }
+
+  /* ---------------- app-level leaves (decor in safe zones only) ---------------- */
+  function cornerLeaves() {
+    const L = function (x, y, r, s, k) { return '<svg style="left:' + x + 'px;top:' + y + 'px" width="10" height="10" viewBox="0 0 10 10"><g class="sway' + (k || "") + '">' + leaf(0, 0, r, s) + '</g></svg>'; };
+    const M = function (x, y, r, s) { return '<svg style="left:' + x + 'px;top:' + y + 'px" width="10" height="10" viewBox="0 0 10 10">' + monstera(0, 0, r, s) + '</svg>'; };
+    return M(-6, 790, -44, .75) + L(-4, 540, -30, .55, "2") + L(1206, 530, 210, .55) + M(1208, 792, 228, .8) + L(-6, 92, 20, .45, "2") + L(1206, 86, 160, .45);
+  }
+
+  // Parts declare an outline plus their own colour class; merge them into one class attribute.
+  function F(s) { return s.replace(/class="ol" class="([^"]+)"/g, 'class="ol $1"'); }
+  function wrapChar(make) { return function () { const c = make(); c.svg = F(c.svg); return c; }; }
+  window.RastroArt = {
+    scene: function () { return F(scene()); },
+    characters: { nova: wrapChar(nova), fuzz: wrapChar(fuzz) },
+    items: items,
+    accessory: function (id, a) { return F(accessory(id, a)); },
+    behind: behind,
+    icon: function (m) { return F(icon(m)); },
+    cornerLeaves: function () { return F(cornerLeaves()); }
+  };
+})();

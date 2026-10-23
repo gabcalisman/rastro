@@ -1,5 +1,7 @@
 # RASTRO Play · by Gab Calisman
 
+> **Nova interface web (branch `claude/marco-1-visual`):** no Mac o plugin abre uma interface web com palco reativo, personagens animados pelo som e camada de jogo opcional. O motor de áudio é o mesmo. Prévias: [`docs/previews-web/`](docs/previews-web/). Para ver no navegador sem o plugin, abra `ui/index.html` (motor simulado, só para prévia). Instruções do projeto para agentes: [`CLAUDE.md`](CLAUDE.md).
+
 Instrumento MIDI baseado em samples, C++17 / JUCE 8.0.6 / CMake. Um sample, até 16 vozes e seis efeitos reordenáveis. Interface PT-BR/EN, paletas coordenadas, materiais de hardware, waveform estéreo e personagem vetorial reativo. O binário e os identificadores continuam **RASTRO** para preservar sessões.
 
 Protótipo para testes no [PR #1 em rascunho](https://github.com/gabcalisman/rastro/pull/1), branch `prepare-mac-testing`. Sem merge ou release. **RASTRO Capture** é um gravador complementar, não RASTRO FX.

@@ -93,6 +93,25 @@ class RastroProcessor : public juce::AudioProcessor, private juce::MidiKeyboardS
     void undoMutation();
     bool canUndoMutation() const { return mutationUndoAvailable.load(); }
     void moveModule(int, int);
+    void importDataAsync(juce::MemoryBlock, juce::String,
+                         std::function<void(rastro::ImportError)>);
+    // Held notes for the interface (UI keyboard and MIDI input). Lock-free bitset, 128 notes.
+    std::array<std::atomic<uint32_t>, 4> heldNotes{};
+    void markNote(int note, bool on)
+    {
+        if (note < 0 || note > 127)
+            return;
+        const uint32_t bit = 1u << (note & 31);
+        if (on)
+            heldNotes[(size_t)(note >> 5)].fetch_or(bit, std::memory_order_relaxed);
+        else
+            heldNotes[(size_t)(note >> 5)].fetch_and(~bit, std::memory_order_relaxed);
+    }
+    void clearNotes()
+    {
+        for (auto &word : heldNotes)
+            word.store(0, std::memory_order_relaxed);
+    }
 
   private:
     bool restoreState(const void *, int);

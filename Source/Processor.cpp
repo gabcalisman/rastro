@@ -1,5 +1,6 @@
 #include "Processor.h"
 #include "Editor.h"
+#include "WebEditor.h"
 #include "Mp3Decoder.h"
 #include "RastroStrings.h"
 namespace
@@ -252,7 +253,10 @@ void RastroProcessor::processBlock(juce::AudioBuffer<float> &b, juce::MidiBuffer
         if (auto pos = ph->getPosition())
         {
             if (wasHostPlaying && !pos->getIsPlaying())
+            {
                 engine.allOff();
+                clearNotes();
+            }
             wasHostPlaying = pos->getIsPlaying();
             hostPlaying = wasHostPlaying;
             if (auto beat = pos->getPpqPosition())
@@ -281,6 +285,7 @@ void RastroProcessor::processBlock(juce::AudioBuffer<float> &b, juce::MidiBuffer
     while (rd != wr)
     {
         auto e = keyEvents[rd++ % 256];
+        markNote(e.note, e.on);
         if (e.on)
         {
             engine.noteOn(e.note, e.velocity, s, p);
@@ -291,7 +296,10 @@ void RastroProcessor::processBlock(juce::AudioBuffer<float> &b, juce::MidiBuffer
     }
     keyRead.store(rd, std::memory_order_release);
     if (queueOverflow || overflow.exchange(false))
+    {
         engine.allOff();
+        clearNotes();
+    }
     int preview = previewRequest.exchange(0);
     if (preview > 0)
     {
@@ -320,17 +328,24 @@ void RastroProcessor::processBlock(juce::AudioBuffer<float> &b, juce::MidiBuffer
             auto m = meta.getMessage();
             if (m.isNoteOn())
             {
+                markNote(m.getNoteNumber(), true);
                 engine.noteOn(m.getNoteNumber(), m.getFloatVelocity(), s, p, m.getChannel());
                 midiFlash = 8;
             }
             else if (m.isNoteOff())
+            {
+                markNote(m.getNoteNumber(), false);
                 engine.noteOff(m.getNoteNumber(), p, m.getChannel());
+            }
             else if (m.isPitchWheel())
                 engine.pitchBend(m.getChannel(),
                                  (m.getPitchWheelValue() - 8192) /
                                      (m.getPitchWheelValue() < 8192 ? 8192.f : 8191.f));
             else if (m.isAllNotesOff() || m.isAllSoundOff())
+            {
                 engine.allOff();
+                clearNotes();
+            }
             else if (m.isController())
             {
                 if (m.getControllerNumber() == 64)
@@ -394,6 +409,17 @@ void RastroProcessor::importFileAsync(juce::File file,
         [this, file, complete = std::move(complete)]
         {
             auto result = importFile(file);
+            importError = result;
+            juce::MessageManager::callAsync([complete, result] { complete(result); });
+        });
+}
+void RastroProcessor::importDataAsync(juce::MemoryBlock data, juce::String name,
+                                      std::function<void(rastro::ImportError)> complete)
+{
+    loader.addJob(
+        [this, data = std::move(data), name, complete = std::move(complete)]
+        {
+            auto result = importData(data.getData(), data.getSize(), name);
             importError = result;
             juce::MessageManager::callAsync([complete, result] { complete(result); });
         });
@@ -763,7 +789,14 @@ bool RastroProcessor::restoreState(const void *data, int n)
         cc[j] = juce::jlimit(-1, 127, (int)tree.getProperty("cc" + juce::String(j), -1));
     return true;
 }
-juce::AudioProcessorEditor *RastroProcessor::createEditor() { return new RastroEditor(*this); }
+juce::AudioProcessorEditor *RastroProcessor::createEditor()
+{
+#if RASTRO_WEB_UI
+    return new RastroWebEditor(*this);
+#else
+    return new RastroEditor(*this);
+#endif
+}
 juce::AudioProcessor *JUCE_CALLTYPE createPluginFilter() { return new RastroProcessor(); }
 
 void RastroProcessor::beginCapture(std::function<void(bool)> complete)

@@ -120,6 +120,9 @@ juce::AudioProcessorValueTreeState::ParameterLayout RastroProcessor::layout()
         add(id, 0, 4, 0, 1);
     for (auto id : rastro::jamLockIds)
         add(id, 0, 1, 0, 1);
+    // Append-only, visual only (web interface): painted character and painted room choices.
+    add("avatarCharacter", 0, 15, 0, 1);
+    add("sceneRoom", 0, 7, 0, 1);
     return l;
 }
 RastroProcessor::RastroProcessor(bool directCaptureForTests)
@@ -309,6 +312,9 @@ void RastroProcessor::processBlock(juce::AudioBuffer<float> &b, juce::MidiBuffer
         audition.regionLoop = false;
         audition.triggerMode = 1;
         audition.root = 255;
+        const float from = previewFrom.exchange(-1.f);
+        if (from >= 0)
+            audition.start = std::clamp(from, audition.start, std::max(audition.start, audition.end - .001f));
         engine.noteOn(255, 1, s, audition);
     }
     else if (preview < 0)

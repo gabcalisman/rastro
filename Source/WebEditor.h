@@ -38,6 +38,8 @@ class RastroWebEditor : public juce::AudioProcessorEditor, private juce::Timer
     juce::var sampleInfo() const;
     juce::var waveform(int columns) const;
     juce::var importResult(rastro::ImportError) const;
+    std::vector<rastro::SamplePatch> searchResults;
+    void chooseFile(bool save, juce::String pattern, std::function<void(juce::File)>);
     void setParameter(const Args &);
     void timerCallback() override;
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(RastroWebEditor)

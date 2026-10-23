@@ -223,41 +223,61 @@
   }
 
   /* ---------------- painted art (from the concept illustrations) ---------------- */
-  // Fuzz cut out from the approved painting, split at the neck so the head can move.
-  // Image px -> stage units: scale .395, origin at the feet.
-  function fuzzArt() {
-    const k = .395, w = 482 * k, h = 760 * k, ox = -w / 2, oy = -h;
-    return {
-      painted: true,
-      pivot: [ox + 220 * k, oy + 238 * k],
-      anchors: { head: [ox + 190 * k, oy + 120 * k], headW: 104, chest: [ox + 205 * k, oy + 285 * k], back: [ox + 205 * k, oy + 270 * k], top: [ox + 185 * k, oy + 14 * k] },
-      svg: '<g id="c-root"><g id="c-torso"><image href="fuzz_body.png" x="' + ox.toFixed(1) + '" y="' + oy.toFixed(1) + '" width="' + w.toFixed(1) + '" height="' + h.toFixed(1) + '"/></g>' +
-        '<g id="c-head"><image href="fuzz_head.png" x="' + ox.toFixed(1) + '" y="' + oy.toFixed(1) + '" width="' + w.toFixed(1) + '" height="' + (260 * k).toFixed(1) + '"/></g></g>'
+  // Painted characters: cut out from the approved paintings, split at the neck so the head can move.
+  // Image px (height 760) -> stage units with scale k, origin at the feet.
+  function painted(file, w, headH, pivot, head, top) {
+    return function () {
+      const k = .395, W = w * k, H = 760 * k, ox = -W / 2, oy = -H;
+      return {
+        painted: true,
+        pivot: [ox + pivot[0] * k, oy + pivot[1] * k],
+        anchors: { head: [ox + head[0] * k, oy + head[1] * k], headW: head[2] * k, chest: [ox + pivot[0] * k, oy + (pivot[1] + 50) * k], back: [ox + pivot[0] * k, oy + (pivot[1] + 35) * k], top: [ox + top[0] * k, oy + top[1] * k] },
+        svg: '<g id="c-root"><g id="c-torso"><image href="' + file + '_body.png" x="' + ox.toFixed(1) + '" y="' + oy.toFixed(1) + '" width="' + W.toFixed(1) + '" height="' + H.toFixed(1) + '"/></g>' +
+          '<g id="c-head"><image href="' + file + '_head.png" x="' + ox.toFixed(1) + '" y="' + oy.toFixed(1) + '" width="' + W.toFixed(1) + '" height="' + (headH * k).toFixed(1) + '"/></g></g>'
+      };
     };
   }
-  // Night room painted by the concept artist. Reactive glows sit on top of the painted objects.
-  function sceneNeon() {
-    const glow = function (id, x, y, r, cls) { return '<circle id="' + id + '" class="' + cls + '" cx="' + x + '" cy="' + y + '" r="' + r + '" fill="url(#gWarm)" opacity="0"/>'; };
+  const fuzzArt = painted("fuzz", 482, 260, [220, 238], [190, 120, 260], [185, 14]);
+  const soulArt = painted("soul", 403, 270, [200, 232], [200, 130, 250], [200, 10]);
+  const luaArt = painted("lua", 397, 280, [205, 246], [200, 150, 230], [180, 14]);
+  const novaArt = painted("nova", 450, 290, [215, 262], [210, 170, 200], [230, 12]);
+  // Painted rooms: the painting plus glows placed over its objects, so they react to the sound.
+  const ROOMS = {
+    neon: { img: "room_neon.jpg", w: 1584, h: 993, tint: "#9c7bff", spot: "#bffcff", spotEdge: "#39e3d2", veil: "#0a0418",
+      win: [225, 185, 430, 265], screen: [1370, 405, 128, 88, "#39e3d2"], bed: [250, 722, 760, 34], strip: "M585 38 L690 178 L690 420",
+      lamp: [785, 100, 150], globe: [1160, 562, 120], spk: [[127, 583, 70], [250, 488, 48], [676, 478, 40], [932, 478, 34], [215, 872, 86]] },
+    sunset: { img: "room_sunset.jpg", w: 1585, h: 992, tint: "#ffb066", spot: "#ffe2a8", spotEdge: "#ff9a4a", veil: "#1a0806",
+      win: [265, 70, 415, 320], screen: [1150, 280, 110, 70, "#ffcf7a"], bed: [770, 600, 520, 30], strip: "",
+      lamp: [1405, 205, 140], globe: [265, 450, 90], lamp2: [868, 425, 70], spk: [[290, 610, 52], [737, 590, 42], [1300, 300, 40], [1120, 305, 34], [1495, 705, 60]] },
+    lofi: { img: "room_lofi.jpg", w: 1586, h: 992, tint: "#ffb066", spot: "#ffd7a0", spotEdge: "#ff8a4c", veil: "#07040f",
+      win: [810, 40, 370, 350], screen: [845, 445, 95, 40, "#ffcf7a"], bed: [300, 690, 520, 26], strip: "",
+      lamp: [1095, 180, 120], globe: [370, 385, 110], lamp2: null, spk: [[1210, 365, 46], [1295, 368, 58], [1420, 770, 80], [175, 860, 70]] },
+    lunar: { img: "room_lunar.jpg", w: 1585, h: 992, tint: "#ff9a4a", spot: "#ffd7a0", spotEdge: "#c05cff", veil: "#07040f",
+      win: [650, 85, 440, 440], screen: [420, 345, 120, 90, "#ffcf7a"], bed: [520, 700, 600, 40], strip: "",
+      lamp: [555, 400, 90], globe: [1385, 445, 95], lamp2: [262, 190, 80], spk: [[345, 585, 58], [315, 488, 34], [660, 560, 40], [1500, 545, 46]] }
+  };
+  function scenePainted(kind) {
+    const c = ROOMS[kind];
+    const glow = function (id, g) { return g ? '<circle id="' + id + '" cx="' + g[0] + '" cy="' + g[1] + '" r="' + g[2] + '" fill="url(#gWarm)" opacity="0"/>' : ""; };
     return '<svg viewBox="0 0 480 452" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">' +
       '<defs><radialGradient id="gWarm"><stop offset="0" stop-color="#ffd38a" stop-opacity=".95"/><stop offset=".45" stop-color="#ff9a4a" stop-opacity=".45"/><stop offset="1" stop-color="#ff7a3d" stop-opacity="0"/></radialGradient>' +
-      '<radialGradient id="gCyan"><stop offset="0" stop-color="#bffcff" stop-opacity=".95"/><stop offset=".5" stop-color="#39e3d2" stop-opacity=".4"/><stop offset="1" stop-color="#39e3d2" stop-opacity="0"/></radialGradient>' +
-      '<radialGradient id="gPink"><stop offset="0" stop-color="#ffd1f0" stop-opacity=".9"/><stop offset=".5" stop-color="#ff4fa3" stop-opacity=".35"/><stop offset="1" stop-color="#ff4fa3" stop-opacity="0"/></radialGradient>' +
-      '<radialGradient id="gSpot" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#bffcff" stop-opacity=".55"/><stop offset="1" stop-color="#39e3d2" stop-opacity="0"/></radialGradient>' +
+      '<radialGradient id="gCyan"><stop offset="0" stop-color="' + c.spot + '" stop-opacity=".95"/><stop offset=".5" stop-color="' + c.spotEdge + '" stop-opacity=".4"/><stop offset="1" stop-color="' + c.spotEdge + '" stop-opacity="0"/></radialGradient>' +
+      '<radialGradient id="gSpot" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="' + c.spot + '" stop-opacity=".55"/><stop offset="1" stop-color="' + c.spotEdge + '" stop-opacity="0"/></radialGradient>' +
       '<radialGradient id="gShadow" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#0a0418" stop-opacity=".7"/><stop offset="1" stop-color="#0a0418" stop-opacity="0"/></radialGradient></defs>' +
-      '<g id="room" transform="translate(-149 -18) scale(.4915)">' +
-      '<image href="room_neon.jpg" x="0" y="0" width="1584" height="993"/>' +
-      '<rect id="winGlow" x="225" y="185" width="430" height="265" fill="#9c7bff" opacity="0" style="mix-blend-mode:screen"/>' +
-      '<rect id="arcadeGlow" x="1370" y="405" width="128" height="88" rx="10" fill="#39e3d2" opacity="0" style="mix-blend-mode:screen"/>' +
-      '<rect id="bedGlow" x="250" y="722" width="760" height="34" rx="17" fill="url(#gWarm)" opacity="0"/>' +
-      '<path id="neonStrip" d="M585 38 L690 178 L690 420" stroke="#9ffcff" stroke-width="14" fill="none" stroke-linecap="round" opacity="0" style="mix-blend-mode:screen"/>' +
-      glow("lampGlow", 785, 100, 150, "") + glow("globeGlow", 1160, 562, 120, "") +
-      '<g id="spkGlows">' + [[127, 583, 70], [250, 488, 48], [676, 478, 40], [932, 478, 34], [215, 872, 86]].map(function (s, i) { return '<circle class="spkGlow" data-i="' + i + '" cx="' + s[0] + '" cy="' + s[1] + '" r="' + s[2] + '" fill="url(#gCyan)" opacity="0"/>'; }).join("") + '</g>' +
+      '<g id="room" transform="translate(-149 -18) scale(' + (488 / c.h).toFixed(4) + ')">' +
+      '<image href="' + c.img + '" x="0" y="0" width="' + c.w + '" height="' + c.h + '"/>' +
+      '<rect id="winGlow" x="' + c.win[0] + '" y="' + c.win[1] + '" width="' + c.win[2] + '" height="' + c.win[3] + '" fill="' + c.tint + '" opacity="0" style="mix-blend-mode:screen"/>' +
+      '<rect id="arcadeGlow" x="' + c.screen[0] + '" y="' + c.screen[1] + '" width="' + c.screen[2] + '" height="' + c.screen[3] + '" rx="10" fill="' + c.screen[4] + '" opacity="0" style="mix-blend-mode:screen"/>' +
+      '<rect id="bedGlow" x="' + c.bed[0] + '" y="' + c.bed[1] + '" width="' + c.bed[2] + '" height="' + c.bed[3] + '" rx="15" fill="url(#gWarm)" opacity="0"/>' +
+      (c.strip ? '<path id="neonStrip" d="' + c.strip + '" stroke="#9ffcff" stroke-width="14" fill="none" stroke-linecap="round" opacity="0" style="mix-blend-mode:screen"/>' : "") +
+      glow("lampGlow", c.lamp) + glow("globeGlow", c.globe) + glow("lamp2Glow", c.lamp2) +
+      '<g id="spkGlows">' + c.spk.map(function (s, i) { return '<circle class="spkGlow" data-i="' + i + '" cx="' + s[0] + '" cy="' + s[1] + '" r="' + s[2] + '" fill="url(#gCyan)" opacity="0"/>'; }).join("") + '</g>' +
       '</g>' +
       '<ellipse cx="240" cy="414" rx="92" ry="16" fill="url(#gShadow)"/>' +
       '<ellipse id="spot" cx="240" cy="410" rx="130" ry="30" fill="url(#gSpot)" opacity=".3"/>' +
       '<g id="ghosts"></g><g id="charLayer"></g><g id="notesP"></g><g id="dustP"></g>' +
-      '<rect id="darkVeil" x="0" y="0" width="480" height="452" fill="#0a0418" opacity="0" pointer-events="none"/>' +
-      '<rect id="bloomVeil" x="0" y="0" width="480" height="452" fill="#9c7bff" opacity="0" pointer-events="none" style="mix-blend-mode:screen"/>' +
+      '<rect id="darkVeil" x="0" y="0" width="480" height="452" fill="' + c.veil + '" opacity="0" pointer-events="none"/>' +
+      '<rect id="bloomVeil" x="0" y="0" width="480" height="452" fill="' + c.tint + '" opacity="0" pointer-events="none" style="mix-blend-mode:screen"/>' +
       '</svg>';
   }
 
@@ -265,8 +285,10 @@
   function F(s) { return s.replace(/class="ol" class="([^"]+)"/g, 'class="ol $1"'); }
   function wrapChar(make) { return function () { const c = make(); c.svg = F(c.svg); return c; }; }
   window.RastroArt = {
-    scene: function (kind) { return kind === "neon" ? sceneNeon() : F(scene()); },
-    characters: { nova: wrapChar(nova), fuzz: fuzzArt, fuzzVector: wrapChar(fuzz) },
+    scene: function (kind) { return ROOMS[kind] ? scenePainted(kind) : F(scene()); },
+    roomScale: function (kind) { return ROOMS[kind] ? 488 / ROOMS[kind].h : 1; },
+    characters: { nova: novaArt, fuzz: fuzzArt, soul: soulArt, lua: luaArt, novaVector: wrapChar(nova), fuzzVector: wrapChar(fuzz) },
+    rooms: ["sunset", "neon", "lofi", "lunar"],
     items: items,
     accessory: function (id, a) { return F(accessory(id, a)); },
     behind: behind,

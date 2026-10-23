@@ -65,6 +65,13 @@
   const sample = { loaded: true, name: "Velvet Keys (prévia)", frames: frames, rate: 44100, seconds: frames / 44100, stereo: true };
   const voices = [];
   let held = [0, 0, 0, 0], serial = 0, lastVel = 0, meter = 0, pos = 0, canUndo = false, previewing = false;
+  const search = { busy: false, paused: false, progress: 0, status: 0, revision: 0 }, cap = { state: 0, outcome: 0, frames: 0, seconds: 0, peak: 0, monitor: false };
+  let results = [];
+  add("avatarCharacter", 0, 15, 0, 1); add("sceneRoom", 0, 7, 0, 1);
+  ["knobDesign", "danceStyle", "danceAmount"].forEach(function (id, i) { add(id, 0, [4, 2, 2][i], [0, 0, 1][i], 1); });
+  ["gJamLock", "cJamLock", "bJamLock", "wJamLock", "dJamLock", "kJamLock"].forEach(function (id) { add(id, 0, 1, 0, 1); });
+  ["envTarget", "lfoTiming", "lfoDivision", "bendRange"].forEach(function (id, i) { add(id, 0, [1, 2, 3, 12][i], [0, 1, 0, 2][i], i === 3 ? 0 : 1); });
+  const patchIds = ["synthEnable", "ampAttack", "ampDecay", "ampSustain", "ampRelease", "filterCutoff", "filterResonance", "envAmount", "envTarget", "lfoRate", "lfoDepth", "lfoTarget", "voiceMode", "glide", "triggerMode", "regionLoop", "lfoTiming", "loopRegionSet", "loopCrossfade"];
   let order = [0, 1, 2, 3, 4, 5];
   const changed = {};
   function setv(id, v) { if (!P[id]) return; P[id].v = Math.min(P[id].max, Math.max(P[id].min, v)); changed[id] = P[id].v; }
@@ -87,6 +94,8 @@
       x.e = e; energy += e * x.v;
     }
     if (previewing) energy += .6;
+    if (search.busy && !search.paused) { search.progress = Math.min(1, search.progress + dt * .45); if (search.progress >= 1) { search.busy = false; search.status = 2; search.revision++; } }
+    if (cap.state === 1) { cap.seconds += dt; cap.peak = .3 + Math.random() * .4; } else cap.peak *= .8;
     meter += (Math.min(1, energy * P.level.v) - meter) * .35;
     pos = voices.length || previewing ? (pos + dt / sample.seconds) % 1 : pos;
     const act = order.map(function () { return 0; });
@@ -97,7 +106,7 @@
     fire("tick", {
       meter: meter, act: act, env: voices.length ? voices[voices.length - 1].e || 0 : 0, wob: act[3] * 10, dust: act[4] * 10, crush: act[5] * 10, bloom: act[2] * 10,
       pos: pos, playing: voices.length > 0, preview: previewing, vel: lastVel, serial: serial, bpm: 0, beat: -1, hostPlaying: false,
-      notes: held.slice(), canUndoJam: canUndo, order: order.slice()
+      notes: held.slice(), canUndoJam: canUndo, order: order.slice(), search: Object.assign({}, search), capture: Object.assign({}, cap)
     });
     if (Object.keys(changed).length) { fire("params", Object.assign({}, changed)); for (const k in changed) delete changed[k]; }
   }, 1000 / 60);
@@ -116,7 +125,25 @@
     jam: function () { ["gMix", "cMix", "bMix", "wMix", "dMix", "kMix", "gFeedback", "bSize", "wDepth"].forEach(function (id) { setv(id, Math.random() * .8 + .1); }); canUndo = true; return true; },
     undoJam: function () { canUndo = false; return false; },
     resetEffects: function () { return true; },
-    preview: function (onOff) { previewing = !!onOff; if (onOff) setTimeout(function () { previewing = false; }, sample.seconds * 1000); return true; }
+    preview: function (onOff, from) { previewing = !!onOff; if (onOff) { pos = from >= 0 ? from : P.start.v; clearTimeout(api._pt); api._pt = setTimeout(function () { previewing = false; }, (1 - pos) * sample.seconds * 1000); } return true; },
+    patchValues: function () { return patchIds.map(function (id) { return P[id].v; }); },
+    patchApply: function (vals) { patchIds.forEach(function (id, i) { setv(id, vals[i]); }); return true; },
+    patchFile: function (save) { return { ok: true, name: save ? "Meu patch" : "Patch aberto" }; },
+    patchSearch: function (tr) { search.busy = true; search.paused = false; search.progress = 0; search.status = 1;
+      results = [0, 1, 2, 3, 4, 5].map(function (i) { return { distance: (.08 + i * .05 + (tr ? .2 : 0)), values: [1, .002 + i * .05, .1 + i * .15, .3 + (i % 3) * .25, .1 + i * .3, 600 + i * 2500, .1 + i * .12, (i % 2 ? .5 : -.3), 0, .5 + i, i * .1, i % 2, i % 3, 0, 2, 0, 1, 0, 5] }; });
+      return true; },
+    patchSearchPause: function () { search.paused = !search.paused; return search.paused; },
+    patchSearchCancel: function () { search.busy = false; search.status = 3; return true; },
+    patchResults: function () { return { valid: true, results: search.status === 2 ? results : [] }; },
+    captureInfo: function () { return { direct: true, standalone: true, inputAvailable: true, canOpenSettings: true }; },
+    captureRecord: function () { cap.state = 1; cap.seconds = 0; return new Promise(function (r) { api._rec = r; }); },
+    captureStop: function () { if (cap.state === 1) { cap.state = 0; cap.outcome = 1; sample.name = "Tomada " + new Date().toLocaleTimeString(); fire("sample", sample); if (api._rec) api._rec(true); } return true; },
+    captureMonitor: function (b) { cap.monitor = !!b; return true; },
+    captureGain: function () { return true; },
+    captureSettings: function () { return true; },
+    capturePoll: function () { return { files: [{ path: "/x/take1.wav", name: "Tomada 21-14-03.wav", time: Date.now() - 600000 }], links: [{ id: "A7F2", state: 0, outcome: 0, outcomeText: "", frames: 0, rate: 48000, peak: .2, flow: true }] }; },
+    captureRemote: function () { return true; },
+    captureLoad: function (p) { sample.name = p.split("/").pop(); fire("sample", sample); return { ok: true, message: "" }; }
   };
   window.Rastro = {
     simulated: true,

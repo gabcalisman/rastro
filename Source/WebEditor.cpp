@@ -1,6 +1,7 @@
 #include "WebEditor.h"
 
 #if RASTRO_WEB_UI
+#include "CapturePanel.h"
 #include "RastroWeb.h"
 
 namespace
@@ -163,9 +164,198 @@ RastroWebEditor::RastroWebEditor(RastroProcessor &processor)
                                     p.resetEffects();
                                     done(true);
                                 })
+            /* ---------- patches ---------- */
+            .withNativeFunction("patchValues",
+                                [this](const Args &, Completion done)
+                                {
+                                    juce::Array<juce::var> list;
+                                    for (auto v : p.patchValues())
+                                        list.add(v);
+                                    done(list);
+                                })
+            .withNativeFunction("patchApply",
+                                [this](const Args &a, Completion done)
+                                {
+                                    auto values = p.patchValues();
+                                    if (auto *list = a[0].getArray())
+                                        for (int i = 0; i < (int)values.size() && i < list->size(); ++i)
+                                            values[(size_t)i] = (float)(double)(*list)[i];
+                                    p.applyPatch(values);
+                                    done(true);
+                                })
+            .withNativeFunction(
+                "patchFile",
+                [this](const Args &a, Completion done)
+                {
+                    const bool save = (bool)a[0], soundOnly = a.size() > 1 && (bool)a[1];
+                    juce::Component::SafePointer<RastroWebEditor> safe(this);
+                    chooseFile(save, "*.rastro",
+                               [safe, save, soundOnly, done](juce::File file)
+                               {
+                                   if (safe == nullptr)
+                                       return;
+                                   if (file == juce::File{})
+                                   {
+                                       done(juce::var());
+                                       return;
+                                   }
+                                   if (save)
+                                       file = file.withFileExtension("rastro");
+                                   safe->p.patchFileAsync(
+                                       file, save,
+                                       [done, name = file.getFileNameWithoutExtension()](bool ok)
+                                       {
+                                           auto *o = new juce::DynamicObject();
+                                           o->setProperty("ok", ok);
+                                           o->setProperty("name", name);
+                                           done(o);
+                                       },
+                                       soundOnly);
+                               });
+                })
+            .withNativeFunction("patchSearch",
+                                [this](const Args &a, Completion done)
+                                {
+                                    done(p.patchSearch.start(p.source.load(), p.settings(),
+                                                             (bool)a[0],
+                                                             (unsigned)juce::Random::getSystemRandom().nextInt()));
+                                })
+            .withNativeFunction("patchSearchPause",
+                                [this](const Args &, Completion done)
+                                {
+                                    p.patchSearch.paused = !p.patchSearch.paused.load();
+                                    done(p.patchSearch.paused.load());
+                                })
+            .withNativeFunction("patchSearchCancel",
+                                [this](const Args &, Completion done)
+                                {
+                                    p.patchSearch.cancel();
+                                    done(true);
+                                })
+            .withNativeFunction("patchResults",
+                                [this](const Args &, Completion done)
+                                {
+                                    searchResults = p.patchSearch.results();
+                                    const bool valid = p.patchSearch.sourceUsed() == p.source.load();
+                                    juce::Array<juce::var> list;
+                                    for (auto &r : searchResults)
+                                    {
+                                        auto *o = new juce::DynamicObject();
+                                        juce::Array<juce::var> values;
+                                        for (auto v : r.values)
+                                            values.add(v);
+                                        o->setProperty("values", values);
+                                        o->setProperty("distance", r.distance);
+                                        list.add(o);
+                                    }
+                                    auto *o = new juce::DynamicObject();
+                                    o->setProperty("valid", valid);
+                                    o->setProperty("results", list);
+                                    done(o);
+                                })
+            /* ---------- capture ---------- */
+            .withNativeFunction(
+                "captureInfo",
+                [this](const Args &, Completion done)
+                {
+                    auto *o = new juce::DynamicObject();
+                    o->setProperty("direct", p.getTotalNumInputChannels() > 0);
+                    o->setProperty("standalone", juce::PluginHostType::getPluginLoadedAs() ==
+                                                     juce::AudioProcessor::wrapperType_Standalone);
+                    o->setProperty("inputAvailable",
+                                   p.standaloneInputAvailable ? p.standaloneInputAvailable() : false);
+                    o->setProperty("canOpenSettings", (bool)p.standaloneAudioSettings);
+                    done(o);
+                })
+            .withNativeFunction("captureRecord",
+                                [this](const Args &, Completion done)
+                                {
+                                    p.beginCapture([done](bool ok) { done(ok); });
+                                })
+            .withNativeFunction("captureStop",
+                                [this](const Args &, Completion done)
+                                {
+                                    p.capture.stop();
+                                    done(true);
+                                })
+            .withNativeFunction("captureMonitor",
+                                [this](const Args &a, Completion done)
+                                {
+                                    p.capture.monitor = (bool)a[0];
+                                    done(true);
+                                })
+            .withNativeFunction("captureGain",
+                                [this](const Args &a, Completion done)
+                                {
+                                    p.capture.gain = juce::jlimit(0.f, 4.f, (float)(double)a[0]);
+                                    done(true);
+                                })
+            .withNativeFunction("captureSettings",
+                                [this](const Args &, Completion done)
+                                {
+                                    if (p.standaloneAudioSettings)
+                                        p.standaloneAudioSettings();
+                                    done(true);
+                                })
+            .withNativeFunction(
+                "capturePoll",
+                [this](const Args &, Completion done)
+                {
+                    p.pollCaptureLinks(
+                        [done, lang = p.language.load()](std::vector<juce::File> files,
+                                                         std::vector<rastro::CaptureLink> links)
+                        {
+                            auto *o = new juce::DynamicObject();
+                            juce::Array<juce::var> f, l;
+                            for (auto &file : files)
+                            {
+                                auto *x = new juce::DynamicObject();
+                                x->setProperty("path", file.getFullPathName());
+                                x->setProperty("name", file.getFileName());
+                                x->setProperty("time", (double)file.getLastModificationTime().toMilliseconds());
+                                f.add(x);
+                            }
+                            for (auto &link : links)
+                            {
+                                auto *x = new juce::DynamicObject();
+                                x->setProperty("id", link.id);
+                                x->setProperty("state", link.state);
+                                x->setProperty("outcome", link.outcome);
+                                x->setProperty("outcomeText", CapturePanel::outcomeText(link.outcome, lang == 0));
+                                x->setProperty("frames", link.frames);
+                                x->setProperty("rate", link.rate);
+                                x->setProperty("peak", link.peak);
+                                x->setProperty("flow", link.hasAudioFlow());
+                                l.add(x);
+                            }
+                            o->setProperty("files", f);
+                            o->setProperty("links", l);
+                            done(o);
+                        });
+                })
+            .withNativeFunction("captureRemote",
+                                [this](const Args &a, Completion done)
+                                {
+                                    p.remoteCapture(a[0].toString(), (bool)a[1],
+                                                    [done](bool ok) { done(ok); });
+                                })
+            .withNativeFunction("captureLoad",
+                                [this](const Args &a, Completion done)
+                                {
+                                    juce::Component::SafePointer<RastroWebEditor> safe(this);
+                                    p.importFileAsync(juce::File(a[0].toString()),
+                                                      [safe, done](rastro::ImportError result)
+                                                      {
+                                                          if (safe != nullptr)
+                                                              done(safe->importResult(result));
+                                                      });
+                                })
             .withNativeFunction("preview", [this](const Args &a, Completion done)
                                 {
-                                    p.previewRequest = (bool)a[0] ? 1 : -1;
+                                    const bool start = (bool)a[0];
+                                    if (start && a.size() > 1 && !a[1].isVoid())
+                                        p.previewFrom = juce::jlimit(0.f, 1.f, (float)(double)a[1]);
+                                    p.previewRequest = start ? 1 : -1;
                                     done(true);
                                 });
 
@@ -290,6 +480,20 @@ juce::var RastroWebEditor::importResult(rastro::ImportError result) const
     return o;
 }
 
+void RastroWebEditor::chooseFile(bool save, juce::String pattern,
+                                 std::function<void(juce::File)> complete)
+{
+    chooser = std::make_unique<juce::FileChooser>(
+        save ? (p.language == 0 ? "Salvar patch" : "Save patch")
+             : (p.language == 0 ? "Abrir patch" : "Open patch"),
+        juce::File::getSpecialLocation(juce::File::userDocumentsDirectory), pattern);
+    auto flags = save ? juce::FileBrowserComponent::saveMode |
+                            juce::FileBrowserComponent::warnAboutOverwriting
+                      : juce::FileBrowserComponent::openMode |
+                            juce::FileBrowserComponent::canSelectFiles;
+    chooser->launchAsync(flags, [complete](const juce::FileChooser &fc) { complete(fc.getResult()); });
+}
+
 void RastroWebEditor::setParameter(const Args &a)
 {
     auto *parameter = p.params.getParameter(a[0].toString());
@@ -367,6 +571,21 @@ void RastroWebEditor::timerCallback()
     t->setProperty("hostPlaying", p.hostPlaying.load());
     t->setProperty("notes", notes);
     t->setProperty("canUndoJam", p.canUndoMutation());
+    auto *search = new juce::DynamicObject();
+    search->setProperty("busy", p.patchSearch.busy.load());
+    search->setProperty("paused", p.patchSearch.paused.load());
+    search->setProperty("progress", p.patchSearch.progress.load());
+    search->setProperty("status", p.patchSearch.status.load());
+    search->setProperty("revision", (double)p.patchSearch.revision.load());
+    t->setProperty("search", search);
+    auto *cap = new juce::DynamicObject();
+    cap->setProperty("state", p.capture.state.load());
+    cap->setProperty("outcome", p.capture.outcome.load());
+    cap->setProperty("frames", p.capture.frames.load());
+    cap->setProperty("seconds", p.capture.seconds());
+    cap->setProperty("peak", p.capture.peak.load());
+    cap->setProperty("monitor", p.capture.monitor.load());
+    t->setProperty("capture", cap);
     if (orderChanged)
     {
         juce::Array<juce::var> list;

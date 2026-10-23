@@ -70,12 +70,24 @@ Quatro personagens aprovados nos conceitos: monstrinho peludo de um olho (Fuzz),
 
 Opcional, com **Modo PRO** que desliga tudo. Hoje: XP por tocar e criar, combo, bônus "no tempo" com o transporte do host, níveis que liberam acessórios (coleção de 8). Guardado localmente (`localStorage`), sem afetar o som. Nada disso toca a thread de áudio.
 
+## Decisões recentes (22/10/2026)
+
+- Gab é o **único desenvolvedor**. Não há outra equipe no projeto.
+- Interface em **abas** (SOUND, RACK, PATCHES, CHARACTER) no layout 1440×900 dos conceitos; nada de tudo numa tela só.
+- Quatro personagens pintados (Fuzz, Soul, Lua, Nova) e quatro quartos pintados (Sunset Loft, Quarto Neon, Lo-fi, Base Lunar), escolhidos por `avatarCharacter` e `sceneRoom` (parâmetros só visuais, adicionados ao fim).
+- Personagem só se mexe com som real; movimento suavizado; proporções preservadas (squash mínimo).
+- Toda edição real no som rende um pouco de XP (com limite de frequência), não só o JAM.
+- **Síntese wavetable** entra no roadmap como pilar: o RASTRO PLAY deve ser sampler + synth de verdade, com ambição de ser revolucionário.
+- Ideias futuras: rede/nuvem de produtores para compartilhar patches e presets, tarefas diárias, customização infinita de personagens e sons.
+
 ## Próximos marcos
 
 1. **Visual (em andamento):** interface web, palco reativo, jogo inicial. Falta validar no Logic.
 2. **Rack expansível:** mais de 6 módulos com migração; Tape e Chorus com DSP real.
-3. **RASTRO TRAIL** (assinatura sonora): cada nota deixa repetições que se transformam, guiadas pela forma do próprio sample. Duelo Claude × Codex nesta etapa.
-4. Personagens restantes, arte final, patches na interface web, idioma EN.
+3. **Motor wavetable**: osciladores próprios (wavetables, morph de posição, unison) tocando junto ou no lugar do sample, pelo mesmo filtro, ADSR e rack. Incluir criar wavetable a partir do próprio sample.
+4. **RASTRO TRAIL** (assinatura sonora): cada nota deixa repetições que se transformam, guiadas pela forma do próprio sample. Duelo Claude × Codex nesta etapa.
+5. Arte final dos personagens em partes (animação mais rica), tarefas diárias, idioma EN.
+6. Nuvem/rede de patches (produto separado: servidor, contas, moderação).
 
 Ao terminar cada marco, proponha o plano do próximo e espere aprovação.
 

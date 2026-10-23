@@ -19,7 +19,8 @@ inline constexpr const char *appearanceIds[]{
     "cColour",        "bColour",          "wColour",
     "dColour",        "kColour",          "gJamLock",
     "cJamLock",       "bJamLock",         "wJamLock",
-    "dJamLock",       "kJamLock"};
+    "dJamLock",       "kJamLock",         "avatarCharacter",
+    "sceneRoom"};
 inline constexpr const char *rackColourIds[]{"gColour", "cColour", "bColour",
                                              "wColour", "dColour", "kColour"};
 inline constexpr const char *jamLockIds[]{"gJamLock", "cJamLock", "bJamLock",

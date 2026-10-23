@@ -144,6 +144,8 @@
     captureSettings: function () { return true; },
     capturePoll: function () { return { files: [{ path: "/x/take1.wav", name: "Tomada 21-14-03.wav", time: Date.now() - 600000 }], links: [{ id: "A7F2", state: 0, outcome: 0, outcomeText: "", frames: 0, rate: 48000, peak: .2, flow: true }] }; },
     captureRemote: function () { return true; },
+    libraryList: function () { return [{ path: "/sim/Meu Rhodes.rastro", name: "Meu Rhodes", folder: "Patches", time: Date.now() - 86400000 }, { path: "/sim/Voz Cósmica.rastro", name: "Voz Cósmica", folder: "Patches", time: Date.now() - 3600000 }]; },
+    libraryLoad: function (p) { sample.name = p.split("/").pop().replace(".rastro", ""); fire("sample", sample); return true; },
     lookGet: function () { return look; },
     lookSet: function (j) { look = j; try { localStorage.setItem("rastro.preview.look", j); } catch (e) { /* ignore */ } return true; },
     progressGet: function () { return progress; },

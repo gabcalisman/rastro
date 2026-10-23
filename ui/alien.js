@@ -747,5 +747,5 @@
   // Static pose for thumbnails and cards: resting, holding the instrument.
   function pose(R) { R.springs = {}; update(R, { alive: 0, amp: 1 }, 0); }
 
-  window.RastroAlien = { SLOTS: SLOTS, ITEMS: ITEMS, DANCES: DANCES, DEFAULT_LOOK: DEFAULT_LOOK, GLOW: GLOW, itemInfo: itemInfo, normalise: normalise, create: create };
+  window.RastroAlien = { dance: dance, SLOTS: SLOTS, ITEMS: ITEMS, DANCES: DANCES, DEFAULT_LOOK: DEFAULT_LOOK, GLOW: GLOW, itemInfo: itemInfo, normalise: normalise, create: create };
 })();

@@ -23,9 +23,17 @@ const char *mimeFor(const juce::String &file)
         return "image/jpeg";
     if (ext == "woff2")
         return "font/woff2";
+    if (ext == "woff")
+        return "font/woff";
     if (ext == "json")
         return "application/json";
     return "application/octet-stream";
+}
+juce::File libraryFolder()
+{
+    return juce::File::getSpecialLocation(juce::File::userMusicDirectory)
+        .getChildFile("RASTRO")
+        .getChildFile("Patches");
 }
 juce::File progressFile()
 {
@@ -245,6 +253,39 @@ RastroWebEditor::RastroWebEditor(RastroProcessor &processor)
                                        soundOnly);
                                });
                 })
+            // User patch library: .rastro files in ~/Music/RASTRO/Patches (where SAVE points by default).
+            .withNativeFunction("libraryList",
+                                [](const Args &, Completion done)
+                                {
+                                    juce::Array<juce::var> list;
+                                    auto files = libraryFolder().findChildFiles(
+                                        juce::File::findFiles, true, "*.rastro");
+                                    for (auto &f : files)
+                                    {
+                                        if (list.size() >= 500)
+                                            break;
+                                        auto *o = new juce::DynamicObject();
+                                        o->setProperty("path", f.getFullPathName());
+                                        o->setProperty("name", f.getFileNameWithoutExtension());
+                                        o->setProperty("folder", f.getParentDirectory().getFileName());
+                                        o->setProperty("time", (double)f.getLastModificationTime().toMilliseconds());
+                                        list.add(juce::var(o));
+                                    }
+                                    done(list);
+                                })
+            .withNativeFunction("libraryLoad",
+                                [this](const Args &a, Completion done)
+                                {
+                                    juce::File file(a.size() > 0 ? a[0].toString() : juce::String());
+                                    const bool soundOnly = a.size() > 1 && (bool)a[1];
+                                    // Only files inside the library folder can be opened this way.
+                                    if (!file.isAChildOf(libraryFolder()) || !file.existsAsFile())
+                                    {
+                                        done(false);
+                                        return;
+                                    }
+                                    p.patchFileAsync(file, false, [done](bool ok) { done(ok); }, soundOnly);
+                                })
             .withNativeFunction("patchSearch",
                                 [this](const Args &a, Completion done)
                                 {
@@ -518,7 +559,12 @@ void RastroWebEditor::chooseFile(bool save, juce::String pattern,
     chooser = std::make_unique<juce::FileChooser>(
         save ? (p.language == 0 ? "Salvar patch" : "Save patch")
              : (p.language == 0 ? "Abrir patch" : "Open patch"),
-        juce::File::getSpecialLocation(juce::File::userDocumentsDirectory), pattern);
+        [] {
+            auto dir = libraryFolder();
+            dir.createDirectory(); // the library browser lists this folder
+            return dir;
+        }(),
+        pattern);
     auto flags = save ? juce::FileBrowserComponent::saveMode |
                             juce::FileBrowserComponent::warnAboutOverwriting
                       : juce::FileBrowserComponent::openMode |

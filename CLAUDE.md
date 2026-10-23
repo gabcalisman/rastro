@@ -93,6 +93,16 @@ Opcional, com **Modo PRO** que desliga tudo. Hoje: XP por tocar e criar, combo, 
 - Rack **Serial/Parallel** real (`rackParallel`, parâmetro de som novo).
 - Dado (GERAR PATCH) sorteia instrumento + efeitos em B, com A guardado; JAM continua só variando efeitos ativos.
 
+## Decisões (23/10/2026, noite) — interface refeita pelas referências aprovadas
+
+- A interface segue **exatamente** as telas de referência do Gab (Limpo, Palco, Perform, Locker, Patch Lab): fundo violeta escuro, painéis de vidro com borda neon fina, dourado para o item ativo. Não reinventar layout.
+- Logo: RASTRO em serifa suave creme (Fraunces Black/SOFT, OFL) com estrela no A, PLAY em magenta, "by Gab Calisman" em ciano. UI em Poppins (OFL). Fontes em `ui/*.woff`, licenças em `third_party/fonts/`.
+- **Personagem oficial = arte pintada do alien** (`ui/al_*.png`, recortadas das folhas aprovadas), animada como marionete 2.5D em `ui/puppet.js` (pernas cisalham a partir dos pés, tronco gira no quadril, cabeça com atraso). Um visual por instrumento: keytar, guitarra, baixo, pads, flare 70s. `ui/alien.js` (rig vetorial com IK) fica para quando a arte vier em partes.
+- Peças avulsas (chapéu, fones, óculos) só aparecem quando houver arte em partes; até lá o Locker troca visuais completos.
+- Biblioteca de fábrica (`ui/factory.js`): sons sintetizados em código (FM, Karplus-Strong, supersaw, ruído filtrado), afinados em C4, renderizados para WAV só quando escolhidos. Patches do usuário em ~/Música/RASTRO/Patches (o SAVE abre lá).
+- Reações visuais por efeito (cores do mapa): GHOST violeta (rastros), CRUMBLE âmbar (estilhaços), BLOOM rosa (aura/lótus, cauda segue o DECAY), WOBBLE ciano (contorno que balança), DUST dourado (partículas), CRUSH roxo (pixels). Intensidade = atividade real do módulo; desligado = sem reação. Filtro esquenta/escurece a luz; envelope real comanda o brilho; LFO pulsa luzes; VISUAL REACTIVITY (só visual) escala tudo.
+- Reverb, Chorus, Delay, Tape e Wavetable **não existem no DSP**: nenhuma reação visual para eles até existirem.
+
 ## Próximos marcos
 
 1. **Visual (em andamento):** interface web, palco reativo, jogo inicial. Falta validar no Logic.

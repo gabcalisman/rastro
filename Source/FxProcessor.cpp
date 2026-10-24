@@ -128,6 +128,11 @@ juce::AudioProcessorValueTreeState::ParameterLayout RastroFxProcessor::layout()
     add("fxEnvAttack", "Follower Attack", 1, 200, 10, "ms");
     add("fxEnvRelease", "Follower Release", 10, 2000, 200, "ms");
     add("fxEnvSensitivity", "Follower Sensitivity", -24, 24, 0, "dB");
+    // Appended after existing parameters to preserve every legacy host parameter index.
+    for (int i = 0; i < count; ++i)
+        result.add(std::make_unique<juce::AudioParameterBool>(
+            juce::ParameterID{moduleId(i, "InRack"), 1},
+            juce::String(modules[i].name) + " Inserted", false));
     return result;
 }
 RastroFxProcessor::RastroFxProcessor()
@@ -140,6 +145,7 @@ RastroFxProcessor::RastroFxProcessor()
     for (int i = 0; i < count; ++i)
     {
         on[i] = params.getRawParameterValue(moduleId(i, "On"));
+        inRack[i] = params.getRawParameterValue(moduleId(i, "InRack"));
         position[i] = params.getRawParameterValue(moduleId(i, "Position"));
     }
     for (int i = 0; i < 16; ++i)
@@ -200,7 +206,7 @@ void RastroFxProcessor::reset()
         smooth[i].setCurrentAndTargetValue((targets[i].raw->load() - targets[i].low) /
                                            (targets[i].high - targets[i].low));
     for (int i = 0; i < count; ++i)
-        enables[i].setCurrentAndTargetValue(on[i]->load());
+        enables[i].setCurrentAndTargetValue(on[i]->load() * inRack[i]->load());
     for (int i = 0; i < 2; ++i)
         xy[i].setCurrentAndTargetValue(mod[13 + i]->load());
     activeMix.setCurrentAndTargetValue(bypass->load() >= .5f ? 0. : 1.);
@@ -230,7 +236,7 @@ void RastroFxProcessor::process(juce::AudioBuffer<Sample> &buffer, bool hostBypa
         smooth[i].setTargetValue((targets[i].raw->load() - targets[i].low) /
                                  (targets[i].high - targets[i].low));
     for (int i = 0; i < count; ++i)
-        enables[i].setTargetValue(on[i]->load());
+        enables[i].setTargetValue(on[i]->load() * inRack[i]->load());
     for (int i = 0; i < 2; ++i)
         xy[i].setTargetValue(mod[13 + i]->load());
     activeMix.setTargetValue(hostBypass || bypass->load() >= .5f ? 0. : 1.);
@@ -427,6 +433,7 @@ void RastroFxProcessor::loadFactory(int index)
             p->setValueNotifyingHost(p->getDefaultValue());
     auto enable = [&](int m, float mix)
     {
+        setValue(moduleId(m, "InRack"), 1);
         setValue(moduleId(m, "On"), 1);
         setValue(moduleId(m, "Mix"), mix);
     };
@@ -536,21 +543,52 @@ void RastroFxProcessor::setStateInformation(const void *data, int size)
         for (int i = 0; i < 2; ++i)
             banks[i] = ab.getChild(i).getChild(0).createCopy();
         state.removeChild(ab, nullptr);
-        for (auto *base : getParameters())
-            if (auto *parameter = dynamic_cast<juce::RangedAudioParameter *>(base))
+        auto completeState = [&](juce::ValueTree tree)
+        {
+            if (!tree.isValid())
+                return tree;
+            // Older FX states treated ON as both rack membership and bypass. Preserve their sound.
+            for (int i = 0; i < count; ++i)
             {
-                bool found = false;
-                for (auto child : state)
-                    found |= child.getProperty("id").toString() == parameter->paramID;
-                if (!found)
+                const auto insertId = moduleId(i, "InRack");
+                bool foundInsert = false;
+                float oldOn = 0.f;
+                for (auto child : tree)
                 {
-                    juce::ValueTree child("PARAM");
-                    child.setProperty("id", parameter->paramID, nullptr);
-                    child.setProperty(
-                        "value", parameter->convertFrom0to1(parameter->getDefaultValue()), nullptr);
-                    state.addChild(child, -1, nullptr);
+                    auto id = child.getProperty("id").toString();
+                    if (id == insertId)
+                        foundInsert = true;
+                    else if (id == moduleId(i, "On"))
+                        oldOn = float(child.getProperty("value", 0));
+                }
+                if (!foundInsert)
+                {
+                    juce::ValueTree inserted("PARAM");
+                    inserted.setProperty("id", insertId, nullptr);
+                    inserted.setProperty("value", oldOn, nullptr);
+                    tree.addChild(inserted, -1, nullptr);
                 }
             }
+            for (auto *base : getParameters())
+                if (auto *parameter = dynamic_cast<juce::RangedAudioParameter *>(base))
+                {
+                    bool found = false;
+                    for (auto child : tree)
+                        found |= child.getProperty("id").toString() == parameter->paramID;
+                    if (!found)
+                    {
+                        juce::ValueTree child("PARAM");
+                        child.setProperty("id", parameter->paramID, nullptr);
+                        child.setProperty("value",
+                                          parameter->convertFrom0to1(parameter->getDefaultValue()), nullptr);
+                        tree.addChild(child, -1, nullptr);
+                    }
+                }
+            return tree;
+        };
+        state = completeState(state);
+        for (auto &bank : banks)
+            bank = completeState(bank);
         currentProgram =
             juce::jlimit(0, getNumPrograms() - 1, int(state.getProperty("factoryProgram", 0)));
         params.replaceState(state);

@@ -69,7 +69,7 @@ class RastroFxProcessor : public juce::AudioProcessor
     std::array<juce::SmoothedValue<double>, maxTargets> smooth;
     std::array<double, maxTargets> modulationOffset{};
     std::array<juce::SmoothedValue<float>, rastro::fx::count> enables;
-    std::array<std::atomic<float> *, rastro::fx::count> on{}, position{};
+    std::array<std::atomic<float> *, rastro::fx::count> on{}, inRack{}, position{};
     std::array<std::array<int, 4>, rastro::fx::count> knobIndex{};
     std::array<int, rastro::fx::count> mixIndex{};
     std::array<int, 8> panIndex{};

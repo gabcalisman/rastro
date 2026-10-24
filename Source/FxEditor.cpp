@@ -9,6 +9,21 @@ juce::Colour hue(int index)
     const juce::uint32 colours[]{0xff91e0bd, 0xffff9ca3, 0xffbcafff, 0xffffd67c, 0xff91cfff};
     return juce::Colour(colours[juce::jlimit(0, 4, index)]);
 }
+juce::Colour moduleHue(int index)
+{
+    const juce::uint32 colours[]{0xffb7a6ff, 0xffff8f9e, 0xffffbb7c, 0xff78c9ff, 0xffc9a7ff,
+                                 0xff8fdbce, 0xffff8a70, 0xff8fb5ff, 0xff84d4ff, 0xffd9a6ff,
+                                 0xff83e6e0, 0xffffa34d, 0xffff7d8a, 0xff9be2b0, 0xffffd56e};
+    return juce::Colour(colours[juce::jlimit(0, count - 1, index)]);
+}
+juce::String moduleDescriptor(int index)
+{
+    const char *names[]{"ECHO SPIRIT", "BROKEN REPEATS", "DIFFUSE SPACE", "TAPE MOTION", "MOVING TEXTURE",
+                        "DIGITAL DAMAGE", "VOWEL RESONATOR", "MODULATED FLANGE", "COLOURED ECHO",
+                        "THREE-VOICE CHORUS", "PITCH CRYSTAL", "SATURATION", "COMPRESSION",
+                        "RESONANT FILTER", "STEREO MOTION"};
+    return names[juce::jlimit(0, count - 1, index)];
+}
 void label(juce::Graphics &g, const juce::String &text, juce::Rectangle<int> area, float size = 14,
            juce::Justification align = juce::Justification::centredLeft)
 {
@@ -35,20 +50,34 @@ struct RastroFxEditor::Style : juce::LookAndFeel_V4
         setColour(juce::ToggleButton::textColourId, ink());
     }
     void drawRotarySlider(juce::Graphics &g, int x, int y, int w, int h, float pos, float start,
-                          float end, juce::Slider &) override
+                          float end, juce::Slider &slider) override
     {
-        float radius = std::min(w, h) * .36f;
+        float radius = std::min(w, h) * .34f;
         juce::Point<float> centre(x + w * .5f, y + h * .5f);
         auto bounds = juce::Rectangle<float>(radius * 2, radius * 2).withCentre(centre);
-        g.setColour(ink());
-        g.fillEllipse(bounds.translated(2, 3));
-        g.setColour(juce::Colour(0xffffd67c));
+        auto accent = slider.findColour(juce::Slider::rotarySliderFillColourId);
+        if (accent.isTransparent())
+            accent = hue(0);
+        g.setColour(ink().withAlpha(.55f));
+        g.fillEllipse(bounds.translated(2, 4));
+        g.setColour(juce::Colour(0xff282c49));
         g.fillEllipse(bounds);
-        g.setColour(ink());
-        g.drawEllipse(bounds, 2.3f);
+        juce::Path track, progress;
+        track.addCentredArc(centre.x, centre.y, radius + 4, radius + 4, 0, start, end, true);
+        progress.addCentredArc(centre.x, centre.y, radius + 4, radius + 4, 0, start,
+                               start + pos * (end - start), true);
+        g.setColour(juce::Colour(0xff181b32));
+        g.strokePath(track, juce::PathStrokeType(3.2f, juce::PathStrokeType::curved,
+                                                 juce::PathStrokeType::rounded));
+        g.setColour(accent);
+        g.strokePath(progress, juce::PathStrokeType(3.2f, juce::PathStrokeType::curved,
+                                                    juce::PathStrokeType::rounded));
         float angle = start + pos * (end - start);
         auto tip = centre + juce::Point<float>(std::sin(angle), -std::cos(angle)) * radius * .76f;
+        g.setColour(accent.brighter(.1f));
         g.drawLine(centre.x, centre.y, tip.x, tip.y, 3);
+        g.setColour(juce::Colour(0xfffff9ec));
+        g.fillEllipse(centre.x - 3, centre.y - 3, 6, 6);
     }
 };
 struct RastroFxEditor::Knob : juce::Component
@@ -56,8 +85,9 @@ struct RastroFxEditor::Knob : juce::Component
     juce::Slider slider;
     juce::String title;
     std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> attachment;
-    Knob(RastroFxProcessor &p, const juce::String &id, const juce::String &name, bool rotary = true)
-        : title(name)
+    Knob(RastroFxProcessor &p, const juce::String &id, const juce::String &name, bool rotary = true,
+         juce::Colour accent = juce::Colour(0xffffd67c))
+        : title(name), tint(accent)
     {
         setComponentID(id + "Control");
         slider.setComponentID(id);
@@ -68,6 +98,8 @@ struct RastroFxEditor::Knob : juce::Component
         slider.setColour(juce::Slider::textBoxTextColourId, ink());
         slider.setColour(juce::Slider::textBoxBackgroundColourId, juce::Colour(0xfffffbef));
         slider.setColour(juce::Slider::textBoxOutlineColourId, ink().withAlpha(.2f));
+        slider.setColour(juce::Slider::rotarySliderFillColourId, accent);
+        slider.setColour(juce::Slider::rotarySliderOutlineColourId, accent.withAlpha(.24f));
         slider.setTextBoxStyle(juce::Slider::TextBoxBelow, false, 100, 20);
         addAndMakeVisible(slider);
         attachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment>(
@@ -84,9 +116,71 @@ struct RastroFxEditor::Knob : juce::Component
     }
     void paint(juce::Graphics &g) override
     {
-        label(g, title, {0, 0, getWidth(), 28}, 12, juce::Justification::centred);
+        g.setColour(tint);
+        g.setFont(juce::FontOptions(10.5f, juce::Font::bold));
+        g.drawFittedText(title.toUpperCase(), {0, 1, getWidth(), 23}, juce::Justification::centred, 1);
     }
     void resized() override { slider.setBounds(getLocalBounds().withTrimmedTop(26)); }
+    juce::Colour tint;
+};
+struct RastroFxEditor::Segmented : juce::Component
+{
+    juce::String id, title;
+    juce::StringArray options;
+    juce::Colour tint;
+    std::array<juce::TextButton, 5> buttons;
+    int optionCount;
+    RastroFxProcessor &processor;
+    Segmented(RastroFxProcessor &p, juce::String parameter, juce::String caption,
+              juce::StringArray choices, juce::Colour colour)
+        : id(std::move(parameter)), title(std::move(caption)), options(std::move(choices)), tint(colour),
+          optionCount(options.size()), processor(p)
+    {
+        setComponentID(id);
+        setName(title);
+        for (int i = 0; i < optionCount; ++i)
+        {
+            buttons[size_t(i)].setButtonText(options[i]);
+            buttons[size_t(i)].setComponentID(id + "Option" + juce::String(i));
+            buttons[size_t(i)].setTooltip(title + " / " + options[i]);
+            buttons[size_t(i)].onClick = [this, i]
+            {
+                auto *parameter = processor.params.getParameter(id);
+                parameter->beginChangeGesture();
+                parameter->setValueNotifyingHost(optionCount > 1 ? float(i) / float(optionCount - 1) : 0.f);
+                parameter->endChangeGesture();
+                refresh();
+            };
+            addAndMakeVisible(buttons[size_t(i)]);
+        }
+        refresh();
+    }
+    void paint(juce::Graphics &g) override
+    {
+        g.setColour(tint);
+        g.setFont(juce::FontOptions(10.5f, juce::Font::bold));
+        g.drawFittedText(title.toUpperCase(), {0, 1, getWidth(), 22}, juce::Justification::centred, 1);
+    }
+    void resized() override
+    {
+        auto area = getLocalBounds().withTrimmedTop(27).reduced(2, 5);
+        int gap = 3, width = (area.getWidth() - gap * (optionCount - 1)) / optionCount;
+        for (int i = 0; i < optionCount; ++i)
+            buttons[size_t(i)].setBounds(area.getX() + i * (width + gap), area.getY(), width, area.getHeight());
+    }
+    void refresh()
+    {
+        int selected = juce::jlimit(0, optionCount - 1,
+                                    int(std::round(processor.value(id) * float(optionCount - 1))));
+        for (int i = 0; i < optionCount; ++i)
+        {
+            bool active = i == selected;
+            buttons[size_t(i)].setColour(juce::TextButton::buttonColourId,
+                                         active ? tint : juce::Colour(0xffeee8dc));
+            buttons[size_t(i)].setColour(juce::TextButton::textColourOffId,
+                                         active ? juce::Colour(0xff20243d) : juce::Colour(0xff5c6075));
+        }
+    }
 };
 struct RastroFxEditor::Pattern : juce::Component
 {
@@ -151,8 +245,9 @@ struct RastroFxEditor::Row : juce::Component
     int id;
     juce::ToggleButton enabled{"ON"};
     juce::TextButton up{"UP"}, down{"DOWN"};
+    juce::TextButton remove{"REMOVE"};
     std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> attachment;
-    std::vector<std::unique_ptr<Knob>> knobs;
+    std::vector<std::unique_ptr<juce::Component>> controls;
     std::unique_ptr<Pattern> pattern;
     int dragStart = 0;
     Row(RastroFxProcessor &processor, int index) : p(processor), id(index)
@@ -162,22 +257,41 @@ struct RastroFxEditor::Row : juce::Component
         addAndMakeVisible(enabled);
         addAndMakeVisible(up);
         addAndMakeVisible(down);
+        addAndMakeVisible(remove);
         enabled.setComponentID(RastroFxProcessor::moduleId(id, "On"));
         attachment = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment>(
             p.params, RastroFxProcessor::moduleId(id, "On"), enabled);
         up.onClick = [this] { p.moveModule(id, -1); };
         down.onClick = [this] { p.moveModule(id, 1); };
+        remove.setComponentID("fxRemove" + juce::String(id));
+        remove.setTooltip("Remove this module from the active rack");
+        remove.onClick = [this] { p.setValue(RastroFxProcessor::moduleId(id, "InRack"), 0); };
         for (int k = 0; k < modules[id].controls; ++k)
         {
-            auto control =
-                std::make_unique<Knob>(p, RastroFxProcessor::moduleId(id, "P" + juce::String(k)),
-                                       modules[id].knob[k].name);
+            auto parameter = RastroFxProcessor::moduleId(id, "P" + juce::String(k));
+            std::unique_ptr<juce::Component> control;
+            if (id == 6 && k == 0)
+                control = std::make_unique<Segmented>(p, parameter, "VOWEL",
+                                                      juce::StringArray{"A", "E", "I", "O", "U"},
+                                                      moduleHue(id));
+            else if (id == 11 && k == 3)
+                control = std::make_unique<Segmented>(p, parameter, "SATURATION",
+                                                      juce::StringArray{"DRIVE", "TUBE", "TAPE"},
+                                                      moduleHue(id));
+            else if (id == 13 && k == 2)
+                control = std::make_unique<Segmented>(p, parameter, "FILTER",
+                                                      juce::StringArray{"LP", "BP", "HP"},
+                                                      moduleHue(id));
+            else
+                control = std::make_unique<Knob>(p, parameter, modules[id].knob[k].name, true,
+                                                  moduleHue(id));
             addAndMakeVisible(*control);
-            knobs.push_back(std::move(control));
+            controls.push_back(std::move(control));
         }
-        auto mix = std::make_unique<Knob>(p, RastroFxProcessor::moduleId(id, "Mix"), "Mix");
+        auto mix = std::make_unique<Knob>(p, RastroFxProcessor::moduleId(id, "Mix"), "Mix", true,
+                                          moduleHue(id));
         addAndMakeVisible(*mix);
-        knobs.push_back(std::move(mix));
+        controls.push_back(std::move(mix));
         if (id == 14)
         {
             pattern = std::make_unique<Pattern>(p);
@@ -190,29 +304,163 @@ struct RastroFxEditor::Row : juce::Component
         auto box = getLocalBounds().reduced(3).toFloat();
         g.setColour(ink());
         g.fillRoundedRectangle(box.translated(2, 3), 14);
-        g.setColour(
-            hue((id + p.appearance("accent")) % 5).interpolatedWith(juce::Colours::white, .58f));
+        auto tint = moduleHue(id);
+        g.setColour(juce::Colour(0xff20243d));
         g.fillRoundedRectangle(box, 14);
-        g.setColour(ink());
-        g.drawRoundedRectangle(box, 14, 2);
-        label(g, modules[id].name, {16, 7, 125, 25}, 20);
-        label(g, modules[id].description, {144, 8, std::max(35, getWidth() - 338), 25}, 11);
-        // Original FX mascot: a small orbiting pedal face, separate from the PR #5 artwork.
-        g.setColour(ink());
-        g.fillEllipse(17, 37, 4, 6);
-        g.fillEllipse(28, 37, 4, 6);
-        g.drawLine(19, 48, 30, 48, 2);
+        g.setColour(tint.withAlpha(.14f));
+        g.fillRoundedRectangle(box.withWidth(8), 4);
+        g.setColour(tint.withAlpha(.65f));
+        g.drawRoundedRectangle(box, 14, 1.3f);
+        g.setColour(tint);
+        g.setFont(juce::FontOptions(18, juce::Font::bold));
+        g.drawText(modules[id].name, 18, 6, 132, 25, juce::Justification::centredLeft);
+        g.setColour(juce::Colour(0xffc9c9d8));
+        g.setFont(juce::FontOptions(9.5f, juce::Font::bold));
+        g.drawText(moduleDescriptor(id), 19, 31, 160, 16, juce::Justification::centredLeft);
+        g.setColour(juce::Colour(0xff969bb3));
+        g.setFont(juce::FontOptions(10));
+        g.drawFittedText(modules[id].description, {184, 7, std::max(40, getWidth() - 390), 30},
+                         juce::Justification::centredLeft, 1);
+        // Each effect gets its own little sound-world rather than a shared generic pedal face.
+        auto art = juce::Rectangle<float>(getWidth() - 102.f, 39.f, 74.f, 45.f);
+        g.setColour(tint.withAlpha(.11f));
+        g.fillRoundedRectangle(art, 11.f);
+        g.setColour(tint.withAlpha(.9f));
+        const float cx = art.getCentreX(), cy = art.getCentreY();
+        switch (id)
+        {
+        case 0: // echo apparition
+            for (int i = 0; i < 4; ++i)
+                g.drawEllipse(cx - 6.f - i * 8.f, cy - 5.f - i * 3.f, 12.f + i * 16.f,
+                              10.f + i * 6.f, 1.4f);
+            break;
+        case 1: // fractured repeats
+            for (int i = 0; i < 5; ++i)
+                g.fillRect(cx - 28.f + i * 13.f, cy + float(i % 2) * -10.f, 8.f, 9.f + float(i % 3) * 5.f);
+            break;
+        case 2: // bloom petals
+            for (int i = 0; i < 6; ++i)
+            {
+                g.saveState();
+                g.addTransform(juce::AffineTransform::rotation(float(i) * juce::MathConstants<float>::twoPi / 6, cx, cy));
+                g.drawEllipse(cx - 4.f, cy - 18.f, 8.f, 18.f, 1.5f);
+                g.restoreState();
+            }
+            break;
+        case 3: // tape wobble
+        case 8: // echo wave
+            {
+                juce::Path wave;
+                for (int i = 0; i < 30; ++i)
+                {
+                    float x = art.getX() + 5.f + i * (art.getWidth() - 10.f) / 29.f;
+                    float y = cy + std::sin(float(i) * (id == 3 ? .6f : .3f)) * (id == 3 ? 11.f : 7.f);
+                    if (i == 0) wave.startNewSubPath(x, y); else wave.lineTo(x, y);
+                }
+                g.strokePath(wave, juce::PathStrokeType(2.2f));
+            }
+            break;
+        case 4: // dust grains
+            for (int i = 0; i < 18; ++i)
+            {
+                float x = art.getX() + 6.f + float((i * 17) % 62), y = art.getY() + 5.f + float((i * 13) % 35);
+                g.fillEllipse(x, y, 2.f + float(i % 3), 2.f + float(i % 3));
+            }
+            break;
+        case 5: // pixels
+            for (int i = 0; i < 4; ++i)
+                for (int j = 0; j < 3; ++j)
+                    if ((i + j) % 2 == 0) g.fillRect(cx - 23.f + i * 12.f, cy - 13.f + j * 12.f, 8.f, 8.f);
+            break;
+        case 6: // vowel mouth
+            g.drawEllipse(cx - 18.f, cy - 14.f, 36.f, 28.f, 2.2f);
+            g.setColour(juce::Colour(0xffff91a1));
+            g.fillEllipse(cx - 10.f, cy - 5.f, 20.f, 12.f);
+            for (int i = 0; i < 5; ++i) g.fillEllipse(cx - 26.f + i * 13.f, cy + 18.f, 4.f, 4.f);
+            break;
+        case 7: // orbiting flanger
+            g.drawEllipse(cx - 17.f, cy - 14.f, 34.f, 28.f, 1.8f);
+            g.saveState();
+            g.addTransform(juce::AffineTransform::rotation(.65f, cx, cy));
+            g.drawEllipse(cx - 26.f, cy - 9.f, 52.f, 18.f, 1.3f);
+            g.restoreState();
+            g.fillEllipse(cx + 18.f, cy - 6.f, 8.f, 8.f);
+            break;
+        case 9: // choir voices
+            for (int i = 0; i < 3; ++i)
+            {
+                float x = cx - 19.f + i * 19.f;
+                g.drawEllipse(x - 4.f, cy - 13.f - (i == 1 ? 4.f : 0.f), 8.f, 8.f, 1.4f);
+                g.drawLine(x, cy - 3.f, x + (i - 1) * 4.f, cy + 15.f, 2.f);
+            }
+            break;
+        case 10: // prism
+            for (int i = 0; i < 4; ++i)
+            {
+                juce::Path tri;
+                tri.startNewSubPath(cx - 25.f + i * 15.f, cy + 13.f);
+                tri.lineTo(cx - 18.f + i * 15.f, cy - 15.f + float(i % 2) * 8.f);
+                tri.lineTo(cx - 11.f + i * 15.f, cy + 13.f);
+                tri.closeSubPath();
+                g.strokePath(tri, juce::PathStrokeType(1.5f));
+            }
+            break;
+        case 11: // ember
+            {
+                juce::Path flame;
+                flame.startNewSubPath(cx, cy + 16.f); flame.lineTo(cx - 16.f, cy + 8.f);
+                flame.lineTo(cx - 8.f, cy - 1.f); flame.lineTo(cx - 10.f, cy - 12.f);
+                flame.lineTo(cx, cy - 5.f); flame.lineTo(cx + 4.f, cy - 18.f);
+                flame.lineTo(cx + 11.f, cy - 2.f); flame.lineTo(cx + 17.f, cy + 7.f);
+                flame.closeSubPath(); g.fillPath(flame);
+            }
+            break;
+        case 12: // squash envelope
+            {
+                juce::Path env; env.startNewSubPath(art.getX() + 5.f, cy + 12.f);
+                env.cubicTo(cx - 13.f, cy - 30.f, cx + 5.f, cy - 11.f, art.getRight() - 5.f, cy + 2.f);
+                g.strokePath(env, juce::PathStrokeType(2.2f));
+                g.drawLine(art.getX() + 4.f, cy + 7.f, art.getRight() - 4.f, cy + 7.f, 1.f);
+            }
+            break;
+        case 13: // filter curve
+            {
+                juce::Path curve; curve.startNewSubPath(art.getX() + 4.f, cy + 13.f);
+                curve.cubicTo(cx - 5.f, cy + 11.f, cx - 4.f, cy - 18.f, art.getRight() - 4.f, cy - 16.f);
+                g.strokePath(curve, juce::PathStrokeType(2.2f));
+                g.drawLine(cx, art.getY() + 4.f, cx, art.getBottom() - 4.f, 1.f);
+            }
+            break;
+        case 14: // panner path
+            for (int i = 1; i < 8; ++i)
+                g.drawLine(art.getX() + 5.f + (i - 1) * (art.getWidth() - 10.f) / 7.f,
+                           art.getY() + 7.f + (1.f - p.value("fxPan" + juce::String(i - 1))) * (art.getHeight() - 14.f),
+                           art.getX() + 5.f + i * (art.getWidth() - 10.f) / 7.f,
+                           art.getY() + 7.f + (1.f - p.value("fxPan" + juce::String(i))) * (art.getHeight() - 14.f), 1.6f);
+            for (int i = 0; i < 8; ++i)
+                g.fillEllipse(art.getX() + 3.f + i * (art.getWidth() - 7.f) / 7.f - 2.f,
+                              art.getY() + 5.f + (1.f - p.value("fxPan" + juce::String(i))) * (art.getHeight() - 14.f) - 2.f, 4.f, 4.f);
+            break;
+        }
     }
     void resized() override
     {
-        enabled.setBounds(getWidth() - 177, 9, 62, 27);
-        up.setBounds(getWidth() - 113, 10, 48, 25);
-        down.setBounds(getWidth() - 61, 10, 52, 25);
-        int width = (getWidth() - 24) / int(knobs.size());
-        for (size_t i = 0; i < knobs.size(); ++i)
-            knobs[i]->setBounds(12 + int(i) * width, 40, width, 118);
+        enabled.setBounds(getWidth() - 236, 9, 62, 27);
+        remove.setBounds(getWidth() - 168, 10, 66, 25);
+        up.setBounds(getWidth() - 94, 10, 36, 25);
+        down.setBounds(getWidth() - 52, 10, 43, 25);
+        int width = (getWidth() - 24) / int(controls.size());
+        for (size_t i = 0; i < controls.size(); ++i)
+            controls[i]->setBounds(12 + int(i) * width, 46, width, 110);
         if (pattern)
             pattern->setBounds(14, 164, getWidth() - 28, 102);
+    }
+    void refresh()
+    {
+        for (auto &control : controls)
+            if (auto *segmented = dynamic_cast<Segmented *>(control.get()))
+                segmented->refresh();
+        repaint();
     }
     void mouseDown(const juce::MouseEvent &e) override { dragStart = e.y; }
     void mouseUp(const juce::MouseEvent &e) override
@@ -399,9 +647,13 @@ RastroFxEditor::RastroFxEditor(RastroFxProcessor &processor)
         logo = logo.getClippedImage({0, 0, int(logo.getWidth() * .7), logo.getHeight()});
     rackView.setComponentID("fxRackViewport");
     modView.setComponentID("fxModViewport");
+    moduleView.setComponentID("fxModuleShelf");
     addAndMakeVisible(rackView);
     rackView.setViewedComponent(&rackBody, false);
     rackView.setScrollBarsShown(true, false);
+    addAndMakeVisible(moduleView);
+    moduleView.setViewedComponent(&moduleBody, false);
+    moduleView.setScrollBarsShown(false, false);
     modulation = std::make_unique<ModPanel>(p);
     addAndMakeVisible(modView);
     modView.setViewedComponent(modulation.get(), false);
@@ -410,6 +662,23 @@ RastroFxEditor::RastroFxEditor(RastroFxProcessor &processor)
     {
         rows[i] = std::make_unique<Row>(p, i);
         rackBody.addAndMakeVisible(*rows[i]);
+        moduleButtons[size_t(i)].setComponentID("fxModule" + juce::String(i));
+        moduleButtons[size_t(i)].setTooltip(juce::String("Add ") + modules[i].name + " to the active rack");
+        moduleButtons[size_t(i)].onClick = [this, i]
+        {
+            auto inserted = RastroFxProcessor::moduleId(i, "InRack");
+            if (p.value(inserted) >= .5f)
+            {
+                p.setValue(inserted, 0);
+            }
+            else
+            {
+                p.setValue(inserted, 1);
+                p.setValue(RastroFxProcessor::moduleId(i, "On"), 1);
+            }
+            refresh();
+        };
+        moduleBody.addAndMakeVisible(moduleButtons[size_t(i)]);
     }
     input = std::make_unique<Knob>(p, "fxInputGain", "INPUT / dB", false);
     output = std::make_unique<Knob>(p, "fxOutputGain", "OUTPUT / dB", false);
@@ -485,28 +754,43 @@ RastroFxEditor::~RastroFxEditor()
 void RastroFxEditor::paint(juce::Graphics &g)
 {
     int appearance = p.appearance("skin");
-    g.fillAll(appearance == 1 ? juce::Colour(0xff3c405c)
+    g.fillAll(appearance == 1 ? juce::Colour(0xff111326)
               : appearance == 2
-                  ? hue(p.appearance("accent")).interpolatedWith(juce::Colours::white, .65f)
-                  : juce::Colour(0xffefe5d2));
-    g.setColour(hue(p.appearance("accent")));
+                  ? hue(p.appearance("accent")).interpolatedWith(juce::Colour(0xff242842), .72f)
+                  : juce::Colour(0xff171a30));
+    auto panel = juce::Colour(0xfff8f3e9);
+    g.setColour(juce::Colour(0xff262b48));
     g.fillRoundedRectangle(10, 8, float(getWidth() - 20), 62, 18);
+    g.setColour(hue(p.appearance("accent")).withAlpha(.14f));
+    g.fillEllipse(float(getWidth() - 240), -65.f, 260.f, 190.f);
+    g.setColour(hue(p.appearance("accent")));
+    g.fillRoundedRectangle(10, 8, 7.f, 62, 4.f);
     if (logo.isValid())
         g.drawImageWithin(logo, 22, 17, 150, 42, juce::RectanglePlacement::centred);
-    label(g, "FX / ORBITAL PLAYGROUND", {186, 10, 390, 31}, 22);
-    label(g, "15 real modules / external audio / zero latency", {187, 39, 380, 20}, 12);
-    g.setColour(juce::Colour(0xfffffbef));
+    g.setColour(juce::Colour(0xfff9f5ec));
+    g.setFont(juce::FontOptions(22, juce::Font::bold));
+    g.drawText("FX / ORBITAL PLAYGROUND", {186, 10, 390, 31}, juce::Justification::centredLeft);
+    g.setColour(juce::Colour(0xffbfc4d8));
+    g.setFont(juce::FontOptions(11));
+    g.drawText("15 sonic characters  /  shape your signal", {187, 39, 380, 20}, juce::Justification::centredLeft);
+    g.setColour(panel);
     g.fillRoundedRectangle(10, 78, float(getWidth() - 20), 90, 14);
     label(g, "MIX", {22, 80, 60, 18}, 12);
-    g.setColour(appearance == 1 ? juce::Colours::white : ink());
+    g.setColour(juce::Colour(0xfff9f5ec));
     g.setFont(juce::FontOptions(13, juce::Font::bold));
     g.drawText("PRESETS", juce::Rectangle<int>{16, 174, 100, 20}, juce::Justification::centredLeft);
+    g.setColour(juce::Colour(0xfff9f5ec));
     g.setFont(juce::FontOptions(16, juce::Font::bold));
-    g.drawText("RACK / drag a header or use UP + DOWN",
-               juce::Rectangle<int>{18, 242, getWidth() - 400, 26},
+    g.drawText("MODULE BANK  /  add a sound to the rack",
+               juce::Rectangle<int>{18, 242, getWidth() - 400, 24},
                juce::Justification::centredLeft);
-    g.setColour(ink());
-    g.drawLine(getWidth() - 365.f, 270, getWidth() - 365.f, float(getHeight() - 14), 2);
+    g.setColour(juce::Colour(0xffbfc4d8));
+    g.setFont(juce::FontOptions(14, juce::Font::bold));
+    g.drawText("ACTIVE EFFECT CHAIN  /  drag cards to reorder",
+               juce::Rectangle<int>{18, 340, getWidth() - 400, 24},
+               juce::Justification::centredLeft);
+    g.setColour(juce::Colour(0xff4b516d));
+    g.drawLine(getWidth() - 365.f, 270, getWidth() - 365.f, float(getHeight() - 14), 1.2f);
 }
 void RastroFxEditor::resized()
 {
@@ -530,17 +814,30 @@ void RastroFxEditor::resized()
     skin.setBounds(getWidth() - 156, 198, 140, 30);
     status.setBounds(118, 171, getWidth() - 140, 24);
     int rackWidth = getWidth() - 390;
-    rackView.setBounds(12, 274, rackWidth, getHeight() - 288);
+    moduleView.setBounds(12, 270, rackWidth, 64);
+    moduleBody.setSize(std::min(rackWidth - 16, 760), 62);
+    int moduleGap = 5, moduleButtonWidth = (moduleBody.getWidth() - 4 * moduleGap) / 5;
+    for (int i = 0; i < count; ++i)
+    {
+        int row = i / 5, column = i % 5;
+        moduleButtons[size_t(i)].setBounds(column * (moduleButtonWidth + moduleGap), row * 20,
+                                           moduleButtonWidth, 18);
+    }
+    rackView.setBounds(12, 368, rackWidth, getHeight() - 382);
     modView.setBounds(getWidth() - 354, 242, 342, getHeight() - 256);
     rackBody.setSize(rackView.getWidth() - 16, count * 180);
     int y = 0;
     auto sorted = p.order();
     for (int id : sorted)
     {
+        bool inserted = p.value(RastroFxProcessor::moduleId(id, "InRack")) >= .5f;
+        rows[size_t(id)]->setVisible(inserted);
+        if (!inserted)
+            continue;
         rows[id]->setBounds(0, y, rackBody.getWidth(), rows[id]->rowHeight());
         y += rows[id]->rowHeight() + 10;
     }
-    rackBody.setSize(rackView.getWidth() - 16, y);
+    rackBody.setSize(rackView.getWidth() - 16, std::max(y, 1));
     modulation->setSize(modView.getWidth() - 16, 1180);
 }
 void RastroFxEditor::refresh()
@@ -550,12 +847,25 @@ void RastroFxEditor::refresh()
         shownOrder = p.order();
         resized();
     }
+    bool insertChanged = false;
+    for (int i = 0; i < count; ++i)
+    {
+        bool inserted = p.value(RastroFxProcessor::moduleId(i, "InRack")) >= .5f;
+        insertChanged |= shownInserted[size_t(i)] != inserted;
+        shownInserted[size_t(i)] = inserted;
+        moduleButtons[size_t(i)].setButtonText(juce::String(inserted ? "✓ " : "+ ") + modules[i].name);
+        moduleButtons[size_t(i)].setColour(juce::TextButton::buttonColourId,
+                                           inserted ? moduleHue(i) : juce::Colour(0xff292d49));
+        moduleButtons[size_t(i)].setColour(juce::TextButton::textColourOffId,
+                                           inserted ? juce::Colour(0xff20243d) : juce::Colour(0xfff5f1e8));
+    }
+    if (insertChanged)
+        resized();
     if (!presetName.hasKeyboardFocus(true))
         presetName.setText(p.presetName(), false);
     compare.setButtonText(p.compareSlot() == 0 ? "A > B" : "B > A");
     copy.setButtonText(p.compareSlot() == 0 ? "Copy to B" : "Copy to A");
-    status.setColour(juce::Label::textColourId,
-                     p.appearance("skin") == 1 ? juce::Colours::white : ink());
+    status.setColour(juce::Label::textColourId, juce::Colour(0xffc8cce0));
     factory.setSelectedId(
         p.presetName() == p.getProgramName(p.getCurrentProgram()) ? p.getCurrentProgram() + 1 : 0,
         juce::dontSendNotification);
@@ -563,6 +873,8 @@ void RastroFxEditor::refresh()
     skin.setSelectedId(juce::jlimit(0, 2, p.appearance("skin")) + 1, juce::dontSendNotification);
     meters->repaint();
     modulation->repaint();
+    for (auto &row : rows)
+        row->refresh();
     rackBody.repaint();
     repaint();
 }
@@ -573,6 +885,7 @@ bool RastroFxEditor::controlsFit() const
             if (!row->getLocalBounds().contains(child->getBounds()))
                 return false;
     return getLocalBounds().contains(rackView.getBounds()) &&
+           getLocalBounds().contains(moduleView.getBounds()) &&
            getLocalBounds().contains(modView.getBounds()) &&
            getLocalBounds().contains(skin.getBounds());
 }

@@ -212,7 +212,10 @@ static void routingFxTests()
     auto configureRack = [](RastroFxProcessor &p)
     {
         for (int id : {11, 13})
+        {
+            set(p, RastroFxProcessor::moduleId(id, "InRack").toRawUTF8(), 1);
             set(p, RastroFxProcessor::moduleId(id, "On").toRawUTF8(), 1);
+        }
         set(p, "fxM11Mix", 1);
         set(p, "fxM13Mix", 1);
         set(p, "fxM11P0", .65f);
@@ -262,7 +265,10 @@ static void routingFxTests()
     // Exercise all modules, host automation, order/routing transitions and sample-rate changes.
     RastroFxProcessor all;
     for (int id = 0; id < rastro::fx::count; ++id)
+    {
+        set(all, RastroFxProcessor::moduleId(id, "InRack").toRawUTF8(), 1);
         set(all, RastroFxProcessor::moduleId(id, "On").toRawUTF8(), 1);
+    }
     for (double rate : {22050., 44100., 96000.})
     {
         all.prepareToPlay(rate, 64);
@@ -282,6 +288,7 @@ static void modulationFxTests()
 {
     auto init = [](RastroFxProcessor &p)
     {
+        set(p, "fxM11InRack", 1);
         set(p, "fxM11On", 1);
         set(p, "fxM11Mix", 1);
         p.prepareToPlay(48000, 64);
@@ -319,6 +326,7 @@ static void transitionFxTests()
     for (bool host : {false, true})
     {
         RastroFxProcessor p;
+        set(p, "fxM11InRack", 1);
         set(p, "fxM11On", 1);
         set(p, "fxM11Mix", 1);
         p.prepareToPlay(48000, 1);
@@ -404,7 +412,8 @@ static void presetFxTests()
     auto a = p.params.copyState();
     p.copyCompare();
     p.compare();
-    check(p.value("fxM11On") == 1, "copy A/B includes module state");
+    check(p.value("fxM11On") == 1 && p.value("fxM11InRack") == 1,
+          "copy A/B includes module state and rack membership");
     set(p, "fxM11P0", .9f);
     p.setPresetName("B / burn");
     p.setAppearance("accent", 1);
@@ -448,11 +457,16 @@ static void presetFxTests()
     gain.setProperty("id", "fxInputGain", nullptr);
     gain.setProperty("value", -6, nullptr);
     old.addChild(gain, -1, nullptr);
+    juce::ValueTree enabled("PARAM");
+    enabled.setProperty("id", "fxM14On", nullptr);
+    enabled.setProperty("value", 1, nullptr);
+    old.addChild(enabled, -1, nullptr);
     juce::MemoryBlock legacy;
     juce::AudioProcessor::copyXmlToBinary(*old.createXml(), legacy);
     p.setStateInformation(legacy.getData(), int(legacy.getSize()));
-    check(p.value("fxInputGain") == -6 && p.value("fxM14On") == 0,
-          "skeleton-state migration resets missing rack controls");
+    check(p.value("fxInputGain") == -6 && p.value("fxM14On") == 1 &&
+              p.value("fxM14InRack") == 1,
+          "legacy-state migration preserves active modules and adds rack membership");
     std::cout << "PASS FX presets: factory/user presets, A/B, both-bank host recall, metadata, "
                  "rendered recall and legacy migration\n";
 }
@@ -469,6 +483,8 @@ static void editorFxTests()
 {
     RastroFxProcessor p;
     p.loadFactory(6);
+    for (int id = 0; id < rastro::fx::count; ++id)
+        set(p, RastroFxProcessor::moduleId(id, "InRack").toRawUTF8(), 1);
     auto editor = std::unique_ptr<juce::AudioProcessorEditor>(p.createEditor());
     auto *fx = dynamic_cast<RastroFxEditor *>(editor.get());
     check(fx != nullptr, "FX has a custom editor");
@@ -494,15 +510,39 @@ static void editorFxTests()
               "all fifteen rack cards exist");
         for (int k = 0; k < rastro::fx::modules[id].controls; ++k)
         {
-            auto *slider = dynamic_cast<juce::Slider *>(
-                findFx(*editor, RastroFxProcessor::moduleId(id, "P" + juce::String(k))));
-            check(slider != nullptr, "every advanced control is visible and attached");
-            slider->setValue(.71, juce::sendNotificationSync);
-            check(std::abs(p.value(RastroFxProcessor::moduleId(id, "P" + juce::String(k))) - .71) <
-                      1e-5,
-                  "custom editor controls real host parameters");
+            auto parameterId = RastroFxProcessor::moduleId(id, "P" + juce::String(k));
+            auto *slider = dynamic_cast<juce::Slider *>(findFx(*editor, parameterId));
+            if (slider != nullptr)
+            {
+                slider->setValue(.71, juce::sendNotificationSync);
+                check(std::abs(p.value(parameterId) - .71) < 1e-5,
+                      "custom slider controls real host parameter");
+            }
+            else
+            {
+                auto *segmented = findFx(*editor, parameterId);
+                check(segmented != nullptr, "unique module selector is visible");
+                int option = id == 6 ? 3 : 2;
+                auto *button = dynamic_cast<juce::Button *>(
+                    findFx(*editor, parameterId + "Option" + juce::String(option)));
+                check(button != nullptr, "unique module selector has accessible options");
+                button->triggerClick();
+                float expected = id == 6 ? .75f : 1.f;
+                check(std::abs(p.value(parameterId) - expected) < 1e-5,
+                      "unique module selector controls real host parameter");
+            }
         }
     }
+    auto *shelf = dynamic_cast<juce::Button *>(findFx(*editor, "fxModule0"));
+    check(shelf != nullptr, "module bank exposes add/remove controls");
+    shelf->triggerClick();
+    check(p.value("fxM0InRack") == 0, "module bank removes an inserted effect");
+    shelf->triggerClick();
+    check(p.value("fxM0InRack") == 1, "module bank inserts an effect into the rack");
+    auto *remove = dynamic_cast<juce::Button *>(findFx(*editor, "fxRemove0"));
+    check(remove != nullptr, "rack row exposes a remove control");
+    remove->triggerClick();
+    check(p.value("fxM0InRack") == 0, "rack row removes its effect");
     auto *compare = dynamic_cast<juce::Button *>(findFx(*editor, "fxCompare"));
     check(compare != nullptr, "A/B UI");
     compare->onClick();

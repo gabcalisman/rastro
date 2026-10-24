@@ -14,6 +14,7 @@ class RastroFxEditor : public juce::AudioProcessorEditor, private juce::Timer
   private:
     struct Style;
     struct Knob;
+    struct Segmented;
     struct Row;
     struct ModPanel;
     struct Pad;
@@ -24,9 +25,11 @@ class RastroFxEditor : public juce::AudioProcessorEditor, private juce::Timer
     RastroFxProcessor &p;
     std::unique_ptr<Style> style;
     juce::Viewport rackView, modView;
-    juce::Component rackBody;
+    juce::Viewport moduleView;
+    juce::Component rackBody, moduleBody;
     std::unique_ptr<ModPanel> modulation;
     std::array<std::unique_ptr<Row>, rastro::fx::count> rows;
+    std::array<juce::TextButton, rastro::fx::count> moduleButtons;
     std::unique_ptr<Knob> input, output, dryWet;
     std::unique_ptr<Meter> meters;
     juce::ToggleButton bypass{"BYPASS"};
@@ -39,4 +42,5 @@ class RastroFxEditor : public juce::AudioProcessorEditor, private juce::Timer
     std::unique_ptr<juce::FileChooser> chooser;
     juce::Image logo;
     std::array<int, rastro::fx::count> shownOrder{};
+    std::array<bool, rastro::fx::count> shownInserted{};
 };

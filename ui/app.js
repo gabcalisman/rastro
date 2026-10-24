@@ -456,10 +456,10 @@
   }
   function setupEnv() {
     const k = $("#envKnobs");
-    knob(k, "ampAttack", "ATTACK", { format: fmt.ms, curve: "log", size: 66, color: "#ff8a3d" });
-    knob(k, "ampDecay", "DECAY", { format: fmt.ms, curve: "log", size: 66, color: "#2fe0ff" });
-    knob(k, "ampSustain", "SUSTAIN", { size: 66, color: "#ff4fd8", format: function (x) { return x <= .001 ? "−∞" : (20 * Math.log10(x)).toFixed(1) + " dB"; } });
-    knob(k, "ampRelease", "RELEASE", { format: fmt.ms, curve: "log", size: 66, color: "#b06bff" });
+    knob(k, "ampAttack", "ATTACK", { format: fmt.ms, curve: "log", size: 72, color: "#ff8a3d" });
+    knob(k, "ampDecay", "DECAY", { format: fmt.ms, curve: "log", size: 72, color: "#2fe0ff" });
+    knob(k, "ampSustain", "SUSTAIN", { size: 72, color: "#ff4fd8", format: function (x) { return x <= .001 ? "−∞" : (20 * Math.log10(x)).toFixed(1) + " dB"; } });
+    knob(k, "ampRelease", "RELEASE", { format: fmt.ms, curve: "log", size: 72, color: "#b06bff" });
     ["ampAttack", "ampDecay", "ampSustain", "ampRelease", "synthEnable", "triggerMode", "envAmount", "envTarget"].forEach(function (id) { watch(id, drawEnv); });
     bindToggle($("#synthBtn"), "synthEnable");
     watch("synthEnable", function (x) { $("#synthLbl").textContent = x > .5 ? "SYNTH LIGADO" : "LIGAR SYNTH"; });
@@ -602,7 +602,7 @@
         '<button class="pwr" data-ic="power" title="Ligar / bypass" aria-label="Ligar ' + M.name + '"></button>' + (tiles ? "" : '<button class="chev" data-ic="down" title="Abrir controles"></button>') + '<div class="mod-meter"></div>';
       list.appendChild(card);
       const amt = document.createElement("div"); amt.className = "mod-amt"; card.insertBefore(amt, $(".pwr", card));
-      knob(amt, M.k + "Mix", "AMOUNT", { size: 40, color: M.color, owned: "rack", title: "AMOUNT = MIX do " + M.name + " (quanto do efeito entra no som)" });
+      knob(amt, M.k + "Mix", "AMOUNT", { size: 46, color: M.color, owned: "rack", title: "AMOUNT = MIX do " + M.name + " (quanto do efeito entra no som)" });
       ICO.hydrate(card);
       const power = $(".pwr", card), onId = M.k + "On";
       const pw = function (x) { card.classList.toggle("on", x > .5); card.classList.toggle("off", x < .5); }; pw.owned = "rack"; watch(onId, pw);
@@ -621,8 +621,8 @@
     $("#fxTitle").innerHTML = ""; $("#fxTitle").insertAdjacentHTML("beforeend", '<span style="color:' + M.color + ';text-shadow:0 0 8px ' + M.color + '">' + M.name.toUpperCase() + '</span> <small class="fx-kind">· ' + M.sub + '</small>');
     $("#fxSay").textContent = M.say;
     const row = document.createElement("div"); row.className = "knob-row"; body.appendChild(row);
-    M.ctl.forEach(function (c, i) { const id = c === "T" ? timeParam(selMod) : c; knob(row, id, M.labels[i], { size: 52, color: M.color, format: formatFor(id), owned: "fx" }); });
-    knob(row, M.k + "Mix", "MIX", { size: 52, color: M.color, owned: "fx" });
+    M.ctl.forEach(function (c, i) { const id = c === "T" ? timeParam(selMod) : c; knob(row, id, M.labels[i], { size: 60, color: M.color, format: formatFor(id), owned: "fx" }); });
+    knob(row, M.k + "Mix", "MIX", { size: 60, color: M.color, owned: "fx" });
     const tools = document.createElement("div"); tools.className = "fx-tools"; body.appendChild(tools);
     const on = document.createElement("button"); on.className = "chip-btn"; tools.appendChild(on);
     const onf = function (x) { on.textContent = x > .5 ? "LIGADO" : "BYPASS"; on.classList.toggle("on", x > .5); }; onf.owned = "fx"; watch(M.k + "On", onf);

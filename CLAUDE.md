@@ -173,3 +173,10 @@ Separe: o que já existia; o que mudou; o que ficou incompleto; testes que passa
 - Slots independentes: cabelo, chapéu (um por vez), fones, óculos, roupa de cima, calça, tênis, instrumento. Miniaturas do Locker renderizadas pela própria Nova. Look salvo em `look.nova`.
 - O alien pintado (`puppet.js`) e o 3D (PR #3, pausado) ficam como estão, sem uso no padrão.
 - Áudio: corrigidos cliques reais (loop/ping-pong caíam a zero a cada volta, roubo de voz cortava seco, janela do CRUMBLE cortada). Detectores de clique na suíte dsp.
+
+## Decisão (23/10/2026, 22h) — Nova exatamente como o Gab desenhou
+
+- Personagem padrão = **a arte do Gab** (alien azul com keytar), recortada em partes (`ui/nv_*.png`) e animada como marionete recortada em `ui/novaart.js`: pés plantados, pernas dobram a partir dos pés, quadril → tronco → pescoço/cabeça (com atraso), keytar com a mão direita no braço do instrumento, braço esquerdo apertando as teclas, brinco de estrela como pêndulo, piscar, respiração, frase de dança de 8 tempos (antecipação, passo, acento, follow-through, recuperação). Em repouso, as partes remontam o desenho pixel a pixel.
+- Limite honesto: a arte é um desenho só. Braços e pernas giram pouco (alguns graus); poses grandes pedem a arte em partes desenhadas separadamente.
+- Locker: card **Original (arte do Gab)** no WARDROBE. Trocar peça passa para a Nova editável desenhada em código (`nova.js`). `look.art` (1 = original) salvo no look; looks antigos abrem com a original.
+- Próximo layout (referência do Gab, 21h53): abas no topo, SAMPLE à esquerda, palco no centro, EFFECT RACK em cartões coloridos à direita, PERFORMANCE / MACROS / GLOBAL embaixo, teclado, painéis creme.

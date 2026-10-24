@@ -960,7 +960,7 @@
   const DEFAULT_STYLE = { bounce: 1, sway: 1, nod: 1, dip: 1, lean: .3, hop: 0, nodHit: 1, jitter: 0 };
   let charKind = "alien", rig = {}, charSvg = null, sceneKind = "", sc = {}, puppet = null;
   const motion = { squash: 0, squashV: 0, strike: 0, look: 0, energy: 0, shake: 0, shakeT: 9, alive: 0, lastSound: -1e9, nod: 0, nodV: 0, dark: 0, lfoPhase: 0, peak: .05, hit: false, pitch: .5, pad: 0, x: 240, y: 412, rot: 0 };
-  const look = { nova: Object.assign({}, window.RastroNova.DEFAULT), pose: "disco", dance: "groove", sync: 1, bpm: 110, strip: 1, knob: "kn_00", glow: "auto", react: 1, kb: 0 };
+  const look = { art: 1, nova: Object.assign({}, window.RastroNova.DEFAULT), pose: "disco", dance: "groove", sync: 1, bpm: 110, strip: 1, knob: "kn_00", glow: "auto", react: 1, kb: 0 };
   let lookTimer = 0;
   function saveLook() { clearTimeout(lookTimer); lookTimer = setTimeout(function () { R.call("lookSet", JSON.stringify(look)); }, 300); }
   function readLook(json) {
@@ -969,6 +969,7 @@
       if (o) {
         if (PUP.LOOKS[o.pose]) look.pose = o.pose; else if (PUP.ALIAS[o.pose]) look.pose = PUP.ALIAS[o.pose];
         if (o.nova && typeof o.nova === "object") { look.nova = Object.assign({}, window.RastroNova.DEFAULT); Object.keys(look.nova).forEach(function (k) { if (typeof o.nova[k] === "string" && window.RastroNova.item(k, o.nova[k]).id === o.nova[k]) look.nova[k] = o.nova[k]; }); }
+        look.art = o.art === 0 ? 0 : 1;
         if (AL.DANCES.some(function (d) { return d.id === o.dance; })) look.dance = o.dance;
         look.sync = o.sync === 0 ? 0 : 1; look.bpm = clamp(Math.round(o.bpm || 110), 60, 180); look.strip = o.strip === 0 ? 0 : 1;
         if (typeof o.knob === "number") look.knob = OLD_KNOB[clamp(Math.round(o.knob), 0, 23)];
@@ -1101,7 +1102,7 @@
     if (charKind === "alien") {
       layer.innerHTML = '<g id="charPos"></g>';
       const pos = layer.querySelector("#charPos");
-      puppet = window.RastroNova.create(pos, look.nova);
+      puppet = look.art && window.RastroNovaArt ? window.RastroNovaArt.create(pos) : window.RastroNova.create(pos, look.nova);
       rig = { puppet: true, pos: pos, pads: [], style: DEFAULT_STYLE };
     } else {
       const C = ART.characters[charKind]();
@@ -1342,11 +1343,15 @@
     ICO.hydrate(b); b.addEventListener("click", opts.click); return b;
   }
   function lockedNote(lvl) { return "🔒 nível " + lvl + " · " + game.xpTo(lvl) + " XP"; }
-  function wearSlots(s) { look.nova = Object.assign({}, NV.DEFAULT, s); if (charKind !== "alien") gesture("avatarCharacter", 6); saveLook(); if (puppet && puppet.setSlots) puppet.setSlots(look.nova); renderLocker(); }
+  function wearSlots(s, art) { const was = look.art; look.art = art ? 1 : 0; look.nova = Object.assign({}, NV.DEFAULT, s); if (was !== look.art && charSvg) buildCharacter(); if (charKind !== "alien") gesture("avatarCharacter", 6); saveLook(); if (puppet && puppet.setSlots) puppet.setSlots(look.nova); renderLocker(); }
   function renderWardrobe() {
     const w = $("#lkWardrobe"); w.innerHTML = "";
+    // Gab's original drawing (animated cut-out). Pieces can't be swapped on it until the art comes in layers.
+    const ob = document.createElement("button"); ob.className = "wcard" + (look.art ? " on" : "");
+    ob.innerHTML = '<div class="wc-head"><b>Original</b><span class="wc-xp">ARTE DO GAB</span></div><div class="wc-art"><img src="nv_thumb.png" alt=""></div><small>Keytar · desenho oficial</small>' + (look.art ? '<span class="badge" data-ic="check"></span>' : "");
+    ICO.hydrate(ob); ob.addEventListener("click", function () { wearSlots(NV.DEFAULT, 1); }); w.appendChild(ob);
     WARDROBE.forEach(function (W) {
-      const locked = W.level > game.state.level, on = slotsEqual(W.s, look.nova);
+      const locked = W.level > game.state.level, on = !look.art && slotsEqual(W.s, look.nova);
       const b = document.createElement("button"); b.className = "wcard" + (on ? " on" : "") + (locked ? " locked" : "");
       b.innerHTML = '<div class="wc-head"><b>' + W.name + '</b><span class="wc-xp">' + (locked ? "🔒 " + game.xpTo(W.level) + " XP" : "NV " + W.level) + '</span></div>' +
         '<div class="wc-art"><img src="' + novaThumb(W.s, "full", 300) + '" alt=""></div><small>' + NV.item("instrument", W.s.instrument).name + '</small>' + (on ? '<span class="badge" data-ic="check"></span>' : "");
@@ -1368,7 +1373,7 @@
     document.body.dataset.lkm = lkMode;
     $$("#lkModeSeg button").forEach(function (b) { b.classList.toggle("on", b.dataset.lkm === lkMode); });
     $("#lkSayT").textContent = lkMode === "wardrobe" ? "LOOKS COMPLETOS" : "MIX & MATCH / ITEM SLOTS";
-    $("#lkSayS").textContent = lkMode === "wardrobe" ? "Combinações prontas. Depois troque peça por peça no MIX & MATCH." : "Cada peça é independente. Só o visual muda, nunca o som.";
+    $("#lkSayS").textContent = lkMode === "wardrobe" ? "Combinações prontas. Depois troque peça por peça no MIX & MATCH." : (look.art ? "Você está com a Nova Original (desenho do Gab). Escolher uma peça troca para a Nova editável, desenhada em código." : "Cada peça é independente. Só o visual muda, nunca o som.");
     renderSummary();
     if (lkMode === "wardrobe") { renderWardrobe(); return; }
     const cats = $("#lkCats"); cats.innerHTML = "";

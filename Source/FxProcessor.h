@@ -79,6 +79,22 @@ class RastroFxProcessor : public juce::AudioProcessor
     std::array<juce::SmoothedValue<float>, 2> xy;
     rastro::fx::Rack rack;
     rastro::fx::Frame frame;
+    // Constant plugin latency (EMBER/SQUASH oversampling). The dry path is delayed to match:
+    // raw host samples in the host's own type (copied, never converted, so subnormals survive the
+    // denormal flush), and the gain-scaled rack input as float.
+    static constexpr int latency = rastro::fx::Rack::latency();
+    std::array<std::array<float, latency + 1>, 2> rawHistoryFloat{};
+    std::array<std::array<double, latency + 1>, 2> rawHistoryDouble{};
+    template <typename Sample> std::array<std::array<Sample, latency + 1>, 2> &rawHistory()
+    {
+        if constexpr (std::is_same_v<Sample, float>)
+            return rawHistoryFloat;
+        else
+            return rawHistoryDouble;
+    }
+    std::array<std::array<float, latency + 1>, 2> inputHistory{};
+    std::array<double, latency + 1> inputGainHistory{};
+    int historyPosition = 0, activeHold = 0;
     double rate = 48000, lfoPhase = 0;
     float envelope = 0, lfoSmooth = 0, topology = 1, inputHeld = 0, outputHeld = 0;
     bool parallel = false;

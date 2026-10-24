@@ -1,6 +1,7 @@
 #pragma once
 #include "AntialiasedShape.h"
 #include "FxLegacyRack.h"
+#include "FxOversampler.h"
 #include <array>
 #include <cmath>
 #include <vector>
@@ -121,10 +122,17 @@ struct Frame
 {
     std::array<std::array<float, 4>, count> value{};
     std::array<float, count> mix{}, enabled{};
+    // Rack membership (InRack). A module that is neither inserted nor fading out sleeps.
+    std::array<float, count> inserted{{1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1}};
     std::array<int, count> order{};
     std::array<float, 8> pan{{0, .2f, .5f, .8f, 1, .8f, .5f, .2f}};
+    float tempo = 120; // host BPM for the inherited beat-relative GHOST/CRUMBLE timing
     bool parallel = false;
 };
+
+// Modules whose wet path runs oversampled and therefore arrives `HalfbandOversampler::latency`
+// samples late. Their dry share is delayed by the same amount inside the node.
+constexpr bool hasLatency(int id) { return id == 11 || id == 12; }
 
 // All rings and filters are owned by the audio thread after prepare().
 class Node
@@ -132,10 +140,14 @@ class Node
     std::array<std::vector<float>, 2> ring;
     std::array<std::array<float, 2>, 2> formantState{}, filterState{};
     std::array<float, 2> tone{}, previous{}, dc{}, magnetization{};
-    std::array<float, 2> aaOrbit{}, aaTrail{}, aaPrism{}, aaEmber{}, aaSquash{};
+    std::array<float, 2> aaOrbit{}, aaTrail{}, aaPrism{};
+    std::array<float, 2> aligned{};
+    HalfbandOversampler oversampler;
     float follower = 0, panPosition = 0;
+    float magnetizationCoefficient = .0632f, dcCoefficient = .995f;
     double sr = 48000, phase = 0, pitchPhase = 0;
     int write = 0;
+    size_t clearCursor = 0;
     float read(int channel, double delay) const
     {
         const int size = int(ring[channel].size());
@@ -164,30 +176,80 @@ class Node
         float high = input - k * v1 - v2;
         return type <= 1 ? v2 + (v1 - v2) * type : v1 + (high - v1) * (type - 1);
     }
+    // EMBER transfer: drive, asymmetric tube and tape with a simplified magnetic memory.
+    static float emberCurve(float sample, float biasInput, float drive, float memory, float morph)
+    {
+        const float v = (sample + biasInput) * drive, bias = biasInput * drive;
+        const float modes[]{std::tanh(v) - std::tanh(bias),
+                            (std::tanh(v) + .2f * std::tanh(v * v)) -
+                                (std::tanh(bias) + .2f * std::tanh(bias * bias)),
+                            std::atan(v + .18f * memory) * float(2 / pi) -
+                                std::atan(bias * 1.18f) * float(2 / pi)};
+        const int mode = std::min(1, int(morph));
+        return modes[mode] + (modes[mode + 1] - modes[mode]) * (morph - mode);
+    }
+    // Drive/compression stages are gain-staged to unity for a -10 dBFS reference peak, so the
+    // Drive and Threshold knobs change colour and density rather than mostly loudness.
+    static constexpr float referencePeak = .316227766f;
 
   public:
+    static constexpr int latency(int id)
+    {
+        return hasLatency(id) ? HalfbandOversampler::latency : 0;
+    }
     void prepare(double rate)
     {
         sr = rate;
         for (auto &channel : ring)
             channel.assign(size_t(sr * 2.2) + 4, 0);
+        // Time constants that used to be per-sample constants, now matched at 48 kHz for any rate:
+        // magnetic memory ~977 Hz (updated at the 2x rate), DC blocker ~38 Hz.
+        magnetizationCoefficient = float(1 - std::exp(-2 * pi * 976.6 / (2 * sr)));
+        dcCoefficient = float(std::exp(-2 * pi * 38.29 / sr));
         reset();
     }
     void reset()
     {
         for (auto &channel : ring)
             std::fill(channel.begin(), channel.end(), 0);
+        clearCursor = ring[0].size() * 2;
+        oversampler.reset();
+        resetState();
+    }
+    // Small state only; buffers are cleared by reset() or progressively by clearStep().
+    void resetState()
+    {
         formantState = {};
         filterState = {};
         tone = {};
         previous = {};
         dc = {};
         magnetization = {};
-        aaOrbit = aaTrail = aaPrism = aaEmber = aaSquash = {};
+        aaOrbit = aaTrail = aaPrism = {};
+        aligned = {};
+        oversampler.resetOutput();
         follower = panPosition = 0;
         phase = pitchPhase = 0;
-        write = 0;
     }
+    void markDirty() { clearCursor = 0; }
+    // Clears up to `budget` delay-line samples; true once the node holds no stale audio.
+    bool clearStep(size_t budget)
+    {
+        const size_t size = ring[0].size(), total = size * 2;
+        for (; budget > 0 && clearCursor < total; --budget, ++clearCursor)
+            ring[clearCursor / size][clearCursor % size] = 0;
+        return clearCursor >= total;
+    }
+    // Sleeping latency stage: keep the aligned dry delay running, skip all processing.
+    void idle(float &left, float &right)
+    {
+        oversampler.push(0, left);
+        oversampler.push(1, right);
+        left = aligned[0] = oversampler.delayed(0);
+        right = aligned[1] = oversampler.delayed(1);
+    }
+    // Input of the last processed sample, delayed to line up with this node's wet output.
+    float alignedInput(int channel) const { return aligned[channel]; }
     void process(int id, float &left, float &right, const std::array<float, 4> &normalized,
                  const std::array<float, 8> &pattern, bool mono)
     {
@@ -195,12 +257,28 @@ class Node
         for (int i = 0; i < modules[id].controls; ++i)
             p[i] = modules[id].knob[i].physical(normalized[i]);
         float x[2]{left, right};
+        aligned = {left, right};
         float peak = std::max(std::abs(left), std::abs(right));
+        float squashGain = 1, makeup = 1;
+        if (id == 11)
+        {
+            const float span = emberCurve(referencePeak, p[2], p[0], 0, p[3]) -
+                               emberCurve(-referencePeak, p[2], p[0], 0, p[3]);
+            makeup = std::clamp(2 * referencePeak / std::max(std::abs(span), 1e-6f), .05f, 8.f);
+        }
         if (id == 12)
         {
             float target = peak * p[0];
             float seconds = target > follower ? .005f : p[3] * .001f;
             follower += (target - follower) * (1 - std::exp(float(-1 / (sr * seconds))));
+            const float slope = 1 - 1 / p[2];
+            const float db = 20 * std::log10(std::max(follower, 1e-7f));
+            squashGain = p[0] * std::pow(10.f, -std::max(0.f, db - p[1]) * slope / 20);
+            // Static make-up: a steady -10 dBFS peak leaves the module at the same peak level.
+            const float referenceDb = 20 * std::log10(referencePeak * p[0]);
+            const float referenceGain =
+                p[0] * std::pow(10.f, -std::max(0.f, referenceDb - p[1]) * slope / 20);
+            makeup = std::min(16.f, referencePeak / std::tanh(referencePeak * referenceGain));
         }
         if (id == 14)
         {
@@ -231,19 +309,20 @@ class Node
             }
             if (id == 7)
             {
+                // Clean through-path; only the recirculating sum is limited (clean to 0 dBFS).
                 float z = read(c, sr * .001 * (p[3] + p[1] * (1 + std::sin(2 * pi * phase)) * .5));
-                ring[c][write] = antialiasedShape(
-                    x[c], aaOrbit[c], [z, feedback = p[2]](float sample)
-                    { return std::tanh(sample + z * feedback); });
+                ring[c][write] =
+                    antialiasedResidual(x[c] + z * p[2], aaOrbit[c], softLimit, softLimitCeiling);
                 x[c] = z;
             }
             if (id == 8)
             {
                 float z = lowpass(read(c, sr * p[0] * .001), c, p[2]);
                 float input = x[c] + z * p[1];
-                ring[c][write] = antialiasedShape(
-                    input, aaTrail[c], [colour = p[3]](float sample)
-                    { return sample + (std::tanh(sample) - sample) * colour; });
+                // Colour 0 is an exact clean echo; repeats keep their top end on every pass.
+                ring[c][write] =
+                    antialiasedResidual(input, aaTrail[c], [colour = p[3]](float sample)
+                                        { return sample + (std::tanh(sample) - sample) * colour; });
                 x[c] = z;
             }
             if (id == 9)
@@ -255,9 +334,9 @@ class Node
                         read(c, sr * .001 *
                                     (p[2] + p[1] * std::sin(2 * pi *
                                                             (phase + voice / 3. * (.5 + .5 * p[3]) +
-                                                             (mono ? 0 : c * .23 * p[3]))))) /
-                        3;
-                x[c] = sum;
+                                                             (mono ? 0 : c * .23 * p[3])))));
+                // Voices are partly decorrelated: between coherent (1/3) and power (1/sqrt 3) sums.
+                x[c] = sum * choirGain;
             }
             if (id == 10)
             {
@@ -269,42 +348,42 @@ class Node
                 float shifted = float(read(c, delay + pitchPhase * window) * weight +
                                       read(c, delay + second * window) * (1 - weight));
                 shifted = lowpass(shifted, c, p[3]);
-                ring[c][write] = antialiasedShape(
-                    x[c], aaPrism[c], [shifted, feedback = p[2]](float sample)
-                    { return std::tanh(sample + shifted * feedback); });
+                ring[c][write] = antialiasedResidual(x[c] + shifted * p[2], aaPrism[c], softLimit,
+                                                     softLimitCeiling);
                 x[c] = shifted;
             }
             if (id == 11)
             {
-                float drive = p[0], biasInput = p[2], bias = biasInput * drive;
-                float driven = (x[c] + biasInput) * drive;
-                magnetization[c] += .12f * (driven - magnetization[c]);
-                const float memory = magnetization[c];
-                float shaped = antialiasedShape(
-                    x[c], aaEmber[c], [=](float sample)
-                    {
-                        float v = (sample + biasInput) * drive;
-                        float modes[]{std::tanh(v) - std::tanh(bias),
-                                      (std::tanh(v) + .2f * std::tanh(v * v)) -
-                                          (std::tanh(bias) + .2f * std::tanh(bias * bias)),
-                                      std::atan(v + .18f * memory) * float(2 / pi) -
-                                          std::atan(bias * 1.18f) * float(2 / pi)};
-                        int mode = std::min(1, int(p[3]));
-                        return modes[mode] + (modes[mode + 1] - modes[mode]) * (p[3] - mode);
-                    });
+                // 2x oversampled transfer; magnetic memory runs at the oversampled rate.
+                const float drive = p[0], biasInput = p[2], morph = p[3];
+                float first, second;
+                oversampler.up(c, x[c], first, second);
+                aligned[c] = oversampler.delayed(c);
+                auto stage = [&](float sample)
+                {
+                    magnetization[c] += magnetizationCoefficient *
+                                        ((sample + biasInput) * drive - magnetization[c]);
+                    return emberCurve(sample, biasInput, drive, magnetization[c], morph);
+                };
+                first = stage(first);
+                second = stage(second);
+                const float shaped = oversampler.down(c, first, second);
                 // DC blocker handles asymmetric tube distortion.
-                float high = shaped - previous[c] + .995f * dc[c];
+                float high = shaped - previous[c] + dcCoefficient * dc[c];
                 previous[c] = shaped;
                 dc[c] = high;
-                x[c] = lowpass(high, c, p[1]);
+                x[c] = lowpass(high, c, p[1]) * makeup;
             }
             if (id == 12)
             {
-                float db = 20 * std::log10(std::max(follower, 1e-7f));
-                float reduction = std::max(0.f, db - p[1]) * (1 - 1 / p[2]);
-                const float gain = p[0] * std::pow(10.f, -reduction / 20);
-                x[c] = antialiasedShape(
-                    x[c], aaSquash[c], [gain](float sample) { return std::tanh(sample * gain); });
+                float first, second;
+                oversampler.up(c, x[c], first, second);
+                aligned[c] = oversampler.delayed(c);
+                // Make-up is applied inside the oversampled stage and ends in the soft ceiling, so
+                // transients that arrive before the 5 ms attack cannot jump past +3.5 dBFS.
+                auto stage = [&](float sample)
+                { return softLimit(std::tanh(sample * squashGain) * makeup); };
+                x[c] = oversampler.down(c, stage(first), stage(second));
             }
             if (id == 13)
                 x[c] = filter(x[c], filterState[c], p[0], p[1], p[2]);
@@ -329,15 +408,81 @@ class Node
         left = x[0];
         right = x[1];
     }
+    static constexpr float choirGain = .52f;
+};
+
+// Small fixed delay used to align parallel branches and the rack's dry signal.
+template <int Length> class AlignDelay
+{
+    std::array<std::array<float, Length + 1>, 2> line{};
+    int position = 0;
+
+  public:
+    void reset()
+    {
+        for (auto &channel : line)
+            channel.fill(0);
+        position = 0;
+    }
+    void process(float &left, float &right)
+    {
+        line[0][size_t(position)] = left;
+        line[1][size_t(position)] = right;
+        position = (position + 1) % (Length + 1);
+        left = line[0][size_t(position)];
+        right = line[1][size_t(position)];
+    }
 };
 
 class Rack
 {
+    static constexpr int stageLatency = HalfbandOversampler::latency;
     std::array<FxLegacyRack, 6> inherited;
     std::array<Node, 9> nodes;
     std::array<Settings, 6> legacySettings;
+    std::array<bool, count> sleeping{}, clean{};
+    AlignDelay<2 * stageLatency> dryLine, zeroLatencyLine;
+    AlignDelay<stageLatency> oneStageLine;
+    bool clearStep(int id, size_t budget)
+    {
+        return id >= 6 ? nodes[id - 6].clearStep(budget) : inherited[id].clearStep(budget);
+    }
+    // Modules outside the rack (and fully faded out) cost almost nothing. Their delay lines are
+    // cleared in small slices while asleep and their small state is reset when they wake, so a
+    // module inserted later never replays audio from before it slept.
+    void updateSleep(const Frame &frame)
+    {
+        for (int id = 0; id < count; ++id)
+        {
+            const bool active = frame.inserted[id] > 0 || frame.enabled[id] > 0;
+            if (!active && !sleeping[id])
+            {
+                sleeping[id] = true;
+                clean[id] = false;
+                if (id >= 6)
+                    nodes[id - 6].markDirty();
+                else
+                    inherited[id].markDirty();
+            }
+            else if (active && sleeping[id])
+            {
+                if (!clean[id])
+                    clearStep(id, ~size_t(0));
+                if (id >= 6)
+                    nodes[id - 6].resetState();
+                else
+                    inherited[id].resetState();
+                sleeping[id] = false;
+            }
+            else if (sleeping[id] && !clean[id])
+                clean[id] = clearStep(id, 32);
+        }
+    }
 
   public:
+    // Constant for every configuration: EMBER and SQUASH always sit in the chain (as pure delays
+    // when unused), so the host compensates once and the dry path stays bit exact.
+    static constexpr int latency() { return 2 * stageLatency; }
     void prepare(double rate)
     {
         for (int i = 0; i < 6; ++i)
@@ -351,6 +496,7 @@ class Rack
         }
         for (auto &node : nodes)
             node.prepare(rate);
+        reset();
     }
     void reset()
     {
@@ -358,6 +504,11 @@ class Rack
             node.reset();
         for (auto &node : inherited)
             node.reset();
+        sleeping.fill(false);
+        clean.fill(true);
+        dryLine.reset();
+        zeroLatencyLine.reset();
+        oneStageLine.reset();
     }
     void wet(int id, float &l, float &r, const Frame &frame, bool mono)
     {
@@ -368,6 +519,7 @@ class Rack
             return;
         }
         auto &p = legacySettings[id];
+        p.tempo = frame.tempo;
         if (id == 0)
         {
             p.ghost[0] = v[0];
@@ -402,22 +554,47 @@ class Rack
             p.crush[0] = v[0];
         inherited[id].process(l, r, p);
     }
+    // Output is delayed by latency() samples relative to the input, in both routings.
     void process(float &l, float &r, const Frame &frame, bool mono)
     {
+        updateSleep(frame);
         const float dryL = l, dryR = r;
-        float sumL = 0, sumR = 0, branches = 0;
+        float zeroL = 0, zeroR = 0, oneL = 0, oneR = 0, branches = 0;
         for (int id : frame.order)
         {
+            const bool delayed = hasLatency(id);
             float a = frame.parallel ? dryL : l, b = frame.parallel ? dryR : r;
-            const float beforeL = a, beforeR = b;
-            // Bypassed nodes keep their clocks/tails alive, with no contribution to output.
-            wet(id, a, b, frame, mono);
-            float mix = frame.mix[id] * frame.enabled[id];
+            float beforeL = a, beforeR = b;
+            if (sleeping[id])
+            {
+                if (!delayed)
+                    continue;
+                nodes[id - 6].idle(a, b);
+                beforeL = a;
+                beforeR = b;
+            }
+            else
+            {
+                // Bypassed nodes keep their clocks/tails alive, with no contribution to output.
+                wet(id, a, b, frame, mono);
+                if (delayed)
+                {
+                    beforeL = nodes[id - 6].alignedInput(0);
+                    beforeR = nodes[id - 6].alignedInput(1);
+                }
+            }
+            const float mix = frame.mix[id] * frame.enabled[id];
             if (frame.parallel)
             {
-                sumL += (a - beforeL) * mix;
-                sumR += (b - beforeR) * mix;
+                (delayed ? oneL : zeroL) += (a - beforeL) * mix;
+                (delayed ? oneR : zeroR) += (b - beforeR) * mix;
                 branches += frame.enabled[id];
+            }
+            else if (delayed)
+            {
+                // Always replace the running signal: an unused stage is still a pure delay.
+                l = beforeL + (a - beforeL) * mix;
+                r = beforeR + (b - beforeR) * mix;
             }
             else if (mix != 0)
             {
@@ -425,10 +602,16 @@ class Rack
                 r += (b - r) * mix;
             }
         }
+        // Parallel branches arrive with zero or one stage of latency; line everything up at the
+        // rack latency. The lines also run in series mode so a routing change starts clean.
+        float alignedDryL = dryL, alignedDryR = dryR;
+        dryLine.process(alignedDryL, alignedDryR);
+        zeroLatencyLine.process(zeroL, zeroR);
+        oneStageLine.process(oneL, oneR);
         if (frame.parallel)
         {
-            l = dryL + sumL / std::max(1.f, branches);
-            r = dryR + sumR / std::max(1.f, branches);
+            l = alignedDryL + (zeroL + oneL) / std::max(1.f, branches);
+            r = alignedDryR + (zeroR + oneR) / std::max(1.f, branches);
         }
     }
 };

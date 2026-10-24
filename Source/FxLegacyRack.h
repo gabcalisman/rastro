@@ -15,7 +15,9 @@ class FxLegacyRack
     std::array<std::array<std::vector<float>, 4>, 2> reverb;
     std::array<std::array<int, 4>, 2> rp{};
     float ghostTone[2]{}, bloomTone[2]{};
-    std::array<float, 2> aaGhost{}, aaBloom{};
+    std::array<float, 2> aaGhost{};
+    std::array<std::array<float, 4>, 2> aaBloom{};
+    size_t clearCursor = 0;
     float delayTime = 1, grainOutput[2]{}, grainSmoothing = .1f;
     bool wasClocked = false;
     int write = 0, grainWrite = 0, phase = 0, fragment = 0, fragmentLength = 1;
@@ -69,6 +71,35 @@ class FxLegacyRack
         for (auto &c : reverb)
             for (auto &d : c)
                 std::fill(d.begin(), d.end(), 0);
+        clearCursor = ~size_t(0);
+        resetState();
+    }
+    void markDirty() { clearCursor = 0; }
+    // Clears up to `budget` buffer samples per call (delay, grain, reverb lines in a fixed order);
+    // true once no stale audio remains. Used while the FX module sleeps outside the rack.
+    bool clearStep(size_t budget)
+    {
+        std::vector<float> *buffers[]{&delay[0],     &grain[0],     &delay[1],     &grain[1],
+                                      &reverb[0][0], &reverb[0][1], &reverb[0][2], &reverb[0][3],
+                                      &reverb[1][0], &reverb[1][1], &reverb[1][2], &reverb[1][3]};
+        size_t offset = 0;
+        for (auto *buffer : buffers)
+        {
+            const size_t size = buffer->size();
+            while (budget > 0 && clearCursor >= offset && clearCursor < offset + size)
+            {
+                const size_t n = std::min(budget, offset + size - clearCursor);
+                std::fill_n(buffer->begin() + std::ptrdiff_t(clearCursor - offset), n, 0.f);
+                clearCursor += n;
+                budget -= n;
+            }
+            offset += size;
+        }
+        return clearCursor >= offset;
+    }
+    // Everything except the large buffers.
+    void resetState()
+    {
         rp = {};
         write = grainWrite = phase = 0;
         random = 12345;
@@ -76,7 +107,8 @@ class FxLegacyRack
         fragmentLength = 1;
         std::fill_n(ghostTone, 2, 0);
         std::fill_n(bloomTone, 2, 0);
-        aaGhost = aaBloom = {};
+        aaGhost = {};
+        aaBloom = {};
         initialized = false;
         topologyGain = 1;
         delayTime = 1;
@@ -227,8 +259,9 @@ class FxLegacyRack
                         delay[c][a] + (read - a) * (delay[c][(a + 1) % delaySize] - delay[c][a]);
                     ghostTone[c] += (.02f + .7f * sm.ghost[2]) * (z - ghostTone[c]);
                     float feedback = ghostTone[c] * std::min(.88f, sm.ghost[1] * (.5f + sm.trail));
-                    delay[c][write] = fx::antialiasedShape(
-                        x[c], aaGhost[c], [feedback](float sample) { return std::tanh(sample + feedback); });
+                    // Residual ADAA: exact while linear, antialiased only where the loop clips.
+                    delay[c][write] = fx::antialiasedResidual(
+                        x[c] + feedback, aaGhost[c], [](float u) { return std::tanh(u); }, 1.f);
                     wet = ghostTone[c];
                 }
                 if (module == 1)
@@ -269,9 +302,10 @@ class FxLegacyRack
                         float z = reverb[c][k][a] +
                                   (read - a) * (reverb[c][k][(a + 1) % len] - reverb[c][k][a]);
                         float feedback = z * std::min(.94f, .3f + .6f * sm.bloom[2] + .04f * sm.trail);
-                        reverb[c][k][idx] = fx::antialiasedShape(
-                            x[c], aaBloom[c], [feedback](float sample)
-                            { return std::tanh(sample * .3f + feedback); });
+                        // One antialiasing state per line (each line has its own argument).
+                        reverb[c][k][idx] = fx::antialiasedResidual(
+                            x[c] * .3f + feedback, aaBloom[c][size_t(k)],
+                            [](float u) { return std::tanh(u); }, 1.f);
                         idx = (idx + 1) % len;
                         sum += z * .25f;
                     }

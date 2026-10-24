@@ -152,6 +152,7 @@ RastroFxProcessor::RastroFxProcessor()
         mod[i] = params.getRawParameterValue(modIds[i]);
     bypass = params.getRawParameterValue("fxBypass");
     routing = params.getRawParameterValue("fxRouting");
+    setLatencySamples(latency);
     setPresetName("INIT / Clear wire");
     banks[0] = snapshot();
     banks[1] = snapshot();
@@ -189,6 +190,7 @@ bool RastroFxProcessor::isBusesLayoutSupported(const BusesLayout &b) const
 void RastroFxProcessor::prepareToPlay(double sampleRate, int)
 {
     rate = sampleRate;
+    setLatencySamples(latency);
     rack.prepare(rate);
     for (size_t i = 0; i < targets.size(); ++i)
         smooth[i].reset(rate, i < 2 ? .02 : .01);
@@ -202,6 +204,15 @@ void RastroFxProcessor::prepareToPlay(double sampleRate, int)
 void RastroFxProcessor::reset()
 {
     rack.reset();
+    for (auto &channel : rawHistoryFloat)
+        channel.fill(0);
+    for (auto &channel : rawHistoryDouble)
+        channel.fill(0);
+    for (auto &channel : inputHistory)
+        channel.fill(0);
+    inputGainHistory.fill(std::pow(10., double(targets[0].raw->load()) / 20));
+    historyPosition = 0;
+    activeHold = 0;
     for (size_t i = 0; i < targets.size(); ++i)
         smooth[i].setCurrentAndTargetValue((targets[i].raw->load() - targets[i].low) /
                                            (targets[i].high - targets[i].low));
@@ -232,6 +243,15 @@ std::array<int, count> RastroFxProcessor::order() const
 template <typename Sample>
 void RastroFxProcessor::process(juce::AudioBuffer<Sample> &buffer, bool hostBypass)
 {
+    // Feedback tails decay into the subnormal range; flush them instead of paying for them.
+    juce::ScopedNoDenormals noDenormals;
+    // GHOST/CRUMBLE note divisions follow the host tempo, as in PLAY.
+    if (auto *playHead = getPlayHead())
+        if (auto position = playHead->getPosition())
+            if (auto bpm = position->getBpm(); bpm && *bpm > 0)
+                frame.tempo = float(*bpm);
+    for (int i = 0; i < count; ++i)
+        frame.inserted[i] = inRack[i]->load() >= .5f ? 1.f : 0.f;
     for (size_t i = 0; i < targets.size(); ++i)
         smooth[i].setTargetValue((targets[i].raw->load() - targets[i].low) /
                                  (targets[i].high - targets[i].low));
@@ -254,9 +274,9 @@ void RastroFxProcessor::process(juce::AudioBuffer<Sample> &buffer, bool hostBypa
     std::array<float, count> peaks{};
     for (int sample = 0; sample < buffer.getNumSamples(); ++sample)
     {
-        const Sample rawL = buffer.getSample(0, sample),
-                     rawR = mono ? rawL : buffer.getSample(1, sample);
-        float sourcePeak = float(std::max(std::abs(rawL), std::abs(rawR)));
+        const Sample nowL = buffer.getSample(0, sample),
+                     nowR = mono ? nowL : buffer.getSample(1, sample);
+        float sourcePeak = float(std::max(std::abs(nowL), std::abs(nowR)));
         if (!std::isfinite(sourcePeak))
             sourcePeak = 0;
         inMeter = std::max(inMeter, sourcePeak);
@@ -292,12 +312,19 @@ void RastroFxProcessor::process(juce::AudioBuffer<Sample> &buffer, bool hostBypa
                 modulationOffset[i] = 0;
             values[i] = std::clamp(values[i] + modulationOffset[i], 0., 1.);
         }
-        bool any = false;
+        bool any = activeHold > 0;
+        if (activeHold > 0)
+            --activeHold;
         for (int m = 0; m < count; ++m)
         {
             frame.enabled[m] = enables[m].getNextValue();
             frame.mix[m] = float(values[mixIndex[m]]);
-            any |= frame.enabled[m] > 0 && frame.mix[m] > 0;
+            if (frame.enabled[m] > 0 && frame.mix[m] > 0)
+            {
+                any = true;
+                // The rack output lags its controls; keep the wet path open until it drains.
+                activeHold = latency + 1;
+            }
             for (int k = 0; k < modules[m].controls; ++k)
                 frame.value[m][k] = float(values[knobIndex[m][k]]);
         }
@@ -320,18 +347,33 @@ void RastroFxProcessor::process(juce::AudioBuffer<Sample> &buffer, bool hostBypa
         const double output = std::pow(10., (-24 + 48 * values[1]) / 20);
         const double bypassMix = activeMix.getNextValue();
         const double wet = values[2] * topology;
-        float l = float(rawL * input), r = float(rawR * input);
-        const float dryL = l, dryR = r;
+        float l = float(nowL * input), r = float(nowR * input);
+        // The rack output is `latency` samples late; take the dry signals from the same moment.
+        auto &raw = rawHistory<Sample>();
+        raw[0][size_t(historyPosition)] = nowL;
+        raw[1][size_t(historyPosition)] = nowR;
+        inputHistory[0][size_t(historyPosition)] = l;
+        inputHistory[1][size_t(historyPosition)] = r;
+        inputGainHistory[size_t(historyPosition)] = input;
+        historyPosition = (historyPosition + 1) % (latency + 1);
+        const Sample rawL = raw[0][size_t(historyPosition)], rawR = raw[1][size_t(historyPosition)];
+        const float dryL = inputHistory[0][size_t(historyPosition)],
+                    dryR = inputHistory[1][size_t(historyPosition)];
+        // Input gain as it was when this dry sample entered the rack.
+        const double alignedInput = inputGainHistory[size_t(historyPosition)];
         rack.process(l, r, frame, mono);
         const double deltaL = any && std::isfinite(l) ? double(l - dryL) * wet : 0.;
         const double deltaR = any && std::isfinite(r) ? double(r - dryR) * wet : 0.;
         // Delta form avoids converting the dry signal through float and preserves signed zero.
-        const double gain = 1 + bypassMix * (input * output - 1);
+        const double gain = 1 + bypassMix * (alignedInput * output - 1);
         const double effectL = bypassMix * output * deltaL, effectR = bypassMix * output * deltaR;
-        if (gain != 1 || effectL != 0)
-            buffer.setSample(0, sample, Sample(rawL * gain + effectL));
-        if (!mono && (gain != 1 || effectR != 0))
-            buffer.setSample(1, sample, Sample(rawR * gain + effectR));
+        // Untouched dry samples are copied, not recomputed, to keep bits and signed zero.
+        buffer.setSample(0, sample,
+                         gain != 1 || effectL != 0 ? Sample(rawL * gain + effectL) : Sample(rawL));
+        if (!mono)
+            buffer.setSample(1, sample,
+                             gain != 1 || effectR != 0 ? Sample(rawR * gain + effectR)
+                                                       : Sample(rawR));
         outMeter =
             std::max(outMeter, float(std::max(std::abs(buffer.getSample(0, sample)),
                                               std::abs(buffer.getSample(mono ? 0 : 1, sample)))));

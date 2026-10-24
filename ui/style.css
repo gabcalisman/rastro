@@ -1221,3 +1221,4 @@ body[data-screen="locker"] #itemGrid.hairs .it { height: auto; }
 body[data-screen="locker"] #itemGrid.hairs .it .thumb { flex: none; aspect-ratio: 150 / 132; height: auto; }
 body[data-screen="locker"] #itemGrid.hairs .it .thumb img { object-fit: contain; height: 100%; }
 .cur-b img[src^="hth_"] { object-fit: contain; }
+body[data-screen="locker"] #itemGrid.hairs { grid-template-columns: repeat(5, 1fr); gap: 8px; }

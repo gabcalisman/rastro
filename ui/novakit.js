@@ -313,6 +313,34 @@
   }
   // FX lights (Gab's colour map), strength = the real activity of each module (0 when bypassed or at mix 0)
   const FXC = ["#a96bff", "#ffa02e", "#ff4fd8", "#2fe0ff", "#ffd23f", "#c9a6ff"];
+  // Graphic, chunky light cues around the silhouette. Unlike a full sprite tint, these preserve Nova's ink lines and face.
+  function drawFxLightAccents(g, fx, colors, ox, oy, fw, fh) {
+    const cx = ox + fw * .5, head = oy + fh * .2, shoulder = oy + fh * .34, waist = oy + fh * .58, feet = oy + fh * .88;
+    const lw = Math.max(2.5, Math.min(7, fw * .012));
+    fx.forEach(function (raw, i) {
+      const a = clamp(raw, 0, 1); if (a < .025) return;
+      const alpha = Math.min(.88, a * .82), c = colors[i], r = Math.max(5, fw * (.012 + a * .012));
+      g.save(); g.globalAlpha = alpha; g.strokeStyle = c; g.fillStyle = c; g.lineWidth = lw; g.lineCap = "round"; g.lineJoin = "round";
+      function stroke(path, width) {
+        g.save(); g.globalAlpha = alpha * .28; g.lineWidth = width + lw * 2.2; path(); g.restore();
+        g.globalAlpha = alpha; g.lineWidth = width; path();
+      }
+      if (i === 0) { // GHOST: short echo ticks at the trailing side
+        for (let n = 0; n < 3; n++) { const y = shoulder + fh * (.11 + n * .09); g.beginPath(); g.moveTo(ox + fw * (.08 + n * .025), y); g.quadraticCurveTo(ox + fw * .02, y - r, ox + fw * .09, y - r * .5); stroke(function () { g.stroke(); }, lw); }
+      } else if (i === 1) { // CRUMBLE: bold angular shards
+        for (let n = 0; n < 3; n++) { const x = ox + fw * (.82 + n * .045), y = shoulder + fh * (.06 + n * .1), q = r * (1 + n * .22); g.beginPath(); g.moveTo(x, y - q); g.lineTo(x + q, y); g.lineTo(x, y + q); g.lineTo(x - q * .65, y + q * .25); g.closePath(); g.fill(); }
+      } else if (i === 2) { // BLOOM: a clean, widening halo behind the body
+        g.beginPath(); g.ellipse(cx, oy + fh * .52, fw * (.39 + a * .06), fh * (.39 + a * .025), 0, 0, Math.PI * 2); stroke(function () { g.stroke(); }, lw * 1.3);
+      } else if (i === 3) { // WOBBLE: paired wave contours at the sides
+        [-1, 1].forEach(function (side) { g.beginPath(); const x = cx + side * fw * .4; g.moveTo(x, shoulder); g.bezierCurveTo(x + side * r, shoulder + r * 2, x - side * r, shoulder + r * 4, x, shoulder + r * 6); stroke(function () { g.stroke(); }, lw); });
+      } else if (i === 4) { // DUST: little vinyl sparks near the feet
+        for (let n = 0; n < 5; n++) { const x = cx + (n - 2) * fw * .12, y = feet - (n % 2) * r * 1.5, q = r * (.45 + (n % 3) * .18); g.beginPath(); g.arc(x, y, q, 0, Math.PI * 2); g.fill(); }
+      } else { // CRUSH: stepped digital pixels on one side
+        for (let n = 0; n < 4; n++) { const x = ox + fw * (.84 + (n % 2) * .045), y = head + n * r * 1.35; const q = r * (.55 + a * .3); g.fillRect(x, y, q, q); }
+      }
+      g.restore();
+    });
+  }
   function drawCharacter(g, R, s, pxScale) {
     const P = R.P; if (!P) return;
     const sc = clamp(pxScale || 1, .3, 2), fig = renderFig(R, sc), fw = fig.width / sc, fh = fig.height / sc;
@@ -321,24 +349,13 @@
     if (s.reflect) { g.save(); g.beginPath(); g.rect(-400, 2, 800, 240); g.clip(); g.translate(0, 4); g.scale(1, -1); put(fig, 0, .14); g.restore(); }
     g.save(); g.globalAlpha = .45; g.fillStyle = "#000"; g.beginPath(); g.ellipse(P.hx * S * .5, 4, 175, 15, 0, 0, Math.PI * 2); g.fill(); g.restore();
     const fx = s.fx || [s.ghost || 0, 0, s.bloom || 0, s.wob || 0, 0, 0];
-    // soft light of each active effect behind her; several effects share the light moderately (face stays readable)
-    const total = fx.reduce(function (a, b) { return a + b; }, 0), norm = total > 1 ? 1 / total : 1;
-    fx.forEach(function (a, i) {
-      if (a < .02) return; const rr = 240 + a * 120;
-      g.save(); g.translate(0, -330); g.scale(1, 1.3); const gr = g.createRadialGradient(0, 0, 20, 0, 0, rr); gr.addColorStop(0, FXC[i]); gr.addColorStop(1, "rgba(0,0,0,0)");
-      g.globalAlpha = clamp(a * norm, 0, 1) * .5; g.globalCompositeOperation = "lighter"; g.fillStyle = gr; g.beginPath(); g.arc(0, 0, rr, 0, Math.PI * 2); g.fill(); g.restore();
-    });
+    // Cartoon stage lights: each FX keeps its own saturated colour and shape, with brightness tied to its real amount.
+    drawFxLightAccents(g, fx, FXC, ox, oy, fw, fh);
     // GHOST: violet afterimages trailing the movement
     if (fx[0] > .02) { const t = tinted(R, FXC[0]); for (let i = 3; i >= 0; i--) put(t, -(i + 1) * 16 * fx[0], clamp(fx[0] * (.42 - i * .09), 0, .5)); }
     // WOBBLE: cyan contour that sways with the WOBBLE rate
     if (fx[3] > .02) put(tinted(R, FXC[3]), Math.sin(R.t * (3 + (s.wobRate || 1) * 2)) * (10 + fx[3] * 16), fx[3] * .45);
     put(fig, 0, 1);
-    // rim light on the figure in the mixed effect colour (kept under 35% so the face and clothes read)
-    if (total > .05) {
-      let rr = 0, gg = 0, bb = 0; fx.forEach(function (a, i) { const n = parseInt(FXC[i].slice(1), 16); rr += (n >> 16 & 255) * a; gg += (n >> 8 & 255) * a; bb += (n & 255) * a; });
-      const col = "rgb(" + Math.round(rr / total) + "," + Math.round(gg / total) + "," + Math.round(bb / total) + ")";
-      g.save(); g.globalCompositeOperation = "lighter"; put(tinted(R, col), 0, clamp(total, 0, 1) * .22); g.restore();
-    }
   }
   window.RastroNovaKit = { create: create, SLOTS: SLOTS, DEFAULT: DEFAULT, NAMES: NAMES, items: items, valid: valid, clean: clean };
 })();

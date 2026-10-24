@@ -530,7 +530,7 @@ static void editorFxTests()
                 auto *button = dynamic_cast<juce::Button *>(
                     findFx(*editor, parameterId + "Option" + juce::String(option)));
                 check(button != nullptr, "unique module selector has accessible options");
-                button->triggerClick();
+                button->onClick();
                 int optionCount = id == 6 ? 5 : 3;
                 auto *parameter = p.params.getParameter(parameterId);
                 float normalized = float(option) / float(optionCount - 1);
@@ -546,9 +546,9 @@ static void editorFxTests()
     }
     auto *shelf = dynamic_cast<juce::Button *>(findFx(*editor, "fxModule0"));
     check(shelf != nullptr, "module bank exposes add/remove controls");
-    shelf->triggerClick();
+    shelf->onClick();
     check(p.value("fxM0InRack") == 0, "module bank removes an inserted effect");
-    shelf->triggerClick();
+    shelf->onClick();
     check(p.value("fxM0InRack") == 1, "module bank inserts an effect into the rack");
     auto *rackViewport = dynamic_cast<juce::Viewport *>(findFx(*editor, "fxRackViewport"));
     auto *firstRow = findFx(*editor, "fxRow0");
@@ -556,7 +556,7 @@ static void editorFxTests()
     rackViewport->setViewPosition(0, firstRow->getY());
     auto *remove = dynamic_cast<juce::Button *>(findFx(*editor, "fxRemove0"));
     check(remove != nullptr, "rack row exposes a remove control");
-    remove->triggerClick();
+    remove->onClick();
     check(p.value("fxM0InRack") == 0, "rack row removes its effect");
     auto *compare = dynamic_cast<juce::Button *>(findFx(*editor, "fxCompare"));
     check(compare != nullptr, "A/B UI");

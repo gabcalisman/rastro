@@ -1019,7 +1019,7 @@
   const DEFAULT_STYLE = { bounce: 1, sway: 1, nod: 1, dip: 1, lean: .3, hop: 0, nodHit: 1, jitter: 0 };
   let charKind = "alien", rig = {}, charSvg = null, sceneKind = "", sc = {}, puppet = null;
   const motion = { squash: 0, squashV: 0, strike: 0, look: 0, energy: 0, shake: 0, shakeT: 9, alive: 0, lastSound: -1e9, nod: 0, nodV: 0, dark: 0, lfoPhase: 0, peak: .05, hit: false, pitch: .5, pad: 0, x: 240, y: 412, rot: 0 };
-  const look = { dark: 1, art: 1, nova: Object.assign({}, window.RastroNova.DEFAULT), pose: "disco", dance: "groove", sync: 1, bpm: 110, strip: 1, knob: "kn_00", glow: "auto", react: 1, kb: 0 };
+  const look = { hair: "default", dark: 1, art: 1, nova: Object.assign({}, window.RastroNova.DEFAULT), pose: "disco", dance: "groove", sync: 1, bpm: 110, strip: 1, knob: "kn_00", glow: "auto", react: 1, kb: 0 };
   let lookTimer = 0;
   function saveLook() { clearTimeout(lookTimer); lookTimer = setTimeout(function () { R.call("lookSet", JSON.stringify(look)); }, 300); }
   function readLook(json) {
@@ -1028,7 +1028,8 @@
       if (o) {
         if (PUP.LOOKS[o.pose]) look.pose = o.pose; else if (PUP.ALIAS[o.pose]) look.pose = PUP.ALIAS[o.pose];
         if (o.nova && typeof o.nova === "object") { look.nova = Object.assign({}, window.RastroNova.DEFAULT); Object.keys(look.nova).forEach(function (k) { if (typeof o.nova[k] === "string" && window.RastroNova.item(k, o.nova[k]).id === o.nova[k]) look.nova[k] = o.nova[k]; }); }
-        look.art = o.art === 0 ? 0 : 1; look.dark = o.dark === 0 ? 0 : 1;
+        look.hair = typeof o.hair === "string" && (o.hair === "default" || window.RastroNovaArt.HAIRS.indexOf(o.hair) >= 0) ? o.hair : "default";
+        look.art = 1; look.dark = o.dark === 0 ? 0 : 1;
         if (AL.DANCES.some(function (d) { return d.id === o.dance; })) look.dance = o.dance;
         look.sync = o.sync === 0 ? 0 : 1; look.bpm = clamp(Math.round(o.bpm || 110), 60, 180); look.strip = o.strip === 0 ? 0 : 1;
         if (typeof o.knob === "number") look.knob = OLD_KNOB[clamp(Math.round(o.knob), 0, 23)];
@@ -1105,6 +1106,7 @@
       tx = 240 + (468 - 720) / k - S.feet[0] * s; ty = vy0 + 850 / k - S.feet[1] * s;
     }
     if (scr === "lab") ty = vy0 + visH * .5 - (S.feet[1] - 400) * s; // banner: frame Nova's head and keytar
+    else ty = vy0 + visH * .9 - (S.feet[1] + 30) * s;                  // feet always inside the frame, on the platform
     tx = Math.min(vx0, Math.max(vx0 + visW - S.w * s, tx)); ty = Math.min(vy0, Math.max(vy0 + visH - S.h * s, ty));
     cam = { tx: tx, ty: ty, s: s, vx0: vx0, vy0: vy0, visW: visW, visH: visH };
     return cam;
@@ -1162,7 +1164,7 @@
     if (charKind === "alien") {
       layer.innerHTML = '<g id="charPos"></g>';
       const pos = layer.querySelector("#charPos");
-      puppet = look.art && window.RastroNovaArt ? window.RastroNovaArt.create(pos) : window.RastroNova.create(pos, look.nova);
+      puppet = look.art && window.RastroNovaArt ? window.RastroNovaArt.create(pos, { hair: look.hair }) : window.RastroNova.create(pos, look.nova);
       rig = { puppet: true, pos: pos, pads: [], style: DEFAULT_STYLE };
     } else {
       const C = ART.characters[charKind]();
@@ -1446,9 +1448,29 @@
     const grid = $("#itemGrid"); grid.innerHTML = ""; grid.className = "item-grid three";
     const title = LK_CATS.filter(function (c) { return c[0] === lkCat; })[0];
     $("#slotTitle").textContent = title ? title[1].toUpperCase() : ""; $("#slotNote").textContent = "";
-    if (lkCat === "looks") {
-      $("#slotNote").textContent = "a Original é o desenho do Gab; as outras são a Nova editável"; grid.className = "item-grid looks"; renderWardrobe(grid);
-    } else if (NV.ITEMS[lkCat]) {
+    if (lkCat === "hair") {
+      // HAIR (Gab's Locker reference): same face, other hairstyles; provisional art cut from the mock-up
+      $("#slotNote").textContent = "mesmo rosto, outros cabelos · arte provisória (baixa resolução)";
+      grid.className = "item-grid hairs";
+      const XA = window.RastroNovaArt, HL = { starlight: 1500, galaxy: 3000 };
+      ["default"].concat(XA.HAIRS).concat(["starlight", "galaxy"]).forEach(function (id) {
+        const soon = !!HL[id], locked = soon && game.state.xp < HL[id], worn = look.hair === id;
+        const b = itemCard({ thumb: '<img src="hth_' + id + '.jpg" alt="">', name: XA.HAIR_NAMES[id], note: soon ? "⭐ " + HL[id] + " XP" + (locked ? "" : " · arte em preparo") : worn ? "equipado" : "liberado", worn: worn, locked: soon,
+          click: function () { if (soon) { toast(locked ? "Libera com " + HL[id] + " XP." : "Arte em preparo: precisa ser recortada em boa resolução."); return; } look.hair = id; saveLook(); if (puppet && puppet.setSlots) puppet.setSlots({ hair: id }); renderLocker(); } });
+        b.classList.add("hair-card"); grid.appendChild(b);
+      });
+    } else if (lkCat === "looks" || NV.ITEMS[lkCat]) {
+      // Only Gab's drawing is used. Other looks and single pieces need art drawn in the same style, in layers.
+      $("#slotNote").textContent = lkCat === "looks" ? "visual oficial" : "peça avulsa · em breve";
+      grid.className = "item-grid looks";
+      const ob = document.createElement("button"); ob.className = "wcard on";
+      ob.innerHTML = '<div class="wc-art"><img src="nv_thumb.png" alt=""></div><div class="wc-head"><b>ORIGINAL</b><span class="wc-xp">ARTE DO GAB</span></div><span class="badge" data-ic="check"></span>';
+      ICO.hydrate(ob); grid.appendChild(ob);
+      const soon = document.createElement("div"); soon.className = "soon-card";
+      soon.innerHTML = '<b>EM BREVE</b><span>' + (lkCat === "looks" ? "Novos looks" : "Trocar " + (LK_CATS.filter(function (c) { return c[0] === lkCat; })[0] || ["", ""])[1].toLowerCase()) +
+        ' precisa de arte desenhada no mesmo estilo da Nova, em camadas (cabelo, chapéu, roupa, calça, tênis, instrumento separados). Os desenhos provisórios feitos em código não combinam com a arte e foram retirados.</span>';
+      grid.appendChild(soon);
+    } else if (false) {
       const slot = lkCat;
       $("#slotNote").textContent = slot === "headwear" ? "um chapéu por vez · troca só o que ela usa na cabeça" : slot === "instrument" ? "muda pose e gestos, nunca o som" : "troca só esta peça";
       NV.ITEMS[slot].forEach(function (it) {
@@ -1558,11 +1580,12 @@
       b.addEventListener("click", function () { gesture("sceneRoom", i); setTimeout(renderLocker, 60); }); sl.appendChild(b);
     });
     const cl = $("#lkCurList"); cl.innerHTML = "";
-    if (look.art) { const o = document.createElement("button"); o.className = "cur-b on"; o.title = "Nova Original (desenho do Gab)"; o.innerHTML = '<img src="nv_thumb.png" alt="">'; o.addEventListener("click", function () { lkCat = "looks"; renderLocker(); }); cl.appendChild(o); }
+    if (true) { const o = document.createElement("button"); o.className = "cur-b on"; o.title = "Nova Original (desenho do Gab)"; o.innerHTML = '<img src="nv_thumb.png" alt="">'; o.addEventListener("click", function () { lkCat = "looks"; renderLocker(); }); cl.appendChild(o); }
     SLOT_TABS.forEach(function (t) {
       const it = NV.item(t[0], look.nova[t[0]]);
       const b = document.createElement("button"); b.className = "cur-b" + (lkCat === t[0] ? " on" : "") + (look.art ? " dim" : ""); b.title = (look.art ? "Nova editável · " : "") + t[1] + ": " + it.name;
-      b.innerHTML = it.id === "none" ? '<span data-ic="' + t[2] + '" class="cur-ic"></span>' : '<img src="' + novaThumb(look.nova, t[0], 72) + '" alt="">';
+      if (t[0] === "hair") { b.innerHTML = '<img src="hth_' + look.hair + '.jpg" alt="">'; b.title = "Hair: " + window.RastroNovaArt.HAIR_NAMES[look.hair]; }
+      else { b.innerHTML = '<span data-ic="' + t[2] + '" class="cur-ic"></span>'; b.classList.add("dim"); b.title = t[1] + " · em breve"; }
       ICO.hydrate(b); b.addEventListener("click", function () { lkMode = "mix"; lkCat = t[0]; renderLocker(); }); cl.appendChild(b);
     });
   }
@@ -1570,10 +1593,13 @@
     lkMode = "mix";
     $("#lookUndo").hidden = true;
     $("#lookRandom").addEventListener("click", function () {
-      const s = {};
-      Object.keys(NV.ITEMS).forEach(function (slot) { const ok = NV.ITEMS[slot].filter(function (it) { return it.level <= game.state.level; }); s[slot] = ok[(Math.random() * ok.length) | 0].id; });
+      // with only the original art, RANDOM LOOK draws what really changes: dance style and stage
       const ds = AL.DANCES.filter(function (d) { return d.level <= game.state.level; });
-      look.dance = ds[(Math.random() * ds.length) | 0].id; wearSlots(s);
+      look.dance = ds[(Math.random() * ds.length) | 0].id;
+      const hs = ["default"].concat(window.RastroNovaArt.HAIRS); look.hair = hs[(Math.random() * hs.length) | 0]; if (puppet && puppet.setSlots) puppet.setSlots({ hair: look.hair }); saveLook();
+      gesture("sceneRoom", (Math.random() * ART.rooms.length) | 0);
+      toast("Sorteado: cabelo " + window.RastroNovaArt.HAIR_NAMES[look.hair] + ", dança " + (AL.DANCES.filter(function (d) { return d.id === look.dance; })[0] || {}).pt + " e um cenário.");
+      setTimeout(renderLocker, 80);
     });
     $("#lookSave").addEventListener("click", function () {
       if (game.state.looks.length >= 12) { toast("Limite de 12 looks. Apague um para salvar outro."); return; }
@@ -1669,7 +1695,8 @@
     if (key === placeKey || !W || !H) return placeVal;
     const k = Math.max(W / 480, H / 452), visH = H / k, bottom = 226 + visH / 2;
     const palco = screen() === "palco";
-    placeKey = key; placeVal = { y: bottom - (palco ? 118 : 14) / k - 4, s: clamp(visH * (palco ? .66 : .8) / 700, .25, .62) };
+    // painted rooms: Nova stands on the floor at a believable size (≈60% of the view, feet a little above the bottom edge)
+    placeKey = key; placeVal = { y: bottom - (palco ? 118 / k : visH * (screen() === "locker" ? .1 : .06)), s: clamp(visH * (palco ? .6 : .6) / 700, .2, .62) };
     return placeVal;
   }
   let lastDraw = 0;

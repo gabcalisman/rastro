@@ -7,6 +7,16 @@
 (function () {
   "use strict";
   const PARTS = { legR: [592, 837, 335, 505], legL: [216, 837, 414, 502], strap: [550, 917, 69, 143], torso: [349, 463, 595, 451], head: [250, 25, 605, 507], earring: [330, 384, 87, 104], keytar: [391, 518, 610, 429], handR: [806, 600, 102, 114], armL: [298, 554, 320, 248] };
+  // HAIR: alternative heads (same face, other hairstyle) aligned to the original head. Provisional art cut from Gab's
+  // Locker mock-up (low resolution); "default" is the original drawing.
+  const HAIRS = {"fluffy": [240, 45, 655, 487], "spikes": [255, 18, 645, 514], "longsweep": [245, 32, 643, 500], "spacebuns": [280, 9, 608, 523], "shaggy": [247, 35, 640, 497], "halfup": [261, 9, 620, 523], "crest": [230, 14, 627, 518], "curls": [248, 37, 639, 495], "sidecut": [323, 18, 537, 514]};
+  const HAIR_NAMES = { "default": "Default", fluffy: "Fluffy", spikes: "Spikes", longsweep: "Long Sweep", spacebuns: "Space Buns", shaggy: "Shaggy", halfup: "Half Up", crest: "Crest", curls: "Curls", sidecut: "Side Cut", starlight: "Starlight", galaxy: "Galaxy" };
+  const hairImg = {};
+  function hairImage(id) {
+    if (!HAIRS[id]) return null;
+    if (!hairImg[id]) { const im = new Image(); im.src = "nv_hair_" + id + ".png"; hairImg[id] = im; }
+    return hairImg[id];
+  }
   // pivots in art pixels
   const K = { feet: [555, 1330], hip: [560, 900], neck: [556, 516], shoulder: [432, 598], earHook: [372, 398], keyPivot: [470, 805], footL: [330, 1330], footR: [770, 1330] };
   const S = .49;                       // art pixels → character units (feet at 0, ≈ 640 tall like nova.js)
@@ -54,7 +64,7 @@
   const tints = {};
   function canvasOf(w, h) { const c = document.createElement("canvas"); c.width = w; c.height = h; return c; }
 
-  function create(parent) {
+  function create(parent, slots) {
     const R = { root: parent, look: "nova-art", L: { w: 520, hip: [260, 440], feet: 668, name: "Nova", inst: "keytar" }, st: {}, t: 0, hist: [], P: null, ready: false };
     const svg = parent.ownerSVGElement || parent, host = svg.parentNode;
     const canvas = document.createElement("canvas"); canvas.className = "puppet-canvas";
@@ -67,7 +77,8 @@
     R.step = function (s, dt) { pose(R, s, dt); };
     R.renderTo = function (g, s) { if (!R.P) pose(R, s || { alive: 0 }, 0); drawCharacter(g, R, s || {}); };
     R.pose = function () { R.st = {}; R.ear = { a: 0, v: 0 }; pose(R, { alive: 0 }, 0); };
-    R.setSlots = function () { };
+    R.setSlots = function (o) { R.hair = o && HAIRS[o.hair] ? o.hair : "default"; hairImage(R.hair); };
+    R.setSlots(slots);
     R.destroy = function () { canvas.remove(); };
     R.body = { getAttribute: function () { return ""; } };
     pose(R, { alive: 0 }, 0);
@@ -99,12 +110,13 @@
     const headAcc = (P.hx - (R.prevHx === undefined ? P.hx : R.prevHx)) / Math.max(dt, 1 / 240);
     R.prevHx = P.hx;
     if (dt > 0) { const h = Math.min(dt, 1 / 30); R.ear.v += (-60 * R.ear.a - headAcc * .004 - (P.head + P.tor) * .02) * h; R.ear.v *= Math.pow(.9, h * 60); R.ear.a += R.ear.v * h; R.ear.a = clamp(R.ear.a, -.6, .6); }
-    P.ear = R.ear.a;
+    P.ear = R.ear.a; P.hair = R.hair;
     R.P = P;
     if (dt > 0) { R.hist.unshift(P); if (R.hist.length > 36) R.hist.pop(); }
   }
 
   const rad = function (d) { return d * Math.PI / 180; };
+  function R_hair(P) { return P.hair && P.hair !== "default" ? hairImage(P.hair) : null; }
   function about(g, p, deg) { g.translate(p[0], p[1]); g.rotate(rad(deg)); g.translate(-p[0], -p[1]); }
   function part(g, k) { const b = PARTS[k], im = IMG[k]; if (im && im.complete && im.naturalWidth) g.drawImage(im, b[0], b[1], b[2], b[3]); }
   // the whole figure in art pixels
@@ -124,7 +136,8 @@
     part(g, "torso"); part(g, "strap");
     // head (+ earring) on the neck
     g.save(); about(g, K.neck, P.head * .8); g.translate(0, P.nod * .6);
-    part(g, "head");
+    const hi = R_hair(P);
+    if (hi && hi.complete && hi.naturalWidth) { const b = HAIRS[P.hair]; g.drawImage(hi, b[0], b[1], b[2], b[3]); } else part(g, "head");
     eyes(g, P);
     g.save(); about(g, K.earHook, P.ear * 57); part(g, "earring"); g.restore();
     g.restore();
@@ -194,5 +207,5 @@
     put(fig, 0, 1);
   }
 
-  window.RastroNovaArt = { create: create, PARTS: PARTS };
+  window.RastroNovaArt = { create: create, PARTS: PARTS, HAIRS: Object.keys(HAIRS), HAIR_NAMES: HAIR_NAMES };
 })();

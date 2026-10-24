@@ -1,6 +1,8 @@
-RASTRO PLAY - macOS universal test build (macOS 12+)
+RASTRO PLAY - PR #5 macOS universal TEST build (macOS 12+)
+Branch: codex/rastro-official-visual-redesign. First web-layout pass; NOT the finished NOVA redesign.
+Character, room and wardrobe still need adaptation to the official reference art.
 1. Download the artifact while signed into GitHub with access to the private repository.
-2. Extract it, then extract the INNER RASTRO-macOS-universal.zip in Finder.
+2. Extract it, then extract the INNER RASTRO-PR5-macOS-universal.zip in Finder.
    Read BUILD-INFO.txt to confirm the source commit and verified architectures arm64 + x86_64.
 3. Quit Logic and other hosts. In Finder use Go > Go to Folder and enter:
    ~/Library/Audio/Plug-Ins/Components/
@@ -23,7 +25,9 @@ RASTRO PLAY - macOS universal test build (macOS 12+)
    In Logic, put RASTRO Capture in Audio FX on an AUDIO track/aux carrying the source. Enable input monitoring/record-arm for live input or play an existing region so Logic renders audio through the insert.
    In PLAY open CAPTURAR, select the Capture ID, use RECORD IN INSERT and STOP. The finalized take appears automatically; USE RECORDING loads it and returns to the waveform. No external export is needed.
    This companion routing still needs verification in Logic; CI does not test it in a DAW.
-10. Open Previews/ABRIR-PREVIAS.html (or its PNGs) to inspect actual Linux JUCE captures, not Mac screenshots.
+10. Open Previews/Web-PR5/ABRIR-PREVIAS.html (or its PNGs) for this web editor's first pass:
+    captured in Chromium/Linux with SIMULATED telemetry, not tested Mac/WebKit audio.
+    Previews/Historical-JUCE contains older native-editor captures, not the PR #5 web redesign.
 
 These bundles are ad-hoc signed, not Developer ID signed or notarized. Use standard macOS privacy/
 security review for a trusted test build; do not disable Gatekeeper. If validation fails, report the
@@ -36,6 +40,6 @@ Optional recorder check:
 The workflow attempts auval for both AUs; check the actual result in BUILD-INFO.txt and the run logs. Logic playback, Apple silicon execution, Retina and physical audio/MIDI tests are not claimed by CI.
 
 Capture diagnostics: EMPTY = no frames/host callbacks; NO SIGNAL = silent frames; SAVE ERROR = actual WAV/disk failure. A connected insert is not proof that Logic is sending audio. New takes use ~/Library/Application Support/RASTRO/Captures; the old ~/Library/RASTRO/Captures location is still readable. No take is deleted automatically.
-UI defaults to 1100x760; RASTRO Play logo, fixed-proportion reels, redesigned character and direct SYNTH/ADSR access. The envelope graph reflects real controls; Sustain is percent. Screenshots in Previews are Linux JUCE renders, not Logic screenshots.
-
-New visual workshop: COLOURS/KNOBS/CHARACTER/ROOM/DANCE/RACK. Save/open .rastro-look files by group; undo/redo stays inside the current workshop opening. Patch Lab defaults to Sound only when loading, so your look stays intact; Full + look replaces the saved visual/preferences too. JAM respects module locks in the RACK page.
+Mac builds enable the web editor; the earlier JUCE editor remains a fallback on other platforms.
+This package exposes the draft editor as it exists on PR #5, without claiming every native-editor
+control or every official-reference wardrobe item has been ported. Check the actual interface.

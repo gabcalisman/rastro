@@ -2,7 +2,8 @@ name: macOS build
 
 on:
   pull_request:
-    branches: [main]
+    # PR #5 is stacked on PR #4 rather than on main.
+    branches: [main, codex/nova-visual-on-codex-audio]
     types: [opened, synchronize, reopened]
   workflow_dispatch:
 
@@ -20,8 +21,10 @@ jobs:
     timeout-minutes: 40
     env:
       BUILD_DIR: build-macos-ci
-      PACKAGE_NAME: RASTRO-macOS-universal
+      PACKAGE_NAME: ${{ github.event.pull_request.number && format('RASTRO-PR{0}-macOS-universal', github.event.pull_request.number) || 'RASTRO-macOS-universal' }}
       SOURCE_COMMIT: ${{ github.event.pull_request.head.sha || github.sha }}
+      SOURCE_BRANCH: ${{ github.head_ref || github.ref_name }}
+      SOURCE_PR: ${{ github.event.pull_request.html_url }}
     steps:
       - uses: actions/checkout@v4
 
@@ -32,12 +35,19 @@ jobs:
           xcodebuild -version
           cmake --version
 
+      - name: Check web editor JavaScript
+        shell: bash
+        run: |
+          set -euo pipefail
+          for script in ui/*.js; do node --check "$script"; done
+
       - name: Configure universal Release build
         run: >-
           cmake -S . -B "$BUILD_DIR" -G Xcode
           -DCMAKE_OSX_ARCHITECTURES="arm64;x86_64"
           -DCMAKE_OSX_DEPLOYMENT_TARGET=12.0
           -DCMAKE_XCODE_ATTRIBUTE_CODE_SIGNING_ALLOWED=NO
+          -DRASTRO_WEB_UI=ON
 
       - name: Build all Mac formats and DSP tests
         run: >-
@@ -108,7 +118,7 @@ jobs:
           set -euo pipefail
           root="$BUILD_DIR/Rastro_artefacts/Release"
           package="staging/$PACKAGE_NAME"
-          mkdir -p "$package/AU" "$package/VST3" "$package/Standalone" dist
+          mkdir -p "$package/AU" "$package/VST3" "$package/Standalone" "$package/Previews" dist
           ditto "$root/AU/RASTRO.component" "$package/AU/RASTRO.component"
           ditto "$root/VST3/RASTRO.vst3" "$package/VST3/RASTRO.vst3"
           ditto "$root/Standalone/RASTRO.app" "$package/Standalone/RASTRO.app"
@@ -116,16 +126,23 @@ jobs:
           ditto "$BUILD_DIR/RastroCapture_artefacts/Release/VST3/RASTRO Capture.vst3" "$package/VST3/RASTRO Capture.vst3"
           cp README.md "$package/README.md"
           cp docs/INSTALL-MAC.txt "$package/INSTALL-MAC.txt"
-          ditto docs/previews "$package/Previews"
+          ditto docs/previews "$package/Previews/Historical-JUCE"
+          ditto docs/previews-web "$package/Previews/Web-PR5"
+          cp docs/previews-web/PACKAGE-README.txt "$package/Previews/README.txt"
           {
             echo "RASTRO by Gab Calisman"
             echo "Source commit: $SOURCE_COMMIT"
+            echo "Source branch: $SOURCE_BRANCH"
+            echo "PR: $SOURCE_PR"
             echo "Tested checkout (PR merge commit for PR runs): $(git rev-parse HEAD)"
             echo "Runner architecture: $(uname -m)"
             echo "Bundle architectures: arm64 + x86_64 (verified with lipo)"
             echo "Minimum deployment target: macOS 12.0; Logic has its own OS requirements."
             echo "Checks: PLAY AU/VST3/Standalone + Capture AU/VST3 built; ten native suites including CoreAudio M4A/capture IPC passed; both VST3s passed pluginval 1.0.3 level 5 seed 42; both AUs passed auval; signatures verified."
             echo "Ad-hoc signed for testing; NOT Developer ID signed or notarized."
+            echo "Web editor enabled. PR #5 is an unfinished visual draft, not the approved NOVA redesign."
+            echo "Previews/Web-PR5: Linux Chromium captures with SIMULATED telemetry; not Mac/WebKit or DSP validation."
+            echo "Previews/Historical-JUCE: older native-editor captures; not this web redesign."
             echo "Native arm64 execution, hardware audio/MIDI and Logic Pro playback NOT tested."
             sw_vers
             xcodebuild -version
@@ -148,10 +165,10 @@ jobs:
       - name: Upload downloadable Mac ZIP
         uses: actions/upload-artifact@v4
         with:
-          name: RASTRO-macOS-universal
+          name: ${{ env.PACKAGE_NAME }}
           path: |
-            dist/RASTRO-macOS-universal.zip
-            dist/RASTRO-macOS-universal.zip.sha256
+            dist/${{ env.PACKAGE_NAME }}.zip
+            dist/${{ env.PACKAGE_NAME }}.zip.sha256
           if-no-files-found: error
           retention-days: 14
           compression-level: 0
@@ -159,7 +176,7 @@ jobs:
       - name: Upload small verification report
         uses: actions/upload-artifact@v4
         with:
-          name: RASTRO-macOS-build-report
+          name: ${{ env.PACKAGE_NAME }}-build-report
           path: dist/report/
           if-no-files-found: error
           retention-days: 14

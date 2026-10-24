@@ -1222,3 +1222,7 @@ body[data-screen="locker"] #itemGrid.hairs .it .thumb { flex: none; aspect-ratio
 body[data-screen="locker"] #itemGrid.hairs .it .thumb img { object-fit: contain; height: 100%; }
 .cur-b img[src^="hth_"] { object-fit: contain; }
 body[data-screen="locker"] #itemGrid.hairs { grid-template-columns: repeat(5, 1fr); gap: 8px; }
+body[data-screen="locker"] #itemGrid.kit { grid-template-columns: repeat(4, 1fr); }
+body[data-screen="locker"] #itemGrid.kit .it { height: 168px; }
+body[data-screen="locker"] #itemGrid.kit .it .thumb img { width: 100%; height: 100%; object-fit: contain; }
+.cur-b img { object-fit: contain; }

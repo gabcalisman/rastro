@@ -1019,9 +1019,9 @@
   const DEFAULT_STYLE = { bounce: 1, sway: 1, nod: 1, dip: 1, lean: .3, hop: 0, nodHit: 1, jitter: 0 };
   let charKind = "alien", rig = {}, charSvg = null, sceneKind = "", sc = {}, puppet = null;
   const motion = { squash: 0, squashV: 0, strike: 0, look: 0, energy: 0, shake: 0, shakeT: 9, alive: 0, lastSound: -1e9, nod: 0, nodV: 0, dark: 0, lfoPhase: 0, peak: .05, hit: false, pitch: .5, pad: 0, x: 240, y: 412, rot: 0 };
-  const look = { hair: "default", dark: 1, art: 1, nova: Object.assign({}, window.RastroNova.DEFAULT), pose: "disco", dance: "groove", sync: 1, bpm: 110, strip: 1, knob: "kn_00", glow: "auto", react: 1, kb: 0 };
+  const look = { kit: Object.assign({}, window.RastroNovaKit.DEFAULT), hair: "default", dark: 1, art: 0, nova: Object.assign({}, window.RastroNova.DEFAULT), pose: "disco", dance: "groove", sync: 1, bpm: 110, strip: 1, knob: "kn_00", glow: "auto", react: 1, kb: 0 };
   let lookTimer = 0;
-  function saveLook() { clearTimeout(lookTimer); lookTimer = setTimeout(function () { R.call("lookSet", JSON.stringify(look)); }, 300); }
+  function saveLook() { look.kitV = 1; clearTimeout(lookTimer); lookTimer = setTimeout(function () { R.call("lookSet", JSON.stringify(look)); }, 300); }
   function readLook(json) {
     try {
       const o = JSON.parse(json || "null");
@@ -1029,7 +1029,8 @@
         if (PUP.LOOKS[o.pose]) look.pose = o.pose; else if (PUP.ALIAS[o.pose]) look.pose = PUP.ALIAS[o.pose];
         if (o.nova && typeof o.nova === "object") { look.nova = Object.assign({}, window.RastroNova.DEFAULT); Object.keys(look.nova).forEach(function (k) { if (typeof o.nova[k] === "string" && window.RastroNova.item(k, o.nova[k]).id === o.nova[k]) look.nova[k] = o.nova[k]; }); }
         look.hair = typeof o.hair === "string" && (o.hair === "default" || window.RastroNovaArt.HAIRS.indexOf(o.hair) >= 0) ? o.hair : "default";
-        look.art = 1; look.dark = o.dark === 0 ? 0 : 1;
+        if (o.kit && typeof o.kit === "object") look.kit = window.RastroNovaKit.clean(o.kit);
+        look.art = o.art === 1 && o.kitV ? 1 : 0; look.dark = o.dark === 0 ? 0 : 1;
         if (AL.DANCES.some(function (d) { return d.id === o.dance; })) look.dance = o.dance;
         look.sync = o.sync === 0 ? 0 : 1; look.bpm = clamp(Math.round(o.bpm || 110), 60, 180); look.strip = o.strip === 0 ? 0 : 1;
         if (typeof o.knob === "number") look.knob = OLD_KNOB[clamp(Math.round(o.knob), 0, 23)];
@@ -1164,7 +1165,7 @@
     if (charKind === "alien") {
       layer.innerHTML = '<g id="charPos"></g>';
       const pos = layer.querySelector("#charPos");
-      puppet = look.art && window.RastroNovaArt ? window.RastroNovaArt.create(pos, { hair: look.hair }) : window.RastroNova.create(pos, look.nova);
+      puppet = look.art && window.RastroNovaArt ? window.RastroNovaArt.create(pos, { hair: look.hair }) : window.RastroNovaKit ? window.RastroNovaKit.create(pos, look.kit) : window.RastroNova.create(pos, look.nova);
       rig = { puppet: true, pos: pos, pads: [], style: DEFAULT_STYLE };
     } else {
       const C = ART.characters[charKind]();
@@ -1294,7 +1295,7 @@
     xpTo: function (lvl) { let n = this.need(this.state.level) - this.state.xp; for (let l = this.state.level + 1; l < lvl; l++) n += this.need(l); return Math.max(0, Math.ceil(n)); },
     unlocksAt: function (lvl) {
       const out = [];
-      Object.keys(NV.ITEMS).forEach(function (slot) { NV.ITEMS[slot].forEach(function (it) { if (it.level === lvl && it.id !== "none") out.push(it.name); }); });
+      window.RastroNovaKit.SLOTS.forEach(function (slot) { window.RastroNovaKit.items(slot).forEach(function (it) { if (it.level === lvl && it.id !== "none") out.push(it.name); }); });
       AL.DANCES.forEach(function (d) { if (d.level === lvl) out.push("dança " + d.pt); });
       KNOBS.forEach(function (k) { if (k.level === lvl) out.push("knob " + k.name); });
       PALETTES.forEach(function (p) { if (p.level === lvl) out.push("cores " + p.name); });
@@ -1362,13 +1363,15 @@
   }
 
   /* ================= LOCKER (Nova: every piece is its own slot) ================= */
-  let animMode = 2, lkCat = "looks", lockerPup = null, instFilter = "all";
+  let animMode = 2, lkCat = "hair", lockerPup = null, instFilter = "all";
   const NV = window.RastroNova;
-  const SLOT_TABS = [["hair", "Hair", "face"], ["headwear", "Headwear", "hat"], ["headphones", "Headphones", "phones"], ["glasses", "Glasses", "glasses"],
-    ["top", "Top", "jacket"], ["pants", "Pants", "pants"], ["shoes", "Shoes", "shoe"], ["instrument", "Instrument", "guitar"]];
-  const LK_CATS = [["looks", "Looks", "hanger", "completos"]].concat(SLOT_TABS.map(function (t) { return [t[0], t[1] === "Pants" ? "Bottoms" : t[1], t[2], "peça avulsa"]; })).concat([
+  // NOVA modular (Gab's kit): every slot is independent; one item per slot (hat and beanie share "headwear")
+  const KT = window.RastroNovaKit;
+  const SLOT_TABS = [["hair", "Hair", "face"], ["headwear", "Headwear", "hat"], ["glasses", "Glasses", "glasses"], ["headphones", "Headphones", "phones"], ["earring", "Earrings", "star"],
+    ["top", "Top", "jacket"], ["bottom", "Bottoms", "pants"], ["shoes", "Shoes", "shoe"], ["instrument", "Instrument", "guitar"]];
+  const LK_CATS = SLOT_TABS.map(function (t) { return [t[0], t[1], t[2], "peça avulsa"]; }).concat([["looks", "Looks", "hanger", "salvos e original"]]).concat([
     ["knobs", "Knobs", "knob", "todos os knobs reais"], ["palettes", "Palette", "palette", "cores da interface"], ["stage", "Stage", "room", "onde ela toca"],
-    ["dance", "Pose / Dança", "dance", "estilos e tempo"], ["glow", "Brilho", "glow", "cor da luz"], ["react", "Reatividade", "spark", "intensidade visual"],
+    ["dance", "Pose", "dance", "estilos e tempo"], ["glow", "Brilho", "glow", "cor da luz"], ["react", "Reatividade", "spark", "intensidade visual"],
     ["saved", "Meus looks", "look", "salvos"], ["challenges", "Desafios", "star", "XP opcional"]]);
   const WARDROBE = [
     { name: "Night Hoodie", s: {} },
@@ -1385,6 +1388,29 @@
   // thumbnails rendered from Nova herself (so every icon is exactly the piece she wears)
   let thumbRig = null; const thumbCache = {};
   const CROP = { hair: [0, -500, 330], headwear: [0, -530, 330], headphones: [0, -470, 300], glasses: [0, -470, 240], top: [0, -330, 300], pants: [0, -140, 320], shoes: [0, -40, 230], instrument: [0, -330, 460], full: [0, -340, 720] };
+  let kitRig = null; const kitCache = {};
+  const KCROP = { hair: [12, -540, 200], headwear: [12, -560, 210], glasses: [14, -490, 110], headphones: [12, -500, 190], earring: [-60, -475, 80], top: [0, -370, 280], bottom: [0, -170, 300], shoes: [0, -45, 240], instrument: [10, -300, 380], full: [0, -320, 700] };
+  function kitThumb(slots, crop, size) {
+    const key = JSON.stringify(slots) + crop + size; if (kitCache[key]) return kitCache[key];
+    if (!kitRig) { const holder = document.createElement("div"); holder.style.cssText = "position:absolute;width:1px;height:1px;overflow:hidden;left:-9999px"; holder.innerHTML = '<svg><g></g></svg>'; document.body.appendChild(holder); kitRig = KT.create(holder.querySelector("g"), slots); }
+    kitRig.setSlots(slots); kitRig.pose();
+    const c = document.createElement("canvas"); c.width = c.height = size; const g = c.getContext("2d"), cr = KCROP[crop];
+    g.translate(size / 2, size / 2); g.scale(size / cr[2], size / cr[2]); g.translate(-cr[0], -cr[1]);
+    kitRig.renderTo(g, {});
+    try { return (kitCache[key] = c.toDataURL("image/png")); } catch (e) { return ""; }
+  }
+  // images load asynchronously: re-render the Locker once they are in
+  let kitWarm = false;
+  function warmKit() {
+    if (kitWarm) return; kitWarm = true;
+    KT.SLOTS.forEach(function (sl) { KT.items(sl).forEach(function (it) { const s = Object.assign({}, KT.DEFAULT); s[sl] = it.id; if (kitRig) kitRig.setSlots(s); else kitThumb(s, "full", 8); }); });
+    setTimeout(function () { for (const k in kitCache) delete kitCache[k]; if (screen() === "locker") renderLocker(); }, 1200);
+  }
+  function wearKit(s, art) {
+    const was = look.art; look.art = art ? 1 : 0; look.kit = KT.clean(s);
+    if (was !== look.art && charSvg) buildCharacter(); else if (puppet && puppet.setSlots) puppet.setSlots(look.kit);
+    saveLook(); renderLocker();
+  }
   function novaThumb(slots, crop, size) {
     const key = JSON.stringify(slots) + crop + size; if (thumbCache[key]) return thumbCache[key];
     if (!thumbRig) { const holder = document.createElement("div"); holder.style.cssText = "position:absolute;width:1px;height:1px;overflow:hidden;left:-9999px"; holder.innerHTML = '<svg><g></g></svg>'; document.body.appendChild(holder); thumbRig = NV.create(holder.querySelector("g"), slots); }
@@ -1421,7 +1447,7 @@
     });
   }
   function renderSummary() {
-    const box = $("#lkSumList"); box.innerHTML = "";
+    const box = $("#lkSumList"); box.innerHTML = ""; return; // summary card is not part of the current Locker layout
     SLOT_TABS.forEach(function (t) {
       const it = NV.item(t[0], look.nova[t[0]]);
       const b = document.createElement("button"); b.className = "sum-row" + (lkMode === "mix" && lkCat === t[0] ? " on" : "");
@@ -1448,7 +1474,19 @@
     const grid = $("#itemGrid"); grid.innerHTML = ""; grid.className = "item-grid three";
     const title = LK_CATS.filter(function (c) { return c[0] === lkCat; })[0];
     $("#slotTitle").textContent = title ? title[1].toUpperCase() : ""; $("#slotNote").textContent = "";
-    if (lkCat === "hair") {
+    warmKit();
+    if (KT.SLOTS.indexOf(lkCat) >= 0) {
+      const slot = lkCat;
+      $("#slotNote").textContent = slot === "headwear" ? "um item de cabeça por vez (chapéu, gorro, boné ou chifres)" : slot === "instrument" ? "muda a pose das mãos, nunca o som" : "troca só esta peça · XP só libera visual";
+      grid.className = "item-grid kit";
+      KT.items(slot).forEach(function (it) {
+        const locked = it.level > game.state.level, worn = !look.art && look.kit[slot] === it.id, preview = Object.assign({}, look.kit); preview[slot] = it.id;
+        const src = it.id === "none" ? "" : kitThumb(preview, slot, 160);
+        const thumb = it.id === "none" ? '<span data-ic="close" style="width:48px;height:48px;opacity:.6"></span>' : '<img src="' + src + '" alt="">';
+        grid.appendChild(itemCard({ thumb: thumb, name: it.name, note: locked ? lockedNote(it.level) : worn ? "equipado" : "liberado", worn: worn, locked: locked,
+          click: function () { if (locked) { toast("Libera no nível " + it.level + " (faltam " + game.xpTo(it.level) + " XP). Só visual: nada de som fica bloqueado."); return; } const s2 = Object.assign({}, look.kit); s2[slot] = it.id; wearKit(s2); } }));
+      });
+    } else if (lkCat === "hair-old") {
       // HAIR (Gab's Locker reference): same face, other hairstyles; provisional art cut from the mock-up
       $("#slotNote").textContent = "mesmo rosto, outros cabelos · arte provisória (baixa resolução)";
       grid.className = "item-grid hairs";
@@ -1459,17 +1497,15 @@
           click: function () { if (soon) { toast(locked ? "Libera com " + HL[id] + " XP." : "Arte em preparo: precisa ser recortada em boa resolução."); return; } look.hair = id; saveLook(); if (puppet && puppet.setSlots) puppet.setSlots({ hair: id }); renderLocker(); } });
         b.classList.add("hair-card"); grid.appendChild(b);
       });
-    } else if (lkCat === "looks" || NV.ITEMS[lkCat]) {
-      // Only Gab's drawing is used. Other looks and single pieces need art drawn in the same style, in layers.
-      $("#slotNote").textContent = lkCat === "looks" ? "visual oficial" : "peça avulsa · em breve";
-      grid.className = "item-grid looks";
-      const ob = document.createElement("button"); ob.className = "wcard on";
-      ob.innerHTML = '<div class="wc-art"><img src="nv_thumb.png" alt=""></div><div class="wc-head"><b>ORIGINAL</b><span class="wc-xp">ARTE DO GAB</span></div><span class="badge" data-ic="check"></span>';
-      ICO.hydrate(ob); grid.appendChild(ob);
-      const soon = document.createElement("div"); soon.className = "soon-card";
-      soon.innerHTML = '<b>EM BREVE</b><span>' + (lkCat === "looks" ? "Novos looks" : "Trocar " + (LK_CATS.filter(function (c) { return c[0] === lkCat; })[0] || ["", ""])[1].toLowerCase()) +
-        ' precisa de arte desenhada no mesmo estilo da Nova, em camadas (cabelo, chapéu, roupa, calça, tênis, instrumento separados). Os desenhos provisórios feitos em código não combinam com a arte e foram retirados.</span>';
-      grid.appendChild(soon);
+    } else if (lkCat === "looks") {
+      $("#slotNote").textContent = "a modular troca peça por peça; a Original é o desenho fixo do Gab (sem trocas)";
+      grid.className = "item-grid kit";
+      const cards = [{ name: "Nova modular", note: "padrão · troca peças", art: 0, img: kitThumb(look.kit, "full", 200) }, { name: "Original", note: "desenho fixo do Gab", art: 1, img: "nv_thumb.png" }];
+      cards.forEach(function (c) { grid.appendChild(itemCard({ thumb: '<img src="' + c.img + '" alt="">', name: c.name, note: c.note, worn: look.art === c.art, locked: false, click: function () { wearKit(look.kit, c.art); } })); });
+      game.state.looks.forEach(function (lk) {
+        if (!lk.kit) return; const s2 = KT.clean(lk.kit);
+        grid.appendChild(itemCard({ thumb: '<img src="' + kitThumb(s2, "full", 200) + '" alt="">', name: lk.name, note: "look salvo", worn: false, locked: false, click: function () { if (lk.dance) look.dance = lk.dance; wearKit(s2, 0); toast("Look vestido: " + lk.name); } }));
+      });
     } else if (false) {
       const slot = lkCat;
       $("#slotNote").textContent = slot === "headwear" ? "um chapéu por vez · troca só o que ela usa na cabeça" : slot === "instrument" ? "muda pose e gestos, nunca o som" : "troca só esta peça";
@@ -1580,12 +1616,10 @@
       b.addEventListener("click", function () { gesture("sceneRoom", i); setTimeout(renderLocker, 60); }); sl.appendChild(b);
     });
     const cl = $("#lkCurList"); cl.innerHTML = "";
-    if (true) { const o = document.createElement("button"); o.className = "cur-b on"; o.title = "Nova Original (desenho do Gab)"; o.innerHTML = '<img src="nv_thumb.png" alt="">'; o.addEventListener("click", function () { lkCat = "looks"; renderLocker(); }); cl.appendChild(o); }
     SLOT_TABS.forEach(function (t) {
-      const it = NV.item(t[0], look.nova[t[0]]);
-      const b = document.createElement("button"); b.className = "cur-b" + (lkCat === t[0] ? " on" : "") + (look.art ? " dim" : ""); b.title = (look.art ? "Nova editável · " : "") + t[1] + ": " + it.name;
-      if (t[0] === "hair") { b.innerHTML = '<img src="hth_' + look.hair + '.jpg" alt="">'; b.title = "Hair: " + window.RastroNovaArt.HAIR_NAMES[look.hair]; }
-      else { b.innerHTML = '<span data-ic="' + t[2] + '" class="cur-ic"></span>'; b.classList.add("dim"); b.title = t[1] + " · em breve"; }
+      const id = look.kit[t[0]], nm = KT.NAMES[t[0]][id];
+      const b = document.createElement("button"); b.className = "cur-b" + (lkCat === t[0] ? " on" : "") + (look.art ? " dim" : ""); b.title = t[1] + ": " + nm + (look.art ? " (vale na Nova modular)" : "");
+      b.innerHTML = id === "none" ? '<span data-ic="' + t[2] + '" class="cur-ic"></span>' : '<img src="' + kitThumb(look.kit, t[0], 80) + '" alt="">';
       ICO.hydrate(b); b.addEventListener("click", function () { lkMode = "mix"; lkCat = t[0]; renderLocker(); }); cl.appendChild(b);
     });
   }
@@ -1593,17 +1627,14 @@
     lkMode = "mix";
     $("#lookUndo").hidden = true;
     $("#lookRandom").addEventListener("click", function () {
-      // with only the original art, RANDOM LOOK draws what really changes: dance style and stage
-      const ds = AL.DANCES.filter(function (d) { return d.level <= game.state.level; });
-      look.dance = ds[(Math.random() * ds.length) | 0].id;
-      const hs = ["default"].concat(window.RastroNovaArt.HAIRS); look.hair = hs[(Math.random() * hs.length) | 0]; if (puppet && puppet.setSlots) puppet.setSlots({ hair: look.hair }); saveLook();
-      gesture("sceneRoom", (Math.random() * ART.rooms.length) | 0);
-      toast("Sorteado: cabelo " + window.RastroNovaArt.HAIR_NAMES[look.hair] + ", dança " + (AL.DANCES.filter(function (d) { return d.id === look.dance; })[0] || {}).pt + " e um cenário.");
-      setTimeout(renderLocker, 80);
+      // one unlocked item per slot (never two items in the same slot)
+      const s2 = {}; KT.SLOTS.forEach(function (sl) { const ok = KT.items(sl).filter(function (it) { return it.level <= game.state.level; }); s2[sl] = ok[(Math.random() * ok.length) | 0].id; });
+      const ds = AL.DANCES.filter(function (d) { return d.level <= game.state.level; }); look.dance = ds[(Math.random() * ds.length) | 0].id;
+      wearKit(s2, 0); toast("Look sorteado entre os itens liberados.");
     });
     $("#lookSave").addEventListener("click", function () {
       if (game.state.looks.length >= 12) { toast("Limite de 12 looks. Apague um para salvar outro."); return; }
-      game.state.looks.push({ name: "Look " + (game.state.looks.length + 1), art: look.art, nova: Object.assign({}, look.nova), dance: look.dance, glow: look.glow, knob: look.knob }); game.save(); toast("Look salvo em Meus looks.");
+      game.state.looks.push({ name: "Look " + (game.state.looks.length + 1), art: look.art, kit: Object.assign({}, look.kit), nova: Object.assign({}, look.nova), dance: look.dance, glow: look.glow, knob: look.knob }); game.save(); toast("Look salvo em Meus looks.");
       if (screen() === "locker") renderLocker();
     });
     $$("#lkModeSeg button").forEach(function (b) { b.addEventListener("click", function () { lkMode = b.dataset.lkm; renderLocker(); }); });
@@ -1779,7 +1810,7 @@
         rig.pos.setAttribute("transform", "translate(" + ax.toFixed(2) + " " + ay.toFixed(2) + ") scale(" + s.toFixed(4) + ")");
         puppet.update({ alive: sc0 === "locker" ? Math.max(alive, .35) : alive, intensity: Math.max(sc0 === "locker" ? .45 : 0, [0, .8, 1.15][amtSel] * clamp(motion.energy / .6, 0, 1.25)) * Math.min(1.25, react), beats: beatClock, style: look.dance, playing: anyHeld || (T.playing && now - lastNoteAt < 700),
           pitch: motion.pitch, pad: motion.pad, hit: motion.hit && amp > 0, vel: motion.vel || .7, look: motion.look, amp: amp, glow: glow, glowAmt: glowAmt, bloom: bloom * react, wob: wob * react, wobRate: v("wRate") * 4,
-          reflect: !!sc.world, ghost: ghostAct * react * (.6 + v("gFeedback") * .6), ghostSpacing: Math.round(3 + v("trail") * 6) }, dt);
+          fx: acts.map(function (a, i) { return (i === 2 ? a : a * alive) * react; }), reflect: !!sc.world, ghost: ghostAct * react * (.6 + v("gFeedback") * .6), ghostSpacing: Math.round(3 + v("trail") * 6) }, dt);
         // centre of the body in stage units (for particles and auras)
         const cx = X0, cy = L0.y - 330 * s, sz = 700 * s;
         if (fx.bloom) { const bs = (.7 + bloom * .55 + (v("presence") - .5) * .2) * sz / 330; fx.bloom.setAttribute("transform", "translate(" + cx + " " + (cy + 10 * s) + ") scale(" + bs.toFixed(3) + ")"); bloomV += ((bloom * alive) - bloomV) * ease(bloom * alive > bloomV ? 6 : 1 / (.3 + v("bDecay") * 2.5)); fx.bloom.setAttribute("opacity", (bloomV * .9 * react).toFixed(2)); }

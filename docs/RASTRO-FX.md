@@ -12,9 +12,11 @@ MIDI, gravação, link de captura ou rack de efeitos.
 
 Fabricante: `GbCa`. Target CMake: `RastroFx`; nome do produto: `RASTRO FX`.
 VST3 em Linux/Windows; VST3 e AU (`aufx Rfx1 GbCa`) no macOS. Sem Standalone nesta etapa.
-Os workflows existentes também compilam os targets FX e executam sua suíte; os
-pacotes históricos PLAY/Capture e seus validadores continuam com o escopo anterior,
-sem incluir ou certificar o FX nesta etapa.
+Os workflows compilam e empacotam o FX junto com PLAY e Capture, e executam sua
+suíte. No macOS, FX AU/VST3 também entram nas verificações de arquitetura/assinatura,
+auval e pluginval. No Windows, FX VST3 entra na verificação PE AMD64. Esses passos
+precisam concluir com sucesso no runner nativo; a revisão local Linux dos workflows
+não comprova a execução das ferramentas macOS/Windows.
 O FX tem seu próprio estado `RASTRO_FX_STATE`; não importa estados do PLAY ou Capture.
 
 ## Áudio e controles
@@ -86,3 +88,11 @@ janelas além do Xvfb. A reexecução aprovada usou `dbus-run-session`, iniciou
 `xfwm4 --compositor=off`, aguardou `_NET_SUPPORTING_WM_CHECK` via `xprop` e executou
 `ctest --test-dir build -R '^processor$' --output-on-failure`. O teste FX não
 precisa abrir uma janela.
+
+A revisão do empacotamento foi checada no Linux com actionlint, sintaxe Bash e
+parser PowerShell. O script Windows foi executado em PowerShell com fixtures PE:
+ZIP com os quatro binários, checksum e BUILD-INFO conferidos; FX ausente, FX não
+AMD64 e binário excedente foram rejeitados. O script Mac foi exercitado com
+utilitários nativos simulados: sete bundles e logs FX presentes no ZIP/relatório,
+checksum correto e falha sem o FX. Isso valida a lógica de empacotamento, sem
+substituir os builds e validadores dos runners macOS/Windows.

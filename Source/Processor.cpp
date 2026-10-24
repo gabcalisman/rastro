@@ -150,6 +150,7 @@ juce::AudioProcessorValueTreeState::ParameterLayout RastroProcessor::layout()
     add("lfoFade", 0, 5, 0);         // seconds for the LFO to fade in after each note
     add("lfoAmp", 0, 1, 0);          // LFO → volume
     add("lfoPan", 0, 1, 0);          // LFO → pan
+    add("sampleGain", -24, 24, 0);   // clip gain of the sample, dB (0 = unchanged; old sessions 0)
     return l;
 }
 RastroProcessor::RastroProcessor(bool directCaptureForTests)
@@ -266,6 +267,7 @@ rastro::Settings RastroProcessor::settings() const
     p.lfoFade = value("lfoFade");
     p.lfoAmp = value("lfoAmp");
     p.lfoPan = value("lfoPan");
+    p.sampleGainDb = value("sampleGain");
     auto permutation = rastro::decodeOrder((int)value("rackOrder"));
     for (int i = 0; i < rastro::moduleCount; ++i)
     {
@@ -342,6 +344,12 @@ void RastroProcessor::processBlock(juce::AudioBuffer<float> &b, juce::MidiBuffer
     }
     keyRead.store(rd, std::memory_order_release);
     if (queueOverflow || overflow.exchange(false))
+    {
+        engine.allOff();
+        clearNotes();
+    }
+    // STOP / PAUSE in the interface: every voice releases quickly, even One Shot + LOOP and ping-pong
+    if (panicRequest.exchange(0))
     {
         engine.allOff();
         clearNotes();

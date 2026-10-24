@@ -38,7 +38,7 @@ class Engine
     std::array<bool, 16> pedals{};
     std::array<float, 16> bendRaw{}, bendTarget{}, bend{}, wheel{};
     float lfoPhase = 0, lfo = 0, lfoSpeed = 1, stealTail[2]{};
-    float lfoPrevPhase = 0, lfoHeld = 0, lfoSmooth = 0;
+    float lfoPrevPhase = 0, lfoHeld = 0, lfoSmooth = 0, sampleGain = 1, sampleGainTarget = 1, sampleGainDb = 0;
     uint32_t lfoSeed = 0x9E3779B9u;
     bool gated(const Voice &v, const Settings &p) const
     {
@@ -373,6 +373,12 @@ class Engine
             if (lfoPhase < 0)
                 lfoPhase += 1;
         }
+        if (p.sampleGainDb != sampleGainDb)
+        {
+            sampleGainDb = p.sampleGainDb;
+            sampleGainTarget = std::pow(10.f, std::clamp(sampleGainDb, -24.f, 24.f) / 20.f);
+        }
+        sampleGain += (sampleGainTarget - sampleGain) * smoothing * 4;
         if (p.lfoShape == 0)
             lfo = std::sin(lfoPhase * 6.28318530718f);
         else
@@ -539,6 +545,7 @@ class Engine
                                 z += (next - z) * std::clamp(blend, 0.f, 1.f);
                             }
                         }
+                        z *= sampleGain;
                         v.filter[c] += cutoff * (z - v.filter[c]);
                         float filtered = v.filter[c];
                         if (v.synth)

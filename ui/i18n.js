@@ -95,7 +95,9 @@
     "Travado: o VARIAR FX não mexe neste módulo": "Locked: VARY FX leaves this module alone", "Abrir a biblioteca de sons e patches": "Open the sound and patch library", "CAPTURA: gravar e tocar no teclado": "CAPTURE: record and play on the keyboard",
     "TUNE (raiz)": "TUNE (root)", "Ouvir A (patch anterior)": "Listen to A (previous patch)", "Ouvir B (sugestão escolhida)": "Listen to B (chosen suggestion)", "Alterna A e B para comparar": "Switch A and B to compare",
     "Mais fiel: próximo ao original": "Closer: near the original", "Mais transformado": "More transformed", "Sorteia valores novos nos efeitos ligados (desfazer em MACROS)": "New values on the effects that are on (undo in MACROS)",
-    "Favoritar": "Favourite", "Trocar o cenário do palco (só visual)": "Change the stage (visual only)", "Sorteia dança e cenário (o que existe para a arte original)": "Rolls a random visual from the unlocked items",
+    "Favoritar": "Favourite", "GANHO": "GAIN", "Carregue um sample primeiro.": "Load a sample first.", "O sample está em silêncio.": "The sample is silent.",
+    "NORMALIZAR: ajusta o GANHO para o pico do sample ficar em −1 dB": "NORMALIZE: sets the GAIN so the sample peaks at −1 dB",
+    "GANHO do sample (clip gain)": "Sample GAIN (clip gain)", "GANHO do sample (clip gain): sobe ou desce o volume do áudio antes do filtro e dos efeitos. Duplo clique volta a 0 dB.": "Sample GAIN (clip gain): raises or lowers the audio level before the filter and effects. Double-click resets to 0 dB.", "Trocar o cenário do palco (só visual)": "Change the stage (visual only)", "Sorteia dança e cenário (o que existe para a arte original)": "Rolls a random visual from the unlocked items",
     "Segue o pulso do Logic (ou o TEMPO do plugin com o Logic parado)": "Follows the Logic pulse (or the plugin TEMPO with Logic stopped)", "BPM próprio": "Own BPM",
     // toasts
     "Look sorteado entre os itens liberados.": "Random visual from the unlocked items.", "Visual sorteado entre os itens liberados.": "Random visual from the unlocked items.",

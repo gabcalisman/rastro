@@ -554,6 +554,13 @@ int main()
             auto depth = [&](int from, int to) { float lo = 9, hi = 0; for (int i = from; i < to; i += 64) { float m = 0; for (int k = 0; k < 64; ++k) m = std::max(m, std::abs(e.l[size_t(i + k)])); lo = std::min(lo, m); hi = std::max(hi, m); } return hi > 0 ? lo / hi : 1; };
             check(depth(2400, 9600) > depth(86000, 95000) + .3f, "LFO fade-in");
         }
+        // 6. sample gain (clip gain): +6 dB doubles the level, 0 dB is exactly the same sound
+        {
+            auto g0 = base, g6 = base; g6.sampleGainDb = 6.0206f;
+            const float a = render(tone200, g0, 60, 48000, 24000).rms, b = render(tone200, g6, 60, 48000, 24000).rms;
+            std::cerr << "sample gain: 0 dB " << a << " +6 dB " << b << std::endl;
+            check(std::abs(b / a - 2) < .06f, "sample gain +6 dB doubles the level (output stage is gently non-linear)");
+        }
         std::cerr << "ok    etapa 1 (HQ, filter modes, slope, drive, filter ADSR, LFO shapes/fade/vol/pan)" << std::endl;
     }
     std::cout << "PASS: sample playback, release, all effects, extreme trims, polyphony, 4 sample "

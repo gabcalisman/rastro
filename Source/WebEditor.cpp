@@ -112,6 +112,14 @@ RastroWebEditor::RastroWebEditor(RastroProcessor &processor)
                                         p.keyboard.noteOff(1, note, 0);
                                     done(true);
                                 })
+            .withNativeFunction("allSoundOff",
+                                [this](const Args &, Completion done)
+                                {
+                                    p.keyboard.allNotesOff(1);
+                                    p.previewRequest = -1;
+                                    p.panicRequest = 1;
+                                    done(true);
+                                })
             .withNativeFunction("allNotesOff",
                                 [this](const Args &, Completion done)
                                 {

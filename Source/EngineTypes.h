@@ -168,6 +168,7 @@ struct Settings
     float fAttack = .005f, fDecay = .4f, fSustain = .3f, fRelease = .4f;
     int lfoShape = 0;          // 0 sine (legacy), 1 triangle, 2 square, 3 saw, 4 sample & hold
     float lfoFade = 0, lfoAmp = 0, lfoPan = 0;
+    float sampleGainDb = 0;    // clip gain applied to the sample before the filter
     int mode = 0, sliceCount = 8, pitchMode = 0; // 0 REPITCH, 1 FIXED PITCH
     std::array<float, 17> cuts{
         {0, .125f, .25f, .375f, .5f, .625f, .75f, .875f, 1, 1, 1, 1, 1, 1, 1, 1, 1}};

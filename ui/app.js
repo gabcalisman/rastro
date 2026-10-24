@@ -411,6 +411,17 @@
     knob($("#labKnobs"), "velocity", "VEL→FILT", { size: 60, color: "#2fe0ff", title: "Quanto a força da nota abre o filtro" });
     $("#libToggle").addEventListener("click", function () { document.body.classList.toggle("lib-open"); if (document.body.classList.contains("lib-open")) renderLabLib(); });
     $("#libClose").addEventListener("click", function () { document.body.classList.remove("lib-open"); });
+    // GANHO (clip gain) + NORMALIZAR: level of the sample itself, before filter and effects
+    const fmtGain = function (x) { return (x > 0 ? "+" : "") + x.toFixed(1) + " dB"; };
+    knob($("#playSampleKnobs"), "sampleGain", "GANHO", { size: 60, format: fmtGain, color: "#ffd23f", title: "GANHO do sample (clip gain): sobe ou desce o volume do áudio antes do filtro e dos efeitos. Duplo clique volta a 0 dB." });
+    knob($("#xfadeKnob"), "sampleGain", "GANHO", { size: 50, format: fmtGain, color: "#ffd23f", title: "GANHO do sample (clip gain)" });
+    $("#normBtn").addEventListener("click", function () {
+      if (!peaks || !peaks.l) { toast("Carregue um sample primeiro."); return; }
+      let pk = 0; [peaks.l, peaks.r || peaks.l].forEach(function (ch) { for (let i = 0; i < ch.length; i++) pk = Math.max(pk, Math.abs(ch[i])); });
+      if (pk < 1e-5) { toast("O sample está em silêncio."); return; }
+      const db = clamp(20 * Math.log10(.891 / pk), -24, 24); // peak at −1 dB
+      gesture("sampleGain", Math.round(db * 10) / 10); toast("Normalizado: ganho " + fmtGain(db) + " (pico em −1 dB).");
+    });
     knob($("#playSampleKnobs"), "root", "TUNE", { size: 96, format: fmt.note, color: "#ff8a3d", title: "TUNE (raiz): nota em que o sample toca na altura original" });
     knob($("#playSampleKnobs"), "velocity", "VEL→FILT", { size: 72, color: "#2fe0ff", title: "Quanto a força da nota abre o filtro" });
     const xf2 = knob($("#xfadeKnob"), "loopCrossfade", "XFADE", { size: 50, format: fmt.xms, color: "#b06bff", title: "Crossfade na emenda do LOOP" });
@@ -1790,10 +1801,10 @@
   $("#tPause").addEventListener("click", function () {
     if (paused) { $("#tPlay").click(); return; }
     if (T.preview) { cue = T.pos; R.call("preview", false); markerInfo(); waveDirty = true; }
-    R.call("allNotesOff"); setPaused(true);
+    R.call("allSoundOff"); setPaused(true); // every voice stops, even One Shot + LOOP
   });
   $("#tStop").addEventListener("click", function () {
-    R.call("preview", false); R.call("allNotesOff");
+    R.call("preview", false); R.call("allSoundOff");
     if (T.capture && T.capture.state === 1) R.call("captureStop");
     cue = -1; markerInfo(); waveDirty = true; setPaused(false);
     motion.alive = 0; motion.lastSound = -1e9; motion.energy = 0;

@@ -71,7 +71,7 @@
   add("avatarCharacter", 0, 15, 6, 1); add("sceneRoom", 0, 7, 5, 1); add("rackParallel", 0, 1, 0, 1); add("bDiffusion", 0, 1, .6, 0); add("wWidth", 0, 1, .5, 0);
   add("hq", 0, 1, 1, 1); add("filterMode", 0, 3, 0, 1); add("filterSlope", 0, 1, 0, 1); add("filterDrive", 0, 1, 0, 0); add("fenvOwn", 0, 1, 1, 1);
   add("fAttack", .001, 4, .005, 0); add("fDecay", .001, 4, .4, 0); add("fSustain", 0, 1, .3, 0); add("fRelease", .001, 8, .4, 0);
-  add("lfoShape", 0, 4, 0, 1); add("lfoFade", 0, 5, 0, 0); add("lfoAmp", 0, 1, 0, 0); add("lfoPan", 0, 1, 0, 0);
+  add("lfoShape", 0, 4, 0, 1); add("lfoFade", 0, 5, 0, 0); add("lfoAmp", 0, 1, 0, 0); add("lfoPan", 0, 1, 0, 0); add("sampleGain", -24, 24, 0, 0);
   ["knobDesign", "danceStyle", "danceAmount"].forEach(function (id, i) { add(id, 0, [4, 2, 2][i], [0, 0, 1][i], 1); });
   ["gJamLock", "cJamLock", "bJamLock", "wJamLock", "dJamLock", "kJamLock"].forEach(function (id) { add(id, 0, 1, 0, 1); });
   ["envTarget", "lfoTiming", "lfoDivision", "bendRange"].forEach(function (id, i) { add(id, 0, [1, 2, 3, 12][i], [0, 1, 0, 2][i], i === 3 ? 0 : 1); });
@@ -121,6 +121,7 @@
     ready: function () { return { params: Object.values(P).map(function (p) { return Object.assign({}, p); }), language: 0, sample: sample, canUndoJam: false, host: "Prévia no navegador", version: "preview" }; },
     setParam: function (id, v) { if (v !== undefined && v !== null) setv(id, v); return true; },
     note: function (n, v, isOn) { note(n, v, isOn); return true; },
+    allSoundOff: function () { held = [0, 0, 0, 0]; voices.length = 0; previewing = false; return true; },
     allNotesOff: function () { held = [0, 0, 0, 0]; voices.length = 0; return true; },
     importDialog: function () { return { ok: false, message: "Prévia no navegador: a importação funciona no plugin." }; },
     importData: function (name) { sample.name = name; fire("sample", sample); return { ok: true, message: "" }; },

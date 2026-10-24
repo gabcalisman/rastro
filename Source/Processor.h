@@ -28,6 +28,7 @@ class RastroProcessor : public juce::AudioProcessor, private juce::MidiKeyboardS
     void setPlaybackMode(int);
     void equalSlices(int);
     std::atomic<int> previewRequest{0};
+    std::atomic<int> panicRequest{0};
     // Optional start point (0..1 of the sample) for the next preview; -1 starts at the trim.
     std::atomic<float> previewFrom{-1.f};
     // Visual-only "look" of the web interface (character outfit, dance, palette) as JSON text.

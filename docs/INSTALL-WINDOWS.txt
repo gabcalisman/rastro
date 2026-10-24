@@ -15,3 +15,8 @@ RASTRO PLAY - Windows x64 test build
 Unsigned prototype, no installer or release. If security software blocks it, review the origin and
 BUILD-INFO; do not disable system protection. macOS AU cannot be used on Windows.
 CI builds/tests do not prove playback, MIDI hardware, a real sound device or DAW compatibility.
+
+RASTRO FX is also included as VST3/RASTRO FX.vst3, an independent audio insert.
+Copy the WHOLE bundle alongside the other VST3s, then rescan the DAW.
+See RASTRO-FX.md for the 15-module rack, modulation, A/B and .rastrofx presets.
+Previews/FX contains offscreen editor renders from the native tests, not DAW captures.

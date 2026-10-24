@@ -1,6 +1,8 @@
 name: Windows build
 
 on:
+  push:
+    branches: [codex/rastro-fx-foundation]
   workflow_dispatch:
 
 permissions:
@@ -19,18 +21,19 @@ jobs:
       BUILD_DIR: build-windows-ci
       PACKAGE_NAME: RASTRO-Windows-x64
       SOURCE_COMMIT: ${{ github.event.pull_request.head.sha || github.sha }}
+      SOURCE_BRANCH: ${{ github.head_ref || github.ref_name }}
     steps:
       - uses: actions/checkout@v4
       - name: Configure Release x64 with static runtime
         run: cmake -S . -B "$env:BUILD_DIR" -G "Visual Studio 17 2022" -A x64 -DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded
-      - name: Build all Windows formats and portable tests
+      - name: Build PLAY, Capture, FX and tests
         run: >-
           cmake --build "$env:BUILD_DIR" --config Release
-          --target Rastro_VST3 Rastro_Standalone RastroCapture_VST3
+          --target Rastro_VST3 Rastro_Standalone RastroCapture_VST3 RastroFx_VST3
           rastro_tests rastro_character_tests rastro_playback_tests rastro_mp3_tests
-          rastro_synth_tests rastro_capture_tests rastro_timing_tests rastro_patch_tests
+          rastro_synth_tests rastro_capture_tests rastro_timing_tests rastro_patch_tests rastro_fx_tests
           --parallel 3
-      - name: Run native portable tests
+      - name: Run portable and FX processor tests
         run: ctest --test-dir "$env:BUILD_DIR" -C Release --output-on-failure
       - name: Verify x64 binaries and package
         shell: pwsh
@@ -40,9 +43,10 @@ jobs:
           New-Item -ItemType Directory -Force "$package/VST3", "$package/Standalone", dist | Out-Null
           Copy-Item -Recurse "$env:BUILD_DIR/Rastro_artefacts/Release/VST3/RASTRO.vst3" "$package/VST3/"
           Copy-Item -Recurse "$env:BUILD_DIR/RastroCapture_artefacts/Release/VST3/RASTRO Capture.vst3" "$package/VST3/"
+          Copy-Item -Recurse "$env:BUILD_DIR/RastroFx_artefacts/Release/VST3/RASTRO FX.vst3" "$package/VST3/"
           Copy-Item "$env:BUILD_DIR/Rastro_artefacts/Release/Standalone/RASTRO.exe" "$package/Standalone/"
           $binaries = Get-ChildItem $package -Recurse -File | Where-Object { $_.Extension -in '.exe', '.vst3' }
-          if ($binaries.Count -ne 3) { throw "Expected three PE executables" }
+          if ($binaries.Count -ne 4) { throw "Expected four PE executables (PLAY, Capture and FX VST3 + PLAY Standalone)" }
           foreach ($binary in $binaries) {
             $stream = [IO.File]::OpenRead($binary.FullName)
             $reader = [IO.BinaryReader]::new($stream)
@@ -57,21 +61,26 @@ jobs:
           }
           Copy-Item -Recurse docs/previews "$package/Previews"
           Copy-Item README.md "$package/README.md"
+          Copy-Item docs/RASTRO-FX.md "$package/RASTRO-FX.md"
+          New-Item -ItemType Directory -Force "$package/Previews/FX" | Out-Null
+          Copy-Item "$env:BUILD_DIR/fx-editor-*.png" "$package/Previews/FX/"
           Copy-Item docs/INSTALL-WINDOWS.txt "$package/INSTALL-WINDOWS.txt"
           @"
-          RASTRO PLAY by Gab Calisman
+          RASTRO PLAY, Capture and FX by Gab Calisman
           Source commit: $env:SOURCE_COMMIT
+          Source branch: $env:SOURCE_BRANCH
           Tested checkout: $(git rev-parse HEAD)
           Runner and binary architecture: Windows x64 (PE AMD64 verified).
-          AU is macOS only. VST3 + Standalone + Capture VST3 built.
-          Eight portable suites passed natively on the runner; no DAW, hardware or GUI test.
+          Built and packaged: PLAY VST3/Standalone + Capture VST3 + FX VST3 (four PE executables, all verified AMD64). AU is macOS only.
+          Eight portable suites and the FX processor suite passed natively on the runner (nine suites). FX DSP/state and offscreen editor renders were tested. No pluginval, DAW, hardware or native-window GUI test was performed.
+          Previews/FX contains actual offscreen FX editor renders from this test run, not DAW screenshots.
           Static MSVC runtime. Unsigned test build; not a release.
           M4A decoding is not implemented on Windows. WAV/AIFF/MP3 are available offline.
           "@ | Set-Content -Encoding utf8 "$package/BUILD-INFO.txt"
           Compress-Archive -Path $package -DestinationPath "dist/$env:PACKAGE_NAME.zip"
           $hash = (Get-FileHash "dist/$env:PACKAGE_NAME.zip" -Algorithm SHA256).Hash.ToLower()
           "$hash  $env:PACKAGE_NAME.zip" | Set-Content -Encoding ascii "dist/$env:PACKAGE_NAME.zip.sha256"
-          "### Download RASTRO Windows x64`nArtifact: **$env:PACKAGE_NAME**. VST3, Standalone and recorder-only Capture VST3. Eight native portable suites passed; no DAW/hardware test. M4A unavailable on Windows." >> $env:GITHUB_STEP_SUMMARY
+          "### Download RASTRO Windows x64`nArtifact: **$env:PACKAGE_NAME**. Built and packaged PLAY VST3/Standalone + Capture VST3 + FX VST3; all four PE executables verified AMD64. Nine native suites passed (eight portable + FX processor). FX DSP/state and offscreen editor renders were tested. No pluginval, DAW, hardware or native-window GUI test was performed. M4A unavailable on Windows." >> $env:GITHUB_STEP_SUMMARY
       - name: Upload downloadable Windows ZIP
         uses: actions/upload-artifact@v4
         with:

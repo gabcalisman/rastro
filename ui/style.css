@@ -1226,3 +1226,25 @@ body[data-screen="locker"] #itemGrid.kit { grid-template-columns: repeat(4, 1fr)
 body[data-screen="locker"] #itemGrid.kit .it { height: 168px; }
 body[data-screen="locker"] #itemGrid.kit .it .thumb img { width: 100%; height: 100%; object-fit: contain; }
 .cur-b img { object-fit: contain; }
+
+
+/* 24 Oct — spacing and control-size pass from Gab's review.
+   Keep the 1440×900 canvas, widen the sample editor, and give controls breathing room. */
+body[data-screen="limpo"][data-etab="sample"] #samplePanel { width: 520px; }
+body[data-screen="limpo"][data-etab="sample"] #stage { left: 544px; width: 530px; }
+body[data-screen="limpo"][data-etab="sample"] #samplePanel .wave-slot { height: 226px; }
+body[data-screen="limpo"][data-etab="fx"] #stage { left: 452px; width: 566px; }
+body[data-screen="limpo"][data-etab="fx"] #fxPanel { left: 1026px; width: 400px; }
+body[data-screen="limpo"] #keys,
+body[data-screen="locker"] #keys,
+body[data-screen="lab"] #keys { top: 838px; height: 54px; }
+body[data-screen="limpo"] #fxPanel .fx-body .knob { width: 66px; min-width: 66px; }
+body[data-screen="limpo"] #fxPanel .fx-body .knob .k-value { min-width: 60px; padding-left: 4px; padding-right: 4px; }
+body[data-screen="limpo"] #fxPanel .fx-body .knob .k-label { font-size: 11px; letter-spacing: .2px; }
+body[data-screen="limpo"] #rackPanel .rack.rows .mod { height: 72px; }
+body[data-screen="limpo"] #rackPanel .mod-amt .knob { min-width: 58px; }
+body[data-screen="limpo"] #rackPanel .mod-amt .knob .k-label { font-size: 10px; }
+body[data-screen="limpo"] #samplePanel .wave-tools,
+body[data-screen="limpo"] #samplePanel .sp-row,
+body[data-screen="limpo"] #fxPanel .fx-tools { min-width: 0; }
+body[data-screen="limpo"] #samplePanel .sample-name { min-width: 0; }

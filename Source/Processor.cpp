@@ -860,12 +860,22 @@ juce::AudioProcessor *JUCE_CALLTYPE createPluginFilter() { return new RastroProc
 
 void RastroProcessor::beginCapture(std::function<void(bool)> complete)
 {
-    if (!directInput || !capture.start())
+    // A previous take can be left in ready/exporting if its job never ran (for example the app was
+    // busy or a take was abandoned). With no capture job alive, bring the recorder back to idle so
+    // GRAVAR always starts. Never touches a take that is being recorded.
+    if (directInput && !captureJobActive.load())
+    {
+        const int st = capture.state.load();
+        if (st == rastro::CaptureRecorder::ready || st == rastro::CaptureRecorder::exporting)
+            capture.release();
+    }
+    if (!directInput || captureJobActive.load() || !capture.start())
     {
         if (complete)
             complete(false);
         return;
     }
+    captureJobActive = true;
     loader.addJob(
         [this, complete = std::move(complete)]
         {
@@ -887,6 +897,7 @@ void RastroProcessor::beginCapture(std::function<void(bool)> complete)
                                       : result;
                 capture.release();
             }
+            captureJobActive = false;
             juce::MessageManager::callAsync(
                 [complete, ok]
                 {

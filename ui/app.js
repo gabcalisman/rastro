@@ -1001,7 +1001,12 @@
   }
   function closeCapture(fromScreen) { $("#captureSheet").hidden = true; capOpen = false; clearInterval(capTimer); if (!fromScreen && screen() === "captura") setScreen("limpo"); }
   $("#capSettings").addEventListener("click", function () { R.call("captureSettings"); });
-  $("#capRec").addEventListener("click", function () { R.call("captureRecord").then(function (ok) { if (ok) { patchName = "Captura"; current = null; updatePill(); toast("Gravação carregada como sample. Toque no teclado!"); game.award(15, "capture"); game.event("capture"); closeCapture(); } }); });
+  $("#capRec").addEventListener("click", function () {
+    if (T.capture && T.capture.state === 1) { R.call("captureStop"); return; } // second click = stop
+    $("#capRec").textContent = "● INICIANDO…";
+    // if the recorder did not start within a moment, say why instead of doing nothing
+    setTimeout(function () { const c = T.capture || {}; if (c.state !== 1 && c.state !== 2 && capOpen) { $("#capRec").textContent = "● GRAVAR"; toast(c.outcome === 6 ? "O gravador ainda não está pronto: confira a entrada em ESCOLHER ENTRADA… e tente de novo." : "A gravação não começou. Feche e abra a CAPTURA e tente de novo; se continuar, me conte o que aparece."); } }, 1200);
+    R.call("captureRecord").then(function (ok) { if (ok) { patchName = "Captura"; current = null; updatePill(); toast("Gravação carregada como sample. Toque no teclado!"); game.award(15, "capture"); game.event("capture"); closeCapture(); } }); });
   $("#capStop").addEventListener("click", function () { R.call("captureStop"); });
   $("#capMon").addEventListener("click", function () { const on = !$("#capMon").classList.contains("on"); R.call("captureMonitor", on); $("#capMon").classList.toggle("on", on); if (on) toast("Monitor ligado (−20 dB). Use fones."); });
   function pollCapture() {
@@ -1037,7 +1042,7 @@
     capQuiet = (c.peak || 0) > .0005 ? 0 : capQuiet + 1;
     $("#capMeter").style.width = Math.min(100, (c.peak || 0) * 100) + "%";
     $("#capTime").textContent = (c.seconds || 0).toFixed(1).replace(".", ",") + " s";
-    const rec = c.state === 1; $("#capRec").classList.toggle("live", rec); $("#capRec").textContent = rec ? "● GRAVANDO" : "● GRAVAR";
+    const rec = c.state === 1 || c.state === 2; $("#capRec").classList.toggle("live", rec); if (rec || $("#capRec").textContent !== "● INICIANDO…") $("#capRec").textContent = rec ? "■ PARAR GRAVAÇÃO" : "● GRAVAR";
     let msg = rec ? "Gravando… clique em PARAR para usar a tomada (máx. 30 s). Ela substitui o sample atual." : c.outcome === 2 ? "Gravação vazia: nenhum áudio chegou." : c.outcome === 3 ? "Chegou áudio, mas em silêncio: confira entrada e ganho." : "";
     if (capInfo.standalone && capInfo.inputAvailable === false) msg = "Nenhuma entrada de áudio ligada. Clique em ESCOLHER ENTRADA… e, em Input, ative o microfone ou a interface.";
     else if (capInfo.standalone && capQuiet > 180 && !rec) msg = "A entrada está ligada, mas não chega sinal. Fale ou toque algo; se o medidor não mexer, abra Ajustes do Sistema → Privacidade e Segurança → Microfone e libere o RASTRO (depois feche e abra o app).";

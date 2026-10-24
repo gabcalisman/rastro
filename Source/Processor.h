@@ -132,6 +132,7 @@ class RastroProcessor : public juce::AudioProcessor, private juce::MidiKeyboardS
     bool restoreState(const void *, int);
     std::atomic<bool> bridgePollPending{false};
     bool directInput = false;
+    std::atomic<bool> captureJobActive{false};
     std::atomic<bool> shuttingDown{false};
     float monitorGain = 0;
     static juce::AudioProcessorValueTreeState::ParameterLayout layout();

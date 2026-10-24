@@ -1216,3 +1216,8 @@ body[data-screen="locker"] #itemGrid.hairs .it small { margin-bottom: 4px; }
 body[data-screen="locker"] #itemGrid.hairs .it.locked .thumb img { filter: none; opacity: .9; }
 body[data-screen="locker"] #itemGrid .it .lock { position: absolute; left: 6px; top: 6px; width: 24px; height: 24px; padding: 3px; border-radius: 6px; background: rgba(20, 11, 28, .7); color: #e9dcf2; }
 .cur-b img[src^="hth_"] { width: 100%; height: 100%; object-fit: cover; border-radius: 5px; }
+/* hair thumbnails: show the whole picture (face never cropped) */
+body[data-screen="locker"] #itemGrid.hairs .it { height: auto; }
+body[data-screen="locker"] #itemGrid.hairs .it .thumb { flex: none; aspect-ratio: 150 / 132; height: auto; }
+body[data-screen="locker"] #itemGrid.hairs .it .thumb img { object-fit: contain; height: 100%; }
+.cur-b img[src^="hth_"] { object-fit: contain; }

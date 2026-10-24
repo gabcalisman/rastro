@@ -82,6 +82,8 @@
   }
   function setEtab(t) {
     document.body.dataset.etab = t;
+    const slot = $(t === "instrument" ? "#waveSlotSound" : "#waveSlotPlay"), wm = $("#waveMove");
+    if (wm.parentNode !== slot) slot.appendChild(wm);
     syncMainTabs();
     if (t === "fx") renderFxDetail();
     setTimeout(function () { sizeCanvas(); }, 0);
@@ -381,7 +383,7 @@
   });
   function onSample(info) {
     sample = info || sample;
-    $("#sampleName").textContent = sample.loaded ? sample.name : "Arraste um áudio aqui";
+    $("#sampleName").textContent = sample.loaded ? sample.name : "Arraste um áudio aqui"; $("#sampleName2").textContent = $("#sampleName").textContent;
     waveBox.classList.toggle("loaded", !!sample.loaded);
     peaks = null; cols = null; view = [0, 1]; cue = -1; waveDirty = true; markerInfo(); updatePill();
     if (sample.loaded) R.call("waveform", 4096).then(function (w) { peaks = w && w.l ? w : null; cols = null; waveDirty = true; });
@@ -395,6 +397,13 @@
     const xf = knob(k, "loopCrossfade", "XFADE", { format: fmt.xms, color: "#b06bff", title: "Crossfade na emenda do LOOP" });
     knob(k, "level", "VOLUME", { format: fmt.db, color: "#ffb340", title: "Volume de saída" });
     watch("regionLoop", function (x) { xf.classList.toggle("disabled", x < .5); });
+    // PLAY sample panel (big) and SOUND sample strip: same parameters, bigger knobs (Gab's reference sizes)
+    knob($("#playSampleKnobs"), "root", "TUNE", { size: 96, format: fmt.note, color: "#ff8a3d", title: "TUNE (raiz): nota em que o sample toca na altura original" });
+    knob($("#playSampleKnobs"), "velocity", "VEL→FILT", { size: 72, color: "#2fe0ff", title: "Quanto a força da nota abre o filtro" });
+    const xf2 = knob($("#xfadeKnob"), "loopCrossfade", "XFADE", { size: 50, format: fmt.xms, color: "#b06bff", title: "Crossfade na emenda do LOOP" });
+    watch("regionLoop", function (x) { xf2.classList.toggle("disabled", x < .5); });
+    $("#gateBtn").addEventListener("click", function () { gesture("triggerMode", Math.round(v("triggerMode")) === 2 ? 0 : 2); });
+    watch("triggerMode", function (x) { $("#gateBtn").classList.toggle("on", Math.round(x) === 2); });
     const refreshMode = seg("#modeSeg", "mode", mode, function (m) { R.call("playbackMode", m); P.playMode.v = m; P.loop.v = m === 1 ? 1 : 0; refreshMode(); slicesUi(); waveDirty = true; updatePill(); tweaked("playMode"); });
     watch("playMode", function () { refreshMode(); slicesUi(); waveDirty = true; }); watch("loop", refreshMode);
     bindToggle($("#loopBtn"), "regionLoop", function () { waveDirty = true; markerInfo(); });
@@ -418,16 +427,23 @@
       '<path d="M4 ' + y0 + ' L' + p1 + ' L' + p2 + ' L' + p3 + ' L' + p4 + ' Z" fill="' + (live ? "url(#envG)" : "rgba(255,255,255,.05)") + '"/>' +
       '<path d="M4 ' + y0 + ' L' + p1 + ' L' + p2 + ' L' + p3 + ' L' + p4 + '" fill="none" stroke="' + col + '" stroke-width="2.4" stroke-linejoin="round" vector-effect="non-scaling-stroke" style=""/>' +
       [["A", p1], ["D", p2], ["S", p3], ["R", p4]].map(function (q) { return '<circle data-h="' + q[0] + '" cx="' + q[1][0] + '" cy="' + q[1][1] + '" r="4" fill="' + col + '" stroke="#1a0b24" stroke-width="1.5" vector-effect="non-scaling-stroke"/>'; }).join("");
+    // FILTER ENVELOPE: the filter follows the amp envelope shape, scaled by AMOUNT (negative closes the filter)
+    const amt = v("envAmount"), fbase = amt >= 0 ? y0 : top, fy = function (y) { const n = (y0 - y) / (y0 - top); return fbase - (y0 - top) * n * amt; };
+    const fl = v("synthEnable") > .5 && Math.abs(amt) > .005, fcol = fl ? "#2fe0ff" : "rgba(47,224,255,.5)";
+    const fp = [[4, fy(y0)], [p1[0], fy(top)], [p2[0], fy(sy)], [p3[0], fy(sy)], [p4[0], fy(y0)], [EW - 4, fy(y0)]];
+    $("#fenvSvg").innerHTML = '<path d="M' + fp.map(function (q) { return q[0].toFixed(1) + " " + q[1].toFixed(1); }).join(" L") + '" fill="none" stroke="' + fcol + '" stroke-width="2.4" stroke-linejoin="round" vector-effect="non-scaling-stroke"/>' +
+      fp.slice(1, 5).map(function (q) { return '<circle cx="' + q[0] + '" cy="' + q[1] + '" r="4" fill="' + fcol + '" stroke="#1a0b24" stroke-width="1.5" vector-effect="non-scaling-stroke"/>'; }).join("") +
+      '<line x1="0" x2="' + EW + '" y1="' + fy(y0) + '" y2="' + fy(y0) + '" stroke="rgba(255,255,255,.12)" stroke-dasharray="3 4" vector-effect="non-scaling-stroke"/>';
     $("#envNote").textContent = live ? "" : "Para o ADSR moldar o som, clique em LIGAR SYNTH (ou use o disparo GATE em MIDI / VOZ).";
     $$("#envKnobs .knob").forEach(function (kk) { kk.classList.toggle("disabled", !live); });
   }
   function setupEnv() {
     const k = $("#envKnobs");
-    knob(k, "ampAttack", "A", { format: fmt.ms, curve: "log", size: 40, color: "#ffb340" });
-    knob(k, "ampDecay", "D", { format: fmt.ms, curve: "log", size: 40, color: "#ff4fd8" });
-    knob(k, "ampSustain", "S", { size: 40, color: "#b06bff", format: function (x) { return x <= .001 ? "−∞" : (20 * Math.log10(x)).toFixed(1) + " dB"; } });
-    knob(k, "ampRelease", "R", { format: fmt.ms, curve: "log", size: 40, color: "#2fe0ff" });
-    ["ampAttack", "ampDecay", "ampSustain", "ampRelease", "synthEnable", "triggerMode"].forEach(function (id) { watch(id, drawEnv); });
+    knob(k, "ampAttack", "ATTACK", { format: fmt.ms, curve: "log", size: 66, color: "#ff8a3d" });
+    knob(k, "ampDecay", "DECAY", { format: fmt.ms, curve: "log", size: 66, color: "#2fe0ff" });
+    knob(k, "ampSustain", "SUSTAIN", { size: 66, color: "#ff4fd8", format: function (x) { return x <= .001 ? "−∞" : (20 * Math.log10(x)).toFixed(1) + " dB"; } });
+    knob(k, "ampRelease", "RELEASE", { format: fmt.ms, curve: "log", size: 66, color: "#b06bff" });
+    ["ampAttack", "ampDecay", "ampSustain", "ampRelease", "synthEnable", "triggerMode", "envAmount", "envTarget"].forEach(function (id) { watch(id, drawEnv); });
     bindToggle($("#synthBtn"), "synthEnable");
     watch("synthEnable", function (x) { $("#synthLbl").textContent = x > .5 ? "SYNTH LIGADO" : "LIGAR SYNTH"; });
     let h = null; const ids = function () { return h === "A" ? ["ampAttack"] : h === "D" || h === "S" ? ["ampDecay", "ampSustain"] : ["ampRelease"]; };
@@ -454,28 +470,39 @@
   }
   function setupSynth() {
     const f = $("#filterKnobs");
-    knob(f, "filterCutoff", "CUTOFF", { format: fmt.hz, curve: "log", color: "#b06bff", size: 40 });
-    knob(f, "filterResonance", "RES", { color: "#b06bff", size: 40, format: function (x) { return x.toFixed(2); } });
-    knob(f, "envAmount", "ENV", { format: fmt.bip, color: "#b06bff", size: 40, title: "Quanto o envelope de filtro abre ou fecha" });
+    knob(f, "filterCutoff", "CUTOFF", { format: fmt.hz, curve: "log", color: "#ff8a3d", size: 76 });
+    knob(f, "filterResonance", "RESONANCE", { color: "#2fe0ff", size: 76, format: function (x) { return x.toFixed(2); } });
+    knob($("#fenvKnobs"), "envAmount", "AMOUNT", { format: fmt.bip, color: "#2fe0ff", size: 64, title: "Quanto o envelope abre (+) ou fecha (−) o filtro, ou muda a altura" });
+    bindSeg("#envTargetSeg", "et", "envTarget");
     ["filterCutoff", "filterResonance", "synthEnable"].forEach(function (id) { watch(id, drawFilter); });
     const l = $("#lfoKnobs");
-    knob(l, "lfoRate", "RATE", { format: fmt.lfo, curve: "log", color: "#2fe0ff", size: 40 });
-    knob(l, "lfoDepth", "DEPTH", { color: "#2fe0ff", size: 40 });
+    const lr = knob(l, "lfoRate", "RATE", { format: fmt.lfo, curve: "log", color: "#ff8a3d", size: 62 });
+    knob(l, "lfoDepth", "DEPTH", { color: "#2fe0ff", size: 62 });
+    bindSeg("#lfoTimingSeg", "lt", "lfoTiming"); bindSeg("#lfoDivSeg", "ld", "lfoDivision");
+    watch("lfoTiming", function (x) { const sync = Math.round(x) === 2; lr.classList.toggle("disabled", sync); $("#lfoDivSeg").classList.toggle("off", !sync); });
     ["lfoRate", "lfoDepth", "synthEnable"].forEach(function (id) { watch(id, drawLfo); });
     bindSeg("#lfoTargetSeg", "lfo", "lfoTarget");
-    const flRefresh = seg("#flTabs", "fl", function () { return flPage; }, function (x) { flPage = x; flRefresh(); $$(".fl-page").forEach(function (pg) { pg.hidden = Number(pg.dataset.fl) !== x; }); });
-    let flPage = 0; flRefresh();
-    watch("synthEnable", function (x) { $$("#filterPanel .knob").forEach(function (kk) { kk.classList.toggle("disabled", x < .5); }); $("#filterPanel .lv").classList.toggle("on", x > .5); });
+    watch("synthEnable", function (x) { $$("#filterPanel .knob, #fenvPanel .knob, #lfoPanel .knob").forEach(function (kk) { kk.classList.toggle("disabled", x < .5); }); });
     bindSeg("#voiceSeg", "voice", "voiceMode"); bindSeg("#trigSeg", "trig", "triggerMode");
     const vk = $("#voiceKnobs");
-    const g = knob(vk, "glide", "GLIDE", { size: 36, color: "#2fe0ff", format: function (x) { return Math.round(x * 1000) + " ms"; }, title: "Portamento em Mono/Legato" });
-    knob(vk, "bendRange", "BEND", { size: 36, color: "#2fe0ff", format: fmt.st, title: "Alcance do pitch bend" });
+    const g = knob(vk, "glide", "GLIDE", { size: 42, color: "#2fe0ff", format: function (x) { return Math.round(x * 1000) + " ms"; }, title: "Portamento em Mono/Legato" });
+    knob($("#pitchKnobs"), "root", "TUNE", { size: 44, format: fmt.note, color: "#ff8a3d", title: "TUNE (raiz): nota em que o sample toca na altura original" });
+    knob($("#pitchKnobs"), "bendRange", "BEND", { size: 44, color: "#2fe0ff", format: fmt.st, title: "Alcance do pitch bend" });
+    const sg = $("#sGlobalKnobs");
+    knob(sg, "level", "VOLUME", { size: 66, format: fmt.db, color: "#ff8a3d", title: "Volume de saída" });
+    knob(sg, "drywet", "ORIG/RACK", { size: 66, color: "#2fe0ff", title: "Mistura entre o som original e o rack" });
+    knob(sg, "velocity", "VEL→FILT", { size: 66, color: "#b06bff", title: "Quanto a força da nota abre o filtro" });
     watch("voiceMode", function (x) { g.classList.toggle("disabled", Math.round(x) === 0); });
     ["voiceMode", "playMode", "loop", "regionLoop"].forEach(function (id) { watch(id, updatePill); });
     const m = $("#masterKnobs");
     knob(m, "drywet", "ORIG/RACK", { size: 36, color: "#ff4fd8", title: "Mistura entre o som original e o rack" });
     // GLOBAL panel (layout of Gab's reference): internal transport + output volume
-    knob($("#globalKnobs"), "level", "VOLUME", { size: 44, format: fmt.db, color: "#ffb340", title: "Volume de saída" });
+    knob($("#globalKnobs"), "level", "VOLUME", { size: 56, format: fmt.db, color: "#ffb340", title: "Volume de saída" });
+    // MACROS header buttons mirror the real ones (same actions, same enabled state)
+    $$("[data-proxy]").forEach(function (b) {
+      const src = $("#" + b.dataset.proxy); b.addEventListener("click", function () { src.click(); });
+      const sync = function () { b.disabled = src.disabled; }; sync(); new MutationObserver(sync).observe(src, { attributes: true, attributeFilter: ["disabled"] });
+    });
     [["gPlay", "tPlay"], ["gPause", "tPause"], ["gStop", "tStop"]].forEach(function (p) { $("#" + p[0]).addEventListener("click", function () { $("#" + p[1]).click(); }); });
   }
 
@@ -511,10 +538,10 @@
     }
     bindPad(pad, true); bindPad($("#palcoPad"), false);
     const m = $("#macroKnobs");
-    knob(m, "presence", "PRESENÇA", { size: 50, color: "#ffb340" });
-    knob(m, "trail", "RASTRO", { size: 50, color: "#ff4fd8" });
-    knob(m, "mutation", "VARIAÇÃO", { size: 50, color: "#2fe0ff", title: "Quanto o VARIAR FX muda os efeitos; também deixa o CRUMBLE mais imprevisível" });
-    knob(m, "drywet", "MIX", { size: 50, color: "#b06bff", title: "Mistura entre o som original e o rack" });
+    knob(m, "presence", "PRESENÇA", { size: 74, color: "#ff8a3d" });
+    knob(m, "trail", "RASTRO", { size: 74, color: "#2fe0ff" });
+    knob(m, "mutation", "VARIAÇÃO", { size: 74, color: "#ff4fd8", title: "Quanto o VARIAR FX muda os efeitos; também deixa o CRUMBLE mais imprevisível" });
+    knob(m, "drywet", "MIX", { size: 74, color: "#b06bff", title: "Mistura entre o som original e o rack" });
     knob($("#palcoK1"), "presence", "PRESENÇA", { size: 46, color: "#2fe0ff" });
     knob($("#palcoK2"), "trail", "RASTRO", { size: 46, color: "#ffb340" });
     $("#palcoIc1").innerHTML = ICO.modViz(3); $("#palcoIc2").innerHTML = ICO.modViz(4);
@@ -555,7 +582,7 @@
         '<button class="pwr" data-ic="power" title="Ligar / bypass" aria-label="Ligar ' + M.name + '"></button>' + (tiles ? "" : '<button class="chev" data-ic="down" title="Abrir controles"></button>') + '<div class="mod-meter"></div>';
       list.appendChild(card);
       const amt = document.createElement("div"); amt.className = "mod-amt"; card.insertBefore(amt, $(".pwr", card));
-      knob(amt, M.k + "Mix", "AMOUNT", { size: 34, color: M.color, owned: "rack", title: "AMOUNT = MIX do " + M.name + " (quanto do efeito entra no som)" });
+      knob(amt, M.k + "Mix", "AMOUNT", { size: 40, color: M.color, owned: "rack", title: "AMOUNT = MIX do " + M.name + " (quanto do efeito entra no som)" });
       ICO.hydrate(card);
       const power = $(".pwr", card), onId = M.k + "On";
       const pw = function (x) { card.classList.toggle("on", x > .5); card.classList.toggle("off", x < .5); }; pw.owned = "rack"; watch(onId, pw);

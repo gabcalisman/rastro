@@ -92,88 +92,118 @@
     <div id="groove" class="groove" hidden><b>GROOVE</b><div id="grooveBars" class="groove-bars"></div><button id="collectionBtn" class="chip">COLEÇÃO <span id="collectionCount">0</span></button></div>
   </section>
 
-  <!-- ================= sample editor ================= -->
+  <!-- ================= SAMPLE (PLAY: big editor · SOUND: strip). The waveform slot moves between them. ================= -->
   <section id="samplePanel" class="panel">
-    <div class="panel-head">
-      <h2 class="perform-only">SAMPLE EDITOR</h2>
-      <button id="sampleFav" class="icon-btn perform-only" data-ic="heart" title="Favoritar este sample"></button>
-      <span id="sampleName" class="sample-name">Arraste um áudio aqui</span>
-      <button id="captureHead" class="cap-head" title="CAPTURA: gravar voz, guitarra ou o que chegar na entrada e tocar no teclado"><i data-ic="rec"></i>CAPTURA</button>
-      <div class="seg seg-glow" id="markSeg" role="group" aria-label="O que arrastar">
-        <button data-mark="snap" class="on" title="SNAP: os marcadores grudam em cruzamentos de zero">SNAP</button>
-        <button data-mark="start" title="Mostrar e ajustar o início">START</button>
-        <button data-mark="end" title="Mostrar e ajustar o fim">END</button>
-        <button data-mark="loop" title="Mostrar a região de LOOP">LOOP</button>
+    <div class="panel-head"><i class="ph-ic" data-ic="wave"></i><h2>SAMPLE</h2><span id="sampleName" class="sample-name">Arraste um áudio aqui</span><button id="sampleFav" class="icon-btn perform-only" data-ic="heart" title="Favoritar este sample"></button></div>
+    <div class="well">
+      <div class="wave-tools">
+        <div class="seg seg-small" id="markSeg" role="group" aria-label="O que arrastar">
+          <button data-mark="snap" class="on" title="SNAP: os marcadores grudam em cruzamentos de zero">SNAP</button>
+          <button data-mark="start" title="Mostrar e ajustar o início">START</button>
+          <button data-mark="end" title="Mostrar e ajustar o fim">END</button>
+          <button data-mark="loop" title="Mostrar a região de LOOP">LOOP</button>
+        </div>
+        <span class="wt-sp"></span>
+        <button class="icon-btn" data-zoom="out" data-ic="zoomOut" title="Afastar (−)"></button>
+        <button class="icon-btn" data-zoom="in" data-ic="zoomIn" title="Aproximar (+)"></button>
+        <button class="chip-btn" data-zoom="sel" title="Voltar à seleção">SEL</button>
+        <button class="chip-btn" data-zoom="all" title="Sample inteiro">ALL</button>
       </div>
-      <button class="icon-btn" data-zoom="out" data-ic="zoomOut" title="Afastar (−)"></button>
-      <button class="icon-btn" data-zoom="in" data-ic="zoomIn" title="Aproximar (+)"></button>
-      <button class="chip-btn" data-zoom="sel" title="Voltar à seleção">SEL</button>
-      <button class="chip-btn" data-zoom="all" title="Sample inteiro">ALL</button>
+      <div id="waveSlotPlay" class="wave-slot">
+        <div id="waveMove">
+          <div id="waveBox" class="wave-box" tabindex="0" aria-label="Forma de onda. Arraste S, E e o colchete de loop; clique para posicionar a reprodução; + e − dão zoom.">
+            <canvas id="wave"></canvas>
+            <button class="wave-nav l" id="wavePrev" data-ic="left" aria-label="Rolar para a esquerda"></button>
+            <button class="wave-nav r" id="waveNext" data-ic="right" aria-label="Rolar para a direita"></button>
+            <div id="dropHint" class="drop-hint">Solte o áudio para importar</div>
+            <div id="emptyHint" class="empty-hint"><b>Comece aqui</b><span>Arraste um WAV, AIFF, MP3 ou M4A, escolha um som na biblioteca, ou capture pelo menu.</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="wave-foot"><span id="markerInfo" class="mono">0.00s</span><span id="cueInfo" class="mono cue"></span><span id="waveLen" class="mono">0.00s</span></div>
+      <div class="sp-row">
+        <button id="captureHead" class="cap-big" title="CAPTURA: gravar voz, guitarra ou o que chegar na entrada e tocar no teclado"><span class="rec-dot"></span>CAPTURA</button>
+        <div class="knob-row" id="playSampleKnobs"></div>
+      </div>
     </div>
-    <div id="waveBox" class="wave-box" tabindex="0" aria-label="Forma de onda. Arraste S, E e o colchete de loop; clique para posicionar a reprodução; + e − dão zoom.">
-      <canvas id="wave"></canvas>
-      <button class="wave-nav l" id="wavePrev" data-ic="left" aria-label="Rolar para a esquerda"></button>
-      <button class="wave-nav r" id="waveNext" data-ic="right" aria-label="Rolar para a direita"></button>
-      <div id="dropHint" class="drop-hint">Solte o áudio para importar</div>
-      <div id="emptyHint" class="empty-hint"><b>Comece aqui</b><span>Arraste um WAV, AIFF, MP3 ou M4A, escolha um som na biblioteca, ou capture pelo menu.</span></div>
-    </div>
-    <div class="wave-foot"><span id="markerInfo" class="mono">0.00s</span><span id="cueInfo" class="mono cue"></span><span id="waveLen" class="mono">0.00s</span></div>
   </section>
 
-  <!-- ================= amp envelope ================= -->
-  <section id="envPanel" class="panel">
-    <div class="panel-head"><h2>AMP ENVELOPE</h2><button id="synthBtn" class="synth-sw" title="Liga o motor de synth: ADSR, filtro, envelope de filtro e LFO passam a moldar o som. Desligado, o sample toca como foi gravado (o ADSR também vale no disparo GATE)."><i></i><span id="synthLbl">DESLIGADO</span></button></div>
-    <div class="env-body">
-      <div class="env-graph"><svg id="envSvg" viewBox="0 0 300 70" preserveAspectRatio="none"></svg></div>
-      <div class="knob-row" id="envKnobs"></div>
+  <section id="sSample" class="panel">
+    <div class="panel-head"><i class="ph-ic" data-ic="wave"></i><h2>SAMPLE</h2><span id="sampleName2" class="sample-name"></span>
+      <div class="seg seg-small" id="modeSeg" role="group" aria-label="Modo de reprodução">
+        <button data-mode="0" title="Toca o trecho até o fim, mesmo soltando a tecla">ONE SHOT</button>
+        <button data-mode="1" title="Repete o trecho">LOOP</button>
+        <button data-mode="2" title="De trás para frente">REV</button>
+        <button data-mode="3" title="Vai e volta">P-PONG</button>
+        <button data-mode="4" title="Cada nota toca um corte">SLICE</button>
+      </div>
+      <div class="slice-ctl" id="sliceCtl"><button class="chip-btn" data-slices="-1" aria-label="Menos cortes">−</button><span id="sliceCount" class="mono">8 cortes</span><button class="chip-btn" data-slices="1" aria-label="Mais cortes">+</button></div>
     </div>
+    <div class="ss-body">
+      <div id="waveSlotSound" class="wave-slot well"></div>
+      <button id="loopBtn" class="big-tog" title="LOOP independente do modo: repete a região de loop sem mudar o modo"><i data-ic="loopIc"></i><span>LOOP</span></button>
+      <button id="gateBtn" class="big-tog" title="GATE: soltar a tecla inicia o release do envelope (desligado = cada modo decide)"><i data-ic="gateIc"></i><span>GATE</span></button>
+      <div class="knob-row" id="xfadeKnob"></div>
+    </div>
+  </section>
+
+  <!-- ================= SOUND ================= -->
+  <section id="envPanel" class="panel">
+    <div class="panel-head"><i class="ph-ic" data-ic="envIc"></i><h2>AMP ENVELOPE</h2><button id="synthBtn" class="synth-sw" title="Liga o motor de synth: ADSR, filtro, envelope de filtro e LFO passam a moldar o som. Desligado, o sample toca como foi gravado (o ADSR também vale no disparo GATE)."><i></i><span id="synthLbl">DESLIGADO</span></button></div>
+    <div class="well env-graph"><svg id="envSvg" viewBox="0 0 300 70" preserveAspectRatio="none"></svg></div>
+    <div class="knob-row big" id="envKnobs"></div>
     <div id="envNote" class="panel-note"></div>
   </section>
 
-  <!-- ================= filter / LFO ================= -->
   <section id="filterPanel" class="panel">
-    <div class="panel-head"><span class="led on lv" aria-hidden="true"></span><div class="seg seg-flat" id="flTabs"><button data-fl="0" class="on">FILTER</button><button data-fl="1">LFO</button></div><span class="pill-sel">Low Pass</span></div>
-    <div class="fl-page" data-fl="0">
-      <div class="fl-body"><div class="filter-graph"><svg id="filterSvg" viewBox="0 0 240 46" preserveAspectRatio="none"></svg></div><div class="knob-row" id="filterKnobs"></div></div>
-    </div>
-    <div class="fl-page" data-fl="1" hidden>
-      <div class="fl-body"><div class="filter-graph"><svg id="lfoSvg" viewBox="0 0 240 46" preserveAspectRatio="none"></svg></div><div class="knob-row" id="lfoKnobs"></div></div>
-      <div class="seg seg-small" id="lfoTargetSeg" role="group" aria-label="Destino do LFO"><button data-lfo="0">→ Cutoff</button><button data-lfo="1">→ Pitch</button></div>
-    </div>
+    <div class="panel-head"><i class="ph-ic" data-ic="filterIc"></i><h2>FILTER</h2><span class="pill-sel" title="O filtro do RASTRO é um passa-baixa ressonante">Low Pass</span></div>
+    <div class="well filter-graph"><svg id="filterSvg" viewBox="0 0 240 46" preserveAspectRatio="none"></svg></div>
+    <div class="knob-row big" id="filterKnobs"></div>
   </section>
 
-  <!-- ================= playback ================= -->
-  <section id="playbackPanel" class="panel">
-    <div class="panel-head"><h2>PLAYBACK</h2><button id="loopBtn" class="toggle" title="LOOP independente do modo: repete a região sem mudar o modo">LOOP</button></div>
-    <div class="seg seg-wide seg-glow" id="modeSeg" role="group" aria-label="Modo de reprodução">
-      <button data-mode="0" title="Toca o trecho até o fim, mesmo soltando a tecla">ONE SHOT</button>
-      <button data-mode="1" title="Repete o trecho">LOOP</button>
-      <button data-mode="2" title="De trás para frente">REV</button>
-      <button data-mode="3" title="Vai e volta">P-PONG</button>
-      <button data-mode="4" title="Cada nota toca um corte">SLICE</button>
-    </div>
-    <div class="pb-row">
-      <div class="knob-row" id="sampleKnobs"></div>
-      <div class="side-stack">
-        <div class="seg seg-small" id="pitchSeg" role="group" aria-label="Pitch mode"><button data-pitch="0" title="REPITCH: altura e velocidade mudam com a nota">REPITCH</button><button data-pitch="1" title="FIXED: mantém altura e velocidade">FIXED</button></div>
-        <div class="slice-ctl" id="sliceCtl"><button class="chip-btn" data-slices="-1" aria-label="Menos cortes">−</button><span id="sliceCount" class="mono">8 cortes</span><button class="chip-btn" data-slices="1" aria-label="Mais cortes">+</button></div>
+  <section id="fenvPanel" class="panel">
+    <div class="panel-head"><i class="ph-ic" data-ic="envIc"></i><h2>FILTER ENVELOPE</h2><span class="hint">segue o AMP ENVELOPE</span></div>
+    <div class="well fenv-graph"><svg id="fenvSvg" viewBox="0 0 300 70" preserveAspectRatio="none"></svg></div>
+    <div class="fenv-row"><div class="knob-row big" id="fenvKnobs"></div>
+      <div class="fenv-side"><small>DESTINO</small><div class="seg seg-small" id="envTargetSeg" role="group" aria-label="Destino do envelope"><button data-et="0" title="O envelope abre/fecha o filtro">CUTOFF</button><button data-et="1" title="O envelope muda a altura">PITCH</button></div></div></div>
+  </section>
+
+  <section id="lfoPanel" class="panel">
+    <div class="panel-head"><i class="ph-ic" data-ic="lfoIc"></i><h2>LFO</h2><span class="hint">senoide</span></div>
+    <div class="lfo-row">
+      <div class="well lfo-graph"><svg id="lfoSvg" viewBox="0 0 240 46" preserveAspectRatio="none"></svg></div>
+      <div class="knob-row" id="lfoKnobs"></div>
+      <div class="lfo-side">
+        <div class="seg seg-small" id="lfoTimingSeg" role="group" aria-label="Tempo do LFO"><button data-lt="1" title="FREE: velocidade em Hz">FREE</button><button data-lt="2" title="SYNC: segue o BPM do Logic">SYNC</button></div>
+        <div class="seg seg-small" id="lfoDivSeg" role="group" aria-label="Divisão do LFO"><button data-ld="0">1/4</button><button data-ld="1">1/8</button><button data-ld="2">1/8.</button><button data-ld="3">1/8T</button></div>
+        <div class="seg seg-small" id="lfoTargetSeg" role="group" aria-label="Destino do LFO"><button data-lfo="0">→ CUTOFF</button><button data-lfo="1">→ PITCH</button></div>
       </div>
     </div>
   </section>
 
-  <!-- ================= MIDI / voice ================= -->
+  <section id="pitchPanel" class="panel">
+    <div class="panel-head"><i class="ph-ic" data-ic="sliders"></i><h2>PITCH</h2></div>
+    <div class="seg seg-wide" id="pitchSeg" role="group" aria-label="Pitch mode"><button data-pitch="0" title="REPITCH: altura e velocidade mudam com a nota">REPITCH</button><button data-pitch="1" title="FIXED: mantém altura e velocidade">FIXED</button></div>
+    <div class="knob-row" id="pitchKnobs"></div>
+  </section>
+
   <section id="midiPanel" class="panel">
-    <div class="panel-head"><h2>MIDI / VOZ</h2></div>
-    <div class="seg seg-small seg-wide" id="voiceSeg" role="group" aria-label="Modo de voz"><button data-voice="0">POLY 16</button><button data-voice="1">MONO</button><button data-voice="2">LEGATO</button></div>
-    <div class="seg seg-small seg-wide" id="trigSeg" role="group" aria-label="Disparo"><button data-trig="0" title="Comportamento de cada modo">POR MODO</button><button data-trig="1" title="Ignora o soltar da tecla">ONE SHOT</button><button data-trig="2" title="Soltar a tecla inicia o release">GATE</button></div>
-    <div class="midi-row"><div class="knob-row" id="voiceKnobs"></div><div class="knob-row" id="masterKnobs"></div></div>
-    <div class="meter"><div id="masterMeter"></div></div>
+    <div class="panel-head"><i class="ph-ic" data-ic="voiceIc"></i><h2>VOICE</h2></div>
+    <div class="seg seg-wide" id="voiceSeg" role="group" aria-label="Modo de voz"><button data-voice="0">POLY</button><button data-voice="1">MONO</button><button data-voice="2">LEGATO</button></div>
+    <div class="voice-row"><div class="knob-row" id="voiceKnobs"></div>
+      <div class="voice-side"><small>DISPARO</small><div class="seg seg-small" id="trigSeg" role="group" aria-label="Disparo"><button data-trig="0" title="Comportamento de cada modo">POR MODO</button><button data-trig="1" title="Ignora o soltar da tecla">ONE SHOT</button><button data-trig="2" title="Soltar a tecla inicia o release">GATE</button></div></div></div>
+    <div hidden><div class="knob-row" id="masterKnobs"></div><div class="meter"><div id="masterMeter"></div></div><div id="sampleKnobs"></div></div>
     <button id="captureBtn" class="rec-btn" hidden title="Gravar voz, guitarra ou o que estiver na entrada"><i data-ic="rec"></i>RECORD</button>
+  </section>
+
+  <section id="sGlobal" class="panel">
+    <div class="panel-head"><i class="ph-ic" data-ic="planet"></i><h2>GLOBAL</h2></div>
+    <div class="knob-row" id="sGlobalKnobs"></div>
   </section>
 
   <!-- ================= XY ================= -->
   <section id="xyPanel" class="panel">
-    <div class="panel-head"><h2>XY PERFORMANCE PAD</h2><span id="padInfo" class="hint mono"></span></div>
+    <div class="panel-head"><i class="ph-ic" data-ic="planet"></i><h2>XY PERFORMANCE PAD</h2><span id="padInfo" class="hint mono"></span></div>
     <div class="xy-wrap">
       <div class="xy-y"><span>DEGRADADO</span><i></i><b class="xy-val" id="xyYVal">Y<br>0.50</b><i></i><span>LIMPO</span></div>
       <div id="pad" class="pad" tabindex="0" aria-label="Pad X/Y: X estável para wobble, Y limpo para degradado"><div id="padTrail"></div><div id="padDot" class="pad-dot"></div></div>
@@ -184,14 +214,14 @@
 
   <!-- ================= macros ================= -->
   <section id="globalPanel" class="panel">
-    <div class="panel-head"><h2>GLOBAL</h2><span class="hint">prévia interna · não controla o Logic</span></div>
+    <div class="panel-head"><i class="ph-ic" data-ic="planet"></i><h2>GLOBAL</h2><span class="hint">prévia interna · não controla o Logic</span></div>
     <div class="g-transport"><button id="gPlay" data-ic="play" title="Tocar a prévia do sample ou retomar" aria-label="Tocar"></button><button id="gPause" data-ic="pause" title="Pausar a prévia e congelar a animação" aria-label="Pausar"></button><button id="gStop" data-ic="stop" title="Parar e voltar ao início" aria-label="Parar"></button></div>
     <div class="g-row"><div class="knob-row" id="globalKnobs"></div></div>
     <div class="g-meter"><small>SAÍDA</small><div class="meter"><div id="gMeter"></div></div></div>
   </section>
 
   <section id="macroPanel" class="panel">
-    <div class="panel-head"><h2>MACROS</h2></div>
+    <div class="panel-head"><i class="ph-ic" data-ic="spark"></i><h2>MACROS</h2><div class="macro-tools"><button class="chip-btn" data-proxy="varyFx" title="VARIAR FX: sorteia valores novos só nos efeitos ligados">VARIAR FX</button><button class="chip-btn" data-proxy="undoJam" title="Desfaz a última variação">↶</button><button class="chip-btn" data-proxy="diceKeep" title="Ficar com o patch sorteado (RANDOMIZE)">FICAR</button><button class="chip-btn" data-proxy="diceBack" title="Voltar ao patch de antes do RANDOMIZE">VOLTAR</button></div></div>
     <div class="knob-grid" id="macroKnobs"></div>
     <div class="dice-row"><button id="varyFx" class="chip-btn" title="VARIAR FX: sorteia valores novos só nos efeitos ligados. Não mexe no sample, raiz, trims nem modo; não liga nem desliga módulos.">VARIAR FX</button><button id="undoJam" class="chip-btn" disabled title="Desfaz a última variação dos efeitos">↶ DESFAZER</button></div>
     <div class="dice-row"><button id="diceKeep" class="chip-btn" disabled title="Ficar com o patch sorteado">FICAR</button><button id="diceBack" class="chip-btn" disabled title="Voltar ao patch de antes do RANDOMIZE">VOLTAR</button></div>
@@ -206,7 +236,7 @@
   <!-- ================= effect rack ================= -->
   <section id="rackPanel" class="panel">
     <div class="panel-head">
-      <i class="drag-ic" data-ic="drag"></i><h2>EFFECT RACK</h2>
+      <i class="drag-ic" data-ic="drag"></i><i class="ph-ic" data-ic="spark"></i><h2>EFFECT RACK</h2>
       <label class="switch" title="PARALLEL: cada módulo processa o som original e as diferenças são somadas. SERIAL: um alimenta o outro, e a ordem muda o som."><input type="checkbox" id="parallelSw"><span></span><b>PARALLEL</b></label>
       <button id="addModule" class="icon-btn" data-ic="plus" title="Adicionar módulo removido"></button>
       <button id="resetFx" class="chip-btn" title="Volta os efeitos aos valores padrão (desligados)">RESET</button>

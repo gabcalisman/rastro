@@ -196,27 +196,54 @@
     const a = e1.x * k * e0.x + n1.x * n0.x, c = e1.x * k * e0.y + n1.x * n0.y, b = e1.y * k * e0.x + n1.y * n0.x, d = e1.y * k * e0.y + n1.y * n0.y;
     g.translate(h1.x, h1.y); g.transform(a, b, c, d, 0, 0); g.translate(-h0.x, -h0.y);
   }
-  function limbStroke(g, pts, w0, w1) {
-    for (let pass = 0; pass < 2; pass++) {
-      for (let i = 0; i < pts.length - 1; i++) {
-        const w = lerp(w0, w1, i / Math.max(1, pts.length - 2));
-        g.strokeStyle = pass ? SKIN : INK; g.lineWidth = pass ? w : w + 7; g.lineCap = "round";
-        g.beginPath(); g.moveTo(pts[i].x, pts[i].y); g.lineTo(pts[i + 1].x, pts[i + 1].y); g.stroke();
-      }
+  // Smooth, tapered, shaded skin limbs. The old two-pass straight strokes looked like tubes beside
+  // the richly painted kit. Sample the quadratic so shoulders, elbows and knees read as soft forms.
+  function limbStroke(g, pts, w0, w1, bend) {
+    const a = pts[0], b = pts[1], dx = b.x - a.x, dy = b.y - a.y, n = Math.hypot(dx, dy) || 1;
+    const side = bend || (a.x < 513 ? 1 : -1);
+    const c = { x: (a.x + b.x) * .5 - dy / n * Math.min(34, n * .12) * side,
+                y: (a.y + b.y) * .5 + dx / n * Math.min(34, n * .12) * side };
+    const at = function (t) { const q = 1 - t; return { x: q*q*a.x + 2*q*t*c.x + t*t*b.x, y: q*q*a.y + 2*q*t*c.y + t*t*b.y }; };
+    const skin = g.createLinearGradient(a.x - 30, a.y, b.x + 30, b.y);
+    skin.addColorStop(0, "#228fad"); skin.addColorStop(.42, SKIN); skin.addColorStop(.72, "#72e5ed"); skin.addColorStop(1, "#238eae");
+    g.lineCap = "round"; g.lineJoin = "round";
+    for (let i = 0; i < 12; i++) {
+      const p0 = at(i / 12), p1 = at((i + 1) / 12), w = lerp(w0, w1, (i + .5) / 12);
+      g.strokeStyle = INK; g.lineWidth = w + 8; g.beginPath(); g.moveTo(p0.x, p0.y); g.lineTo(p1.x, p1.y); g.stroke();
+      g.strokeStyle = skin; g.lineWidth = w; g.beginPath(); g.moveTo(p0.x, p0.y); g.lineTo(p1.x, p1.y); g.stroke();
     }
+    // A narrow reflected edge gives the cyan skin volume without adding a heavy glow.
+    g.save(); g.globalAlpha = .24; g.strokeStyle = "#e7ffff"; g.lineWidth = 3; g.beginPath(); g.moveTo(a.x - side * w0 * .17, a.y); g.quadraticCurveTo(c.x - side * ((w0+w1)*.085), c.y, b.x - side * w1 * .17, b.y); g.stroke(); g.restore();
+  }
+  function skinFill(g, path, x1, y1, x2, y2) {
+    const fill = g.createLinearGradient(x1, y1, x2, y2);
+    fill.addColorStop(0, "#70e2ee"); fill.addColorStop(.42, SKIN); fill.addColorStop(1, "#218eaf");
+    g.fillStyle = fill; g.fill(path); g.strokeStyle = INK; g.lineWidth = 7; g.lineJoin = "round"; g.stroke(path);
+    g.save(); g.globalAlpha = .2; g.strokeStyle = "#edffff"; g.lineWidth = 3; g.stroke(path); g.restore();
   }
   function figure(g, R, P) {
     const S0 = R.slots;
     // --- legs: skin, shoes, bottoms ---
-    limbStroke(g, [P.hipL, P.anL], 84, 64); limbStroke(g, [P.hipR, P.anR], 84, 64);
+    limbStroke(g, [P.hipL, P.anL], 84, 64, 1); limbStroke(g, [P.hipR, P.anR], 84, 64, -1);
     ["L", "R"].forEach(function (sd) { const an = P["an" + sd], a0 = R0["an" + sd]; g.save(); g.translate(an.x - a0.x, an.y - a0.y); piece(g, "shoe_" + S0.shoes + "_" + sd); g.restore(); });
     if (S0.bottom === "skirt") { g.save(); g.translate(P.pel.x - R0.pelvis.x, P.pel.y - R0.pelvis.y); piece(g, "bot_skirt"); g.restore(); }
     else ["L", "R"].forEach(function (sd) { g.save(); leg(g, R0["hip" + sd], R0["an" + sd], P["hip" + sd], P["an" + sd]); piece(g, "bot_" + S0.bottom + "_" + sd); g.restore(); });
     // --- torso skin + neck, then the top ---
     g.save(); bone(g, R0.pelvis, 0, P.pel, P.torR);
-    g.fillStyle = SKIN; g.strokeStyle = INK; g.lineWidth = 6;
-    g.beginPath(); g.moveTo(490, 470); g.lineTo(536, 470); g.lineTo(540, 560); g.lineTo(486, 560); g.closePath(); g.fill(); g.stroke();
-    g.beginPath(); g.moveTo(458, 560); g.quadraticCurveTo(513, 548, 568, 560); g.lineTo(560, 700); g.quadraticCurveTo(552, 780, 566, 805); g.lineTo(460, 805); g.quadraticCurveTo(474, 780, 466, 700); g.closePath(); g.fill(); g.stroke();
+    const neck = new Path2D();
+    neck.moveTo(490, 470); neck.quadraticCurveTo(513, 478, 536, 470); neck.lineTo(544, 548);
+    neck.quadraticCurveTo(513, 566, 482, 548); neck.closePath();
+    skinFill(g, neck, 482, 470, 544, 558);
+    const torso = new Path2D();
+    torso.moveTo(458, 560); torso.quadraticCurveTo(485, 548, 513, 554); torso.quadraticCurveTo(541, 548, 568, 560);
+    torso.bezierCurveTo(557, 616, 559, 675, 559, 706); torso.quadraticCurveTo(557, 770, 566, 805);
+    torso.quadraticCurveTo(513, 821, 460, 805); torso.quadraticCurveTo(469, 770, 467, 706);
+    torso.bezierCurveTo(467, 675, 469, 616, 458, 560); torso.closePath();
+    skinFill(g, torso, 458, 562, 568, 810);
+    // Soft clavicle lines and a central highlight keep exposed skin in the same illustrated style as the kit.
+    g.save(); g.strokeStyle = "rgba(13,74,101,.34)"; g.lineWidth = 5; g.lineCap = "round";
+    g.beginPath(); g.moveTo(474, 574); g.quadraticCurveTo(495, 589, 513, 578); g.quadraticCurveTo(532, 589, 552, 574); g.stroke();
+    g.strokeStyle = "rgba(235,255,255,.34)"; g.lineWidth = 4; g.beginPath(); g.moveTo(493, 492); g.quadraticCurveTo(499, 524, 496, 545); g.stroke(); g.restore();
     g.restore();
     // strap behind the top (over the right shoulder to both ends of the instrument)
     const strap = function () {
@@ -315,3 +342,4 @@
   }
   window.RastroNovaKit = { create: create, SLOTS: SLOTS, DEFAULT: DEFAULT, NAMES: NAMES, items: items, valid: valid, clean: clean };
 })();
+

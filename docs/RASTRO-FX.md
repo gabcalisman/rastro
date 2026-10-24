@@ -32,23 +32,26 @@ abas que escondam os controles avançados. Janela redimensionável de 980×720 a
   após o ganho de entrada. Os medidores IN/OUT mostram picos em dBFS, com queda de
   250 ms e indicação de sinal acima de 0 dBFS.
 - **BYPASS** global, inclusive o callback de bypass do host, retorna ao áudio
-  original antes dos ganhos. Rampas de 10 ms; ganho de entrada/saída em 20 ms.
+  original (alinhado à latência) antes dos ganhos. Rampas de 10 ms; ganho de entrada/saída em 20 ms.
   Ativação e mix dos módulos são suavizados. Trocar ordem ou série/paralelo faz
   uma transição de 10 ms para o sinal seco e de volta ao rack, sem silenciar o sinal seco.
 - Ganho unitário com todos os módulos OFF ou com Dry/Wet zero conserva os bits
-  do sinal seco. O código não passa esse caminho por tanh, limiter ou conversão
-  float intermediária; preserva silêncio, sinal de zero e headroom.
-- Float/double na entrada/saída; o DSP dos efeitos usa float, como o PLAY. Latência
-  reportada: zero; os delays dos efeitos são parte do som, não compensação do host.
-  Cauda conservadora reportada: 300 s (feedbacks longos em série). Há suavização e limitação de feedback nos
-  algoritmos; não há limiter oculto na saída global.
-- As etapas não lineares do FX usam antialiasing por média integrada (ADAA, quadratura
-  Gauss–Legendre de três pontos) em ORBIT, TRAIL, PRISM, EMBER, SQUASH e nos caminhos
-  de feedback de GHOST/BLOOM. Em um teste determinístico de `tanh` a 10 kHz, 48 kHz e
-  drive 8x, a energia medida nas quatro componentes harmônicas que dobram para a banda
-  audível caiu **86,98%** contra a versão sample-rate direta. É uma medição objetiva do
-  shaper; ainda precisa de avaliação auditiva com material musical. O método não adiciona
-  latência nem altera o sinal seco; não é oversampling literal.
+  do sinal seco, **atrasado pela latência reportada**. O seco é copiado no próprio tipo do
+  host (float ou double), nunca convertido nem recalculado; preserva silêncio, zero com
+  sinal, subnormais e headroom.
+- Float/double na entrada/saída; o DSP dos efeitos usa float, como o PLAY.
+  **Latência reportada: 46 amostras, constante** em qualquer configuração e taxa (0,96 ms a
+  48 kHz; 0,48 ms a 96 kHz). Ela vem do oversampling 2x de EMBER e SQUASH (23 amostras cada).
+  Os dois ficam sempre na cadeia — como atraso puro quando não estão no rack — para que a
+  latência nunca mude com presets, A/B ou automação. Série, paralelo, Dry/Wet, bypass de
+  módulo, bypass global e bypass do host estão alinhados à mesma latência; o host compensa.
+  Cauda conservadora reportada: 300 s. Sem limiter oculto na saída global.
+- O callback roda com flush de denormais (`ScopedNoDenormals`). Caudas de feedback não
+  geram mais amostras subnormais (ORBIT chegava a 4e-45 e custava 4,5x mais CPU na cauda).
+- Módulos fora do rack (InRack desligado e já sem fade) dormem: não processam, têm seus
+  buffers limpos em fatias pequenas e reiniciam limpos ao entrar de novo — nunca tocam áudio
+  de antes de sair. Rack vazio: ~0,16 µs/amostra estéreo contra ~3,4 µs antes (medição Linux
+  x86 deste ambiente; ver tabela de CPU abaixo).
 - Memória de delays/filtros é preparada fora do callback. O callback usa apenas
   estruturas prealocadas, arrays locais e parâmetros atômicos; sem alocações C++,
   locks, arquivos ou ValueTrees. Os módulos continuam seus estados e relógios
@@ -65,22 +68,77 @@ abas que escondam os controles avançados. Janela redimensionável de 980×720 a
 | DUST | Textura/ruído seguindo a atividade da fonte: Amount e Character. |
 | CRUSH | Redução de resolução e sample-and-hold: Amount. |
 | MOUTH | Dois ressonadores de formantes, interpolando vogais A/E/I/O/U: Vowel, Formant shift e Resonance. |
-| ORBIT | Flanger com delay fracionário e feedback bipolar: Rate, Depth, Feedback, Centre. |
-| TRAIL | Echo separado do GHOST, com tempo contínuo: Time, Feedback, Tone e Colour (saturação no feedback). |
-| CHOIR | Chorus de três vozes com delays modulados: Rate, Depth, Delay e Spread; Spread também varia a disposição das vozes em mono. |
-| PRISM | Pitch echo/crystal: taps móveis com duas janelas sobrepostas e transposição dentro do feedback. Pitch −12…+24 semitons, Time, Feedback e Tone. Não é apenas um echo com nome diferente. |
-| EMBER | Transferências diferentes de drive, tube assimétrico e tape com memória magnética simplificada; Drive, Tone, Bias e morph Drive/Tube/Tape. DC blocker após a saturação. Não pretende modelar um aparelho físico específico. |
-| SQUASH | Saturação combinada com compressor de envelope: Drive, Threshold, Ratio e Release; ataque de 5 ms e detecção estéreo vinculada. |
+| ORBIT | Flanger com delay fracionário e feedback bipolar: Rate, Depth, Feedback, Centre. Entrada limpa; só a soma recirculante passa por um limitador suave transparente até 0 dBFS (teto +3,5 dBFS). |
+| TRAIL | Echo separado do GHOST, com tempo contínuo: Time, Feedback, Tone e Colour (saturação no feedback). Colour 0 é um fio exato: as repetições só perdem o que o Tone tira. |
+| CHOIR | Chorus de três vozes com delays modulados: Rate, Depth, Delay e Spread; Spread também varia a disposição das vozes em mono. Soma das vozes normalizada (×0,52) entre soma coerente e de potência. |
+| PRISM | Pitch echo/crystal: taps móveis com duas janelas sobrepostas e transposição dentro do feedback. Pitch −12…+24 semitons, Time, Feedback e Tone. Mesmo limitador suave do ORBIT no feedback. Não é apenas um echo com nome diferente. |
+| EMBER | Transferências diferentes de drive, tube assimétrico e tape com memória magnética simplificada; Drive, Tone, Bias e morph Drive/Tube/Tape. **Oversampling 2x**; memória magnética (~977 Hz) e DC blocker (~38 Hz) independentes da taxa. Ganho compensado: um pico de −10 dBFS sai em −10 dBFS em qualquer Drive/modo. Não pretende modelar um aparelho físico específico. |
+| SQUASH | Saturação combinada com compressor de envelope: Drive, Threshold, Ratio e Release; ataque de 5 ms e detecção estéreo vinculada. **Oversampling 2x**; make-up automático (pico de −10 dBFS volta a −10 dBFS) terminando num teto suave de +3,5 dBFS, então transientes antes do ataque não explodem. |
 | SIEVE | Filtro ressonante de estado variável: Cutoff, Resonance e morph LP/BP/HP. Frequência limitada de forma segura abaixo de Nyquist. |
 | SWING | Panner com oito pontos editáveis no próprio card: Rate, Depth, Slew e Phase. Em estéreo controla o balanço; em mono faz movimento de amplitude, pois não existe um segundo canal de saída. |
 
 Os seis módulos herdados estão em uma adaptação FX de `EffectRack`, removendo a
-coloração global específica do instrumento. GHOST e BLOOM usam o antialiasing do FX
-nos caminhos de feedback. `EffectRack.h`, `CharacterEffects.h`, `Engine` e os
+coloração global específica do instrumento. GHOST e BLOOM usam ADAA residual nos
+caminhos de feedback (uma memória por linha no BLOOM). As divisões de nota do GHOST e do
+CRUMBLE seguem o BPM do host, como no PLAY (antes ficavam presas a 120 BPM). `EffectRack.h`, `CharacterEffects.h`, `Engine` e os
 processadores PLAY/Capture continuam intactos. CRUMBLE, WOBBLE, DUST e CRUSH continuam
 comparados amostra por amostra com o PLAY; GHOST/BLOOM diferem intencionalmente apenas
 nos seus shapers de feedback antialiased. O FX tem instâncias separadas desses estados,
 permitindo intercalar os seis módulos com os novos na ordem desejada.
+
+## Qualidade sonora: decisões e medições
+
+Medido offline com o DSP real (`Source/FxDsp.h`) sobre material musical a −18 dBFS RMS
+(voz+violão, bateria+baixo e um mix completo, Creative Commons) e sinais sintéticos.
+São **medições objetivas**; a avaliação auditiva é feita com o pacote de escuta cega
+(antes/depois nivelados por loudness), que não substitui a escuta no Logic.
+
+**Aliasing.** O ADAA de primeira ordem (quadratura de Gauss) está correto, mas medido com
+música e uma referência oversampled 16x, nos estágios de ganho alto (EMBER/SQUASH) ele não
+reduzia o erro em relação ao shaper direto em drive baixo/médio e escurecia sempre: −2 dB em
+10 kHz e −6 dB em 16 kHz (ganho linear do filtro de média). Só ajudava em drive extremo na
+bateria (~3 dB). Decisão por estágio:
+
+| Estágio | Antes | Agora | Por quê |
+| --- | --- | --- | --- |
+| EMBER, SQUASH (ganho até 24x/12x) | ADAA | Oversampling 2x, halfband FIR 47 taps, fase linear | Bateria, drive 10,8x: erro não coerente −36 → −55 dB; drive 24x: −32 → −44 dB; sem perda de agudos (±0,01 dB até 20 kHz). Tom 3011 Hz, tanh ×10,8: −29 → −55 dB alias/fundamental. Custa 23 amostras de latência. 4x (2 estágios) não justificou o custo/latência. |
+| GHOST, BLOOM, ORBIT, TRAIL, PRISM (clippers de ganho unitário no feedback) | ADAA na curva inteira | ADAA **residual** (só `f(u) − u` é integrado) | Na região linear passa bit a bit: as repetições do TRAIL limpo não perdem mais ~2 dB em 10 kHz por volta, nem ganham meio sample de atraso. O antialiasing continua nas partes que clipam. Um teto explícito cobre saltos patológicos entre amostras. |
+| ORBIT, PRISM | `tanh` na entrada mesmo com feedback 0 | Limitador suave transparente até 0 dBFS, teto +3,5 dBFS | Picos de −6 dBFS ganhavam ~−0,7 dB e 3º harmônico. |
+
+**Ganho e A/B.** Mudança de loudness integrada (BS.1770) com mix 100% contra o seco:
+
+| Caso | Antes | Agora |
+| --- | --- | --- |
+| EMBER padrão | +4,9 a +5,6 LU | −0,7 a 0 LU |
+| EMBER drive máximo | +13,8 a +16,5 LU, pico +5 dBFS | +3,8 a +6,5 LU, pico −5 dBFS |
+| SQUASH Threshold −36 dB, Ratio 16:1 | −20,7 LU | +2,0 a +2,4 LU (pico ≤ +4,7 dBFS) |
+| CHOIR padrão | −5,1 a −7,0 LU | −1,2 a −3,1 LU |
+| Preset Velvet furnace | +3,6 a +4,2 LU | −0,6 a −0,1 LU |
+| Preset Rubber postcard | −2,0 a −2,3 LU | −0,3 a −0,1 LU |
+
+Presets sem EMBER/SQUASH/CHOIR ficam no mesmo nível (±0,3 LU). A saturação pesada ainda
+soa mais alta que o seco por densidade (crest factor menor); isso é intencional e
+mensurável acima. MOUTH (−3 a −7 LU), SIEVE com ressonância máxima (+1 a +3 LU) e o BLOOM
+100% wet (−15 LU, como no PLAY) não foram compensados nesta rodada.
+
+**CPU** (ns por amostra estéreo, só o rack, Linux x86 deste ambiente, com flush de
+denormais; serve para comparação relativa, não substitui a medição no Logic/Apple silicon):
+
+| Configuração | Antes | Agora |
+| --- | --- | --- |
+| Rack vazio (nenhum módulo inserido) | ~3400 | ~160 |
+| Só EMBER inserido | ~3000 (15 nós rodando) | ~490 |
+| Só SQUASH inserido | ~3000 | ~360 |
+| Todos os 15 inseridos | ~3100 | ~3100 |
+
+A cauda do ORBIT sem flush de denormais custava 4,5x mais; com o flush no callback, volta ao
+custo normal. O processador ainda suaviza ~90 alvos de parâmetro por amostra fora do rack.
+
+**Limites conhecidos.** O oversampling 2x não elimina o aliasing de fundamentais muito agudas
+com drive extremo (harmônicos acima de 72 kHz ainda dobram). A 44,1 kHz a faixa de transição
+do filtro começa em 18,4 kHz. Constantes por amostra do rack herdado (tons do GHOST/BLOOM)
+continuam dependentes da taxa, por paridade com o PLAY. Nada disso foi ouvido no Logic ou em
+Apple silicon neste ambiente.
 
 ## MOD / XY
 
@@ -140,13 +198,20 @@ xvfb-run -a ctest --test-dir build -R '^fx_processor$' --output-on-failure
 `RASTRO_CORE_ONLY=ON` continua limitado às oito suítes portáveis do PLAY; não
 substitui os testes JUCE do processador/editor FX.
 
-A suíte FX cobre transparência bit a bit, float/double, mono/estéreo, taxas e
-blocos variáveis; os seis algoritmos herdados; áudio real e controles avançados
+A suíte FX cobre transparência bit a bit após a latência reportada (blocos variáveis,
+subnormais, zero com sinal), float/double, mono/estéreo, taxas e blocos variáveis; os seis algoritmos herdados; áudio real e controles avançados
 dos nove módulos novos; transposição espectral PRISM; ordem, paralelo, dry/wet,
 modulação, follower, bypass de rack/módulo/host, parâmetros reais da UI, edição
 XY/panner, presets, ambos os bancos A/B, recall de áudio/estado, migração da
 primeira etapa, alocações C++ no callback e render/layout do editor.
 As capturas `fx-editor-*.png` são regeneradas nos testes, não são mockups.
+O grupo **FX sound** (`tests/FxSoundQualityTests.h`) cobre: latência inteira, ganho DC e
+passband do oversampler; supressão de alias do estágio 2x; ADAA residual bit a bit na região
+linear e teto em saltos extremos; brilho das repetições do TRAIL limpo; gain staging de
+EMBER/SQUASH e teto de transientes; caráter do EMBER igual a 48 e 96 kHz; rack vazio como
+atraso exato em série e paralelo; módulo reinserido sem eco antigo; custo de módulos fora do
+rack; GHOST seguindo o BPM (direto e via playhead do host); ausência de saídas subnormais;
+saída bit-idêntica com blocos de 1, 17 e 512 amostras; automação de Drive sem degraus.
 
 ## Builds nativos e instalação
 
@@ -172,6 +237,12 @@ A produção dos artefatos nativos e seus validadores só pode ser confirmada pe
 resultados dos workflows desta revisão; não deve ser inferida do sucesso local.
 
 ## Evidência local desta revisão
+
+Rodada de som (branch `claude/rastro-fx-sound`): build Release Linux do alvo FX (VST3 +
+`rastro_fx_tests`) com JUCE 8.0.6; `rastro_fx_tests` **passou** (todos os grupos, incluindo
+FX sound); pluginval 1.0.3 nível 5, seed 42, no VST3 FX: **passou** (sem testes de GUI; ele
+imprime latência 0 porque consulta antes do `prepareToPlay`, e o host VST3 do JUCE relê a
+latência na preparação). O resto desta seção descreve a revisão anterior.
 
 - Build Release Linux completo: passou; PLAY Standalone/VST3, Capture VST3 e FX VST3.
 - CTest: **12/12 suítes passaram**, incluindo a suíte ampliada do FX.

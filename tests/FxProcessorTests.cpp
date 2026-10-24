@@ -27,17 +27,23 @@ static void configure(RastroFxProcessor &p, int channels)
 }
 template <typename Sample> static void transparency()
 {
+    constexpr int latency = rastro::fx::Rack::latency();
     for (double rate : {44100., 48000., 96000.})
         for (int channels : {1, 2})
         {
             RastroFxProcessor p;
             configure(p, channels);
             p.prepareToPlay(rate, 1024);
-            check(p.getLatencySamples() == 0 && p.getTailLengthSeconds() >= 0,
-                  "zero latency and declared finite tail");
-            for (int size : {0, 1, 17, 511, 1024, 4096})
+            check(p.getLatencySamples() == latency && latency > 0 && latency < 64 &&
+                      p.getTailLengthSeconds() >= 0,
+                  "constant reported latency and declared finite tail");
+            // The whole stream, across variable block sizes, must come back bit for bit,
+            // exactly `latency` samples later (zeros before that).
+            std::vector<std::vector<Sample>> stream(static_cast<size_t>(channels));
+            size_t position = 0;
+            for (int size : {0, 1, 17, 511, 1024, 4096, 3, 64})
             {
-                juce::AudioBuffer<Sample> b(channels, size), original(channels, size);
+                juce::AudioBuffer<Sample> b(channels, size);
                 for (int c = 0; c < channels; ++c)
                     for (int i = 0; i < size; ++i)
                     {
@@ -48,14 +54,23 @@ template <typename Sample> static void transparency()
                                               std::numeric_limits<Sample>::denorm_min(),
                                               Sample(std::sin(i * .317 + c) * 3.)};
                         b.setSample(c, i, values[i % 6]);
+                        stream[size_t(c)].push_back(values[i % 6]);
                     }
-                original.makeCopyOf(b);
                 juce::MidiBuffer midi;
                 p.processBlock(b, midi);
                 for (int c = 0; c < channels; ++c)
-                    check(size == 0 || std::memcmp(b.getReadPointer(c), original.getReadPointer(c),
-                                                   size * sizeof(Sample)) == 0,
-                          "unity is bit-exact, including headroom, silence and subnormals");
+                    for (int i = 0; i < size; ++i)
+                    {
+                        const size_t at = position + size_t(i);
+                        const Sample expected = at >= size_t(latency)
+                                                    ? stream[size_t(c)][at - size_t(latency)]
+                                                    : Sample(0);
+                        const Sample actual = b.getSample(c, i);
+                        check(std::memcmp(&expected, &actual, sizeof(Sample)) == 0,
+                              "unity is bit-exact after the reported latency, including headroom, "
+                              "silence, signed zero and subnormals");
+                    }
+                position += size_t(size);
             }
         }
 }
@@ -68,7 +83,7 @@ static void gainAndBypass()
             configure(p, channels);
             p.prepareToPlay(48000, 64);
             juce::MidiBuffer midi;
-            auto render = [&](int size, bool bypassed)
+            auto render = [&](int size, bool bypassed) -> juce::AudioBuffer<float>
             {
                 juce::AudioBuffer<float> b(channels, size);
                 for (int c = 0; c < channels; ++c)
@@ -84,9 +99,12 @@ static void gainAndBypass()
                               "stereo gain linked without crosstalk");
                 return b;
             };
+            // Fill the latency line with the steady test signal first.
+            render(rastro::fx::Rack::latency(), false);
             set(p, "fxInputGain", 6);
             float previous = .25f;
-            for (int i = 0; i < 1000; ++i)
+            // 20 ms ramp, heard together with the audio it applies to (after the latency).
+            for (int i = 0; i < 1000 + rastro::fx::Rack::latency(); ++i)
             {
                 float value = render(1, false).getSample(0, 0);
                 check(value >= previous && value - previous < .001f, "input automation smooth");
@@ -167,12 +185,13 @@ static void blockPartitioning()
     set(whole, "fxInputGain", 24);
     set(whole, "fxOutputGain", 24);
     whole.reset();
-    juce::AudioBuffer<double> loud(2, 1);
+    constexpr int latency = rastro::fx::Rack::latency();
+    juce::AudioBuffer<double> loud(2, latency + 1);
+    loud.clear();
     loud.setSample(0, 0, 1.);
-    loud.setSample(1, 0, 0.);
     whole.processBlock(loud, midi);
-    check(std::abs(loud.getSample(0, 0) - std::pow(10., 48. / 20.)) < 1e-10 &&
-              loud.getSample(1, 0) == 0.,
+    check(std::abs(loud.getSample(0, latency) - std::pow(10., 48. / 20.)) < 1e-10 &&
+              loud.getSample(1, latency) == 0.,
           "double gain keeps headroom and does not leak channels");
 }
 static void stateAndLayouts()
@@ -208,24 +227,28 @@ static void stateAndLayouts()
     check(restored.params.getRawParameterValue("fxInputGain")->load() == 3,
           "foreign/invalid state ignored");
     restored.prepareToPlay(96000, 17);
-    juce::AudioBuffer<float> audio(2, 17);
+    constexpr int latency = rastro::fx::Rack::latency();
+    juce::AudioBuffer<float> audio(2, latency + 1);
     audio.clear();
     audio.setSample(1, 0, 2.f);
     juce::MidiBuffer midi;
     restored.processBlock(audio, midi);
-    check(audio.getSample(1, 0) == 2.f && audio.getSample(0, 0) == 0,
+    check(audio.getSample(1, latency) == 2.f && audio.getSample(0, latency) == 0,
           "restored bypass immediately dry");
 }
 #include "FxRackIntegration.h"
+#include "FxSoundQualityTests.h"
 int main()
 {
     juce::ScopedJuceInitialiser_GUI gui;
     fullFxTests();
+    fxsound::run();
     transparency<float>();
     transparency<double>();
     gainAndBypass();
     blockPartitioning();
     stateAndLayouts();
-    std::cout << "PASS FX: float/double bit-exact unity; mono/stereo; rates/block sizes; gains; "
-                 "parameter/host bypass ramps and reversal; state isolation; zero latency\n";
+    std::cout
+        << "PASS FX: float/double bit-exact unity; mono/stereo; rates/block sizes; gains; "
+           "parameter/host bypass ramps and reversal; state isolation; constant aligned latency\n";
 }

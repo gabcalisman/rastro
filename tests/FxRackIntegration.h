@@ -296,15 +296,17 @@ static void routingFxTests()
     set(dry, "fxDryWet", 0);
     dry.reset();
     auto d = renderFx(dry);
+    constexpr int latency = rastro::fx::Rack::latency();
+    auto dryAt = [](size_t i) { return i >= size_t(latency) ? fixture(int(i) - latency) : 0.f; };
     for (size_t i = 0; i < d.size(); ++i)
-        check(d[i] == fixture(int(i)), "global wet zero is exact dry");
+        check(d[i] == dryAt(i), "global wet zero is exact dry, aligned to the latency");
     RastroFxProcessor half;
     configureRack(half);
     set(half, "fxDryWet", .5f);
     half.reset();
     auto h = renderFx(half);
     for (size_t i = 0; i < h.size(); ++i)
-        check(std::abs(h[i] - (a[i] + fixture(int(i))) * .5f) < 2e-5, "global wet interpolation");
+        check(std::abs(h[i] - (a[i] + dryAt(i)) * .5f) < 2e-5, "global wet interpolation");
     // Exercise all modules, host automation, order/routing transitions and sample-rate changes.
     RastroFxProcessor all;
     for (int id = 0; id < rastro::fx::count; ++id)

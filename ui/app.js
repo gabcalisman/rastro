@@ -996,7 +996,7 @@
   $("#captureHead").addEventListener("click", function () { setScreen("captura"); });
   function openCapture() {
     $("#captureSheet").hidden = false; capOpen = true;
-    R.call("captureInfo").then(function (info) { info = info || {}; $("#capDirect").hidden = !info.direct; $("#capSettings").hidden = !info.canOpenSettings; });
+    R.call("captureInfo").then(function (info) { info = info || {}; capInfo = info; capQuiet = 0; $("#capDirect").hidden = !(info.direct || info.standalone); $("#capSettings").hidden = !info.canOpenSettings; $("#capPlugin").hidden = !!info.standalone; });
     pollCapture(); clearInterval(capTimer); capTimer = setInterval(pollCapture, 1000);
   }
   function closeCapture(fromScreen) { $("#captureSheet").hidden = true; capOpen = false; clearInterval(capTimer); if (!fromScreen && screen() === "captura") setScreen("limpo"); }
@@ -1028,12 +1028,20 @@
       });
     });
   }
+  // Standalone diagnostics: no active input, or input open but nothing arriving (microphone permission)
+  let capInfo = {}, capQuiet = 0, capInfoAt = 0;
   function capTick(c) {
     if (!capOpen || !c) return;
+    const nowT = performance.now();
+    if (capInfo.standalone && nowT - capInfoAt > 1500) { capInfoAt = nowT; R.call("captureInfo").then(function (i) { if (i) capInfo = i; }); }
+    capQuiet = (c.peak || 0) > .0005 ? 0 : capQuiet + 1;
     $("#capMeter").style.width = Math.min(100, (c.peak || 0) * 100) + "%";
     $("#capTime").textContent = (c.seconds || 0).toFixed(1).replace(".", ",") + " s";
     const rec = c.state === 1; $("#capRec").classList.toggle("live", rec); $("#capRec").textContent = rec ? "● GRAVANDO" : "● GRAVAR";
-    $("#capStatus").textContent = rec ? "Gravando… clique em PARAR para usar a tomada (máx. 30 s). Ela substitui o sample atual." : c.outcome === 2 ? "Gravação vazia: nenhum áudio chegou." : c.outcome === 3 ? "Chegou áudio, mas em silêncio: confira entrada e ganho." : "";
+    let msg = rec ? "Gravando… clique em PARAR para usar a tomada (máx. 30 s). Ela substitui o sample atual." : c.outcome === 2 ? "Gravação vazia: nenhum áudio chegou." : c.outcome === 3 ? "Chegou áudio, mas em silêncio: confira entrada e ganho." : "";
+    if (capInfo.standalone && capInfo.inputAvailable === false) msg = "Nenhuma entrada de áudio ligada. Clique em ESCOLHER ENTRADA… e, em Input, ative o microfone ou a interface.";
+    else if (capInfo.standalone && capQuiet > 180 && !rec) msg = "A entrada está ligada, mas não chega sinal. Fale ou toque algo; se o medidor não mexer, abra Ajustes do Sistema → Privacidade e Segurança → Microfone e libere o RASTRO (depois feche e abra o app).";
+    $("#capStatus").textContent = msg;
   }
   $$(".sheet").forEach(function (s) { s.addEventListener("click", function (e) { if (e.target === s || e.target.hasAttribute("data-close")) { if (s.id === "captureSheet") closeCapture(); else s.hidden = true; } }); });
 

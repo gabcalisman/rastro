@@ -1,4 +1,5 @@
 #pragma once
+#include "AntialiasedShape.h"
 #include "CharacterEffects.h"
 #include "EngineTypes.h"
 #include <algorithm>
@@ -14,6 +15,7 @@ class FxLegacyRack
     std::array<std::array<std::vector<float>, 4>, 2> reverb;
     std::array<std::array<int, 4>, 2> rp{};
     float ghostTone[2]{}, bloomTone[2]{};
+    std::array<float, 2> aaGhost{}, aaBloom{};
     float delayTime = 1, grainOutput[2]{}, grainSmoothing = .1f;
     bool wasClocked = false;
     int write = 0, grainWrite = 0, phase = 0, fragment = 0, fragmentLength = 1;
@@ -74,6 +76,7 @@ class FxLegacyRack
         fragmentLength = 1;
         std::fill_n(ghostTone, 2, 0);
         std::fill_n(bloomTone, 2, 0);
+        aaGhost = aaBloom = {};
         initialized = false;
         topologyGain = 1;
         delayTime = 1;
@@ -223,8 +226,9 @@ class FxLegacyRack
                     float z =
                         delay[c][a] + (read - a) * (delay[c][(a + 1) % delaySize] - delay[c][a]);
                     ghostTone[c] += (.02f + .7f * sm.ghost[2]) * (z - ghostTone[c]);
-                    delay[c][write] = std::tanh(
-                        x[c] + ghostTone[c] * std::min(.88f, sm.ghost[1] * (.5f + sm.trail)));
+                    float feedback = ghostTone[c] * std::min(.88f, sm.ghost[1] * (.5f + sm.trail));
+                    delay[c][write] = fx::antialiasedShape(
+                        x[c], aaGhost[c], [feedback](float sample) { return std::tanh(sample + feedback); });
                     wet = ghostTone[c];
                 }
                 if (module == 1)
@@ -264,9 +268,10 @@ class FxLegacyRack
                         int a = (int)read;
                         float z = reverb[c][k][a] +
                                   (read - a) * (reverb[c][k][(a + 1) % len] - reverb[c][k][a]);
-                        reverb[c][k][idx] =
-                            std::tanh(x[c] * .3f + z * std::min(.94f, .3f + .6f * sm.bloom[2] +
-                                                                          .04f * sm.trail));
+                        float feedback = z * std::min(.94f, .3f + .6f * sm.bloom[2] + .04f * sm.trail);
+                        reverb[c][k][idx] = fx::antialiasedShape(
+                            x[c], aaBloom[c], [feedback](float sample)
+                            { return std::tanh(sample * .3f + feedback); });
                         idx = (idx + 1) % len;
                         sum += z * .25f;
                     }

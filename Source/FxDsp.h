@@ -1,4 +1,5 @@
 #pragma once
+#include "AntialiasedShape.h"
 #include "FxLegacyRack.h"
 #include <array>
 #include <cmath>
@@ -131,6 +132,7 @@ class Node
     std::array<std::vector<float>, 2> ring;
     std::array<std::array<float, 2>, 2> formantState{}, filterState{};
     std::array<float, 2> tone{}, previous{}, dc{}, magnetization{};
+    std::array<float, 2> aaOrbit{}, aaTrail{}, aaPrism{}, aaEmber{}, aaSquash{};
     float follower = 0, panPosition = 0;
     double sr = 48000, phase = 0, pitchPhase = 0;
     int write = 0;
@@ -181,6 +183,7 @@ class Node
         previous = {};
         dc = {};
         magnetization = {};
+        aaOrbit = aaTrail = aaPrism = aaEmber = aaSquash = {};
         follower = panPosition = 0;
         phase = pitchPhase = 0;
         write = 0;
@@ -229,14 +232,18 @@ class Node
             if (id == 7)
             {
                 float z = read(c, sr * .001 * (p[3] + p[1] * (1 + std::sin(2 * pi * phase)) * .5));
-                ring[c][write] = std::tanh(x[c] + z * p[2]);
+                ring[c][write] = antialiasedShape(
+                    x[c], aaOrbit[c], [z, feedback = p[2]](float sample)
+                    { return std::tanh(sample + z * feedback); });
                 x[c] = z;
             }
             if (id == 8)
             {
                 float z = lowpass(read(c, sr * p[0] * .001), c, p[2]);
                 float input = x[c] + z * p[1];
-                ring[c][write] = input + (std::tanh(input) - input) * p[3];
+                ring[c][write] = antialiasedShape(
+                    input, aaTrail[c], [colour = p[3]](float sample)
+                    { return sample + (std::tanh(sample) - sample) * colour; });
                 x[c] = z;
             }
             if (id == 9)
@@ -262,20 +269,29 @@ class Node
                 float shifted = float(read(c, delay + pitchPhase * window) * weight +
                                       read(c, delay + second * window) * (1 - weight));
                 shifted = lowpass(shifted, c, p[3]);
-                ring[c][write] = std::tanh(x[c] + shifted * p[2]);
+                ring[c][write] = antialiasedShape(
+                    x[c], aaPrism[c], [shifted, feedback = p[2]](float sample)
+                    { return std::tanh(sample + shifted * feedback); });
                 x[c] = shifted;
             }
             if (id == 11)
             {
-                float driven = (x[c] + p[2]) * p[0], bias = p[2] * p[0];
+                float drive = p[0], biasInput = p[2], bias = biasInput * drive;
+                float driven = (x[c] + biasInput) * drive;
                 magnetization[c] += .12f * (driven - magnetization[c]);
-                float modes[]{std::tanh(driven) - std::tanh(bias),
-                              (std::tanh(driven) + .2f * std::tanh(driven * driven)) -
-                                  (std::tanh(bias) + .2f * std::tanh(bias * bias)),
-                              std::atan(driven + .18f * magnetization[c]) * float(2 / pi) -
-                                  std::atan(bias * 1.18f) * float(2 / pi)};
-                int mode = std::min(1, int(p[3]));
-                float shaped = modes[mode] + (modes[mode + 1] - modes[mode]) * (p[3] - mode);
+                const float memory = magnetization[c];
+                float shaped = antialiasedShape(
+                    x[c], aaEmber[c], [=](float sample)
+                    {
+                        float v = (sample + biasInput) * drive;
+                        float modes[]{std::tanh(v) - std::tanh(bias),
+                                      (std::tanh(v) + .2f * std::tanh(v * v)) -
+                                          (std::tanh(bias) + .2f * std::tanh(bias * bias)),
+                                      std::atan(v + .18f * memory) * float(2 / pi) -
+                                          std::atan(bias * 1.18f) * float(2 / pi)};
+                        int mode = std::min(1, int(p[3]));
+                        return modes[mode] + (modes[mode + 1] - modes[mode]) * (p[3] - mode);
+                    });
                 // DC blocker handles asymmetric tube distortion.
                 float high = shaped - previous[c] + .995f * dc[c];
                 previous[c] = shaped;
@@ -286,7 +302,9 @@ class Node
             {
                 float db = 20 * std::log10(std::max(follower, 1e-7f));
                 float reduction = std::max(0.f, db - p[1]) * (1 - 1 / p[2]);
-                x[c] = std::tanh(x[c] * p[0] * std::pow(10.f, -reduction / 20));
+                const float gain = p[0] * std::pow(10.f, -reduction / 20);
+                x[c] = antialiasedShape(
+                    x[c], aaSquash[c], [gain](float sample) { return std::tanh(sample * gain); });
             }
             if (id == 13)
                 x[c] = filter(x[c], filterState[c], p[0], p[1], p[2]);

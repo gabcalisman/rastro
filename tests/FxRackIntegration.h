@@ -38,6 +38,46 @@ static float fixture(int i, int channel = 0)
                   .11 * std::sin(i * .723)) *
                  (i % 5000 < 2500 ? 1 : .15));
 }
+static void antialiasFxTests()
+{
+    constexpr int size = 4800, sampleRate = 48000;
+    constexpr float frequency = 10000.f, level = .85f, drive = 8.f;
+    constexpr int aliasBins[]{200, 600, 1800, 2200};
+    std::array<float, size> plain{}, antialiased{};
+    float previous = 0;
+    for (int i = 0; i < size * 2; ++i)
+    {
+        const float input = level * std::sin(float(2 * rastro::fx::pi * frequency * i / sampleRate));
+        float direct = std::tanh(input * drive);
+        float shaped = rastro::fx::antialiasedShape(
+            input, previous, [drive](float value) { return std::tanh(value * drive); });
+        if (i >= size)
+        {
+            plain[size_t(i - size)] = direct;
+            antialiased[size_t(i - size)] = shaped;
+        }
+    }
+    auto amplitude = [](const std::array<float, size> &signal, int bin)
+    {
+        double real = 0, imaginary = 0;
+        for (int i = 0; i < size; ++i)
+        {
+            const double angle = 2 * rastro::fx::pi * bin * i / size;
+            real += signal[size_t(i)] * std::cos(angle);
+            imaginary += signal[size_t(i)] * std::sin(angle);
+        }
+        return 2 * std::hypot(real, imaginary) / size;
+    };
+    double plainAlias = 0, aaAlias = 0;
+    for (int bin : aliasBins)
+    {
+        plainAlias += std::pow(amplitude(plain, bin), 2);
+        aaAlias += std::pow(amplitude(antialiased, bin), 2);
+    }
+    check(aaAlias < plainAlias * .25,
+          "antialiased nonlinear shaper substantially reduces folded harmonics");
+    std::cout << "PASS FX quality: ADAA shaper reduces 10 kHz saturation alias energy by at least 75%\n";
+}
 static void inheritedFxTests()
 {
     for (double rate : {22050., 48000.})
@@ -61,16 +101,19 @@ static void inheritedFxTests()
                 float l = fixture(i), r = fixture(i, 1), a = l, b = r;
                 original.process(l, r, settings);
                 fx.wet(id, a, b, frame, false);
-                error = std::max(error,
-                                 double(std::abs(l - std::tanh(a)) + std::abs(r - std::tanh(b))));
+                check(std::isfinite(a) && std::isfinite(b), "inherited FX stays finite");
+                if (id != 0 && id != 2)
+                    error = std::max(
+                        error, double(std::abs(l - std::tanh(a)) + std::abs(r - std::tanh(b))));
             }
-            if (error > 2e-6)
+            if (id != 0 && id != 2 && error > 2e-6)
                 std::cerr << "legacy id " << id << " error " << error << '\n';
-            check(error < 2e-6,
-                  "inherited wet algorithms match PLAY before its global output saturator");
+            if (id != 0 && id != 2)
+                check(error < 2e-6,
+                      "unchanged inherited wet algorithms match PLAY before its output saturator");
         }
-    std::cout << "PASS FX inherited: six algorithms compared sample-by-sample with unchanged PLAY "
-                 "at two rates\n";
+    std::cout << "PASS FX inherited: four unchanged algorithms match PLAY; GHOST/BLOOM use FX-only "
+                 "antialiased feedback at two rates\n";
 }
 static void inheritedControlTests()
 {
@@ -633,6 +676,7 @@ static void editorFxTests()
 }
 static void fullFxTests()
 {
+    antialiasFxTests();
     inheritedFxTests();
     inheritedControlTests();
     nativeFxTests();

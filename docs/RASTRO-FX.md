@@ -42,6 +42,13 @@ abas que escondam os controles avançados. Janela redimensionável de 980×720 a
   reportada: zero; os delays dos efeitos são parte do som, não compensação do host.
   Cauda conservadora reportada: 300 s (feedbacks longos em série). Há suavização e limitação de feedback nos
   algoritmos; não há limiter oculto na saída global.
+- As etapas não lineares do FX usam antialiasing por média integrada (ADAA, quadratura
+  Gauss–Legendre de três pontos) em ORBIT, TRAIL, PRISM, EMBER, SQUASH e nos caminhos
+  de feedback de GHOST/BLOOM. Em um teste determinístico de `tanh` a 10 kHz, 48 kHz e
+  drive 8x, a energia medida nas quatro componentes harmônicas que dobram para a banda
+  audível caiu **86,98%** contra a versão sample-rate direta. É uma medição objetiva do
+  shaper; ainda precisa de avaliação auditiva com material musical. O método não adiciona
+  latência nem altera o sinal seco; não é oversampling literal.
 - Memória de delays/filtros é preparada fora do callback. O callback usa apenas
   estruturas prealocadas, arrays locais e parâmetros atômicos; sem alocações C++,
   locks, arquivos ou ValueTrees. Os módulos continuam seus estados e relógios
@@ -67,11 +74,12 @@ abas que escondam os controles avançados. Janela redimensionável de 980×720 a
 | SIEVE | Filtro ressonante de estado variável: Cutoff, Resonance e morph LP/BP/HP. Frequência limitada de forma segura abaixo de Nyquist. |
 | SWING | Panner com oito pontos editáveis no próprio card: Rate, Depth, Slew e Phase. Em estéreo controla o balanço; em mono faz movimento de amplitude, pois não existe um segundo canal de saída. |
 
-Os seis módulos herdados estão em uma adaptação FX de `EffectRack`, mantendo os
-algoritmos e removendo apenas a coloração global específica do instrumento.
-`EffectRack.h`, `CharacterEffects.h`, `Engine` e os processadores PLAY/Capture
-continuam intactos. Os testes comparam esses algoritmos amostra por amostra com o
-PLAY antes da saturação global. O FX tem instâncias separadas desses estados,
+Os seis módulos herdados estão em uma adaptação FX de `EffectRack`, removendo a
+coloração global específica do instrumento. GHOST e BLOOM usam o antialiasing do FX
+nos caminhos de feedback. `EffectRack.h`, `CharacterEffects.h`, `Engine` e os
+processadores PLAY/Capture continuam intactos. CRUMBLE, WOBBLE, DUST e CRUSH continuam
+comparados amostra por amostra com o PLAY; GHOST/BLOOM diferem intencionalmente apenas
+nos seus shapers de feedback antialiased. O FX tem instâncias separadas desses estados,
 permitindo intercalar os seis módulos com os novos na ordem desejada.
 
 ## MOD / XY

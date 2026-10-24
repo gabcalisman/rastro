@@ -6,7 +6,7 @@ namespace
 juce::Colour ink() { return juce::Colour(0xff24243e); }
 juce::Colour hue(int index)
 {
-    const juce::uint32 colours[]{0xff91e0bd, 0xffff9ca3, 0xffbcafff, 0xffffd67c, 0xff91cfff};
+    const juce::uint32 colours[]{0xff48e6d2, 0xffff4fbc, 0xffbe62ff, 0xffffb83f, 0xff50caff};
     return juce::Colour(colours[juce::jlimit(0, 4, index)]);
 }
 juce::Colour moduleHue(int index)
@@ -475,6 +475,9 @@ struct RastroFxEditor::Pad : juce::Component
 {
     RastroFxProcessor &p;
     bool dragging = false;
+    juce::Image characterHead;
+    std::array<juce::Point<float>, 8> trail{};
+    int trailCount = 0, trailWrite = 0;
     ~Pad() override
     {
         if (dragging)
@@ -485,25 +488,82 @@ struct RastroFxEditor::Pad : juce::Component
     {
         setComponentID("fxPad");
         setName("Assignable XY pad");
+        auto character = juce::ImageCache::getFromMemory(RastroFxAssets::al_o_starpilot_png,
+                                                         RastroFxAssets::al_o_starpilot_pngSize);
+        if (character.isValid())
+            characterHead = character.getClippedImage(
+                {int(character.getWidth() * .2f), int(character.getHeight() * .02f),
+                 int(character.getWidth() * .6f), int(character.getHeight() * .3f)});
     }
     void paint(juce::Graphics &g) override
     {
         auto area = getLocalBounds().reduced(8).toFloat();
-        g.setColour(ink());
+        g.setColour(juce::Colour(0xff160f28));
         g.fillRoundedRectangle(area, 18);
-        g.setColour(hue(p.appearance("accent")));
-        g.drawRoundedRectangle(area.reduced(2), 18, 3);
-        g.setColour(juce::Colours::white.withAlpha(.25f));
+        g.setColour(juce::Colour(0xffa43cff).withAlpha(.25f));
+        g.fillEllipse(area.getX() + area.getWidth() * .25f, area.getY() - 15.f,
+                      area.getWidth() * .7f, area.getHeight() * 1.2f);
+        g.setColour(hue(p.appearance("accent")).withAlpha(.9f));
+        g.drawRoundedRectangle(area.reduced(1.5f), 18, 2.2f);
+        g.setColour(juce::Colour(0xfff8edff).withAlpha(.18f));
         g.drawLine(area.getCentreX(), area.getY(), area.getCentreX(), area.getBottom());
         g.drawLine(area.getX(), area.getCentreY(), area.getRight(), area.getCentreY());
+        g.drawEllipse(area.getCentreX() - area.getHeight() * .27f,
+                      area.getCentreY() - area.getHeight() * .27f, area.getHeight() * .54f,
+                      area.getHeight() * .54f, 1.f);
+        auto *xTarget = p.params.getParameter("fxXTarget");
+        auto *yTarget = p.params.getParameter("fxYTarget");
+        auto xName = xTarget->getText(xTarget->getValue(), 40);
+        auto yName = yTarget->getText(yTarget->getValue(), 40);
+        auto tag = [&](juce::String text, juce::Rectangle<float> bounds, juce::Colour colour)
+        {
+            g.setColour(juce::Colour(0xff090817).withAlpha(.82f));
+            g.fillRoundedRectangle(bounds, 6.f);
+            g.setColour(colour);
+            g.drawRoundedRectangle(bounds, 6.f, 1.f);
+            g.setFont(juce::FontOptions(8.5f, juce::Font::bold));
+            g.drawFittedText(text, bounds.toNearestInt().reduced(5, 1), juce::Justification::centredLeft,
+                             1, .7f);
+        };
+        tag("X  " + xName, {area.getX() + 9.f, area.getY() + 8.f, area.getWidth() * .43f, 19.f},
+            hue(1));
+        tag("Y  " + yName, {area.getRight() - area.getWidth() * .43f - 9.f, area.getY() + 8.f,
+                            area.getWidth() * .43f, 19.f},
+            hue(0));
         float x = area.getX() + p.value("fxX") * area.getWidth(),
               y = area.getBottom() - p.value("fxY") * area.getHeight();
+        for (int i = trailCount - 1; i >= 0; --i)
+        {
+            int index = (trailWrite - 1 - i + int(trail.size()) * 2) % int(trail.size());
+            auto point = trail[size_t(index)];
+            float alpha = .08f + .32f * float(trailCount - i) / float(trail.size());
+            g.setColour(hue(p.appearance("accent")).withAlpha(alpha));
+            g.fillEllipse(area.getX() + point.x * area.getWidth() - 4.f,
+                          area.getBottom() - point.y * area.getHeight() - 4.f, 8.f, 8.f);
+        }
+        g.setColour(hue(p.appearance("accent")).withAlpha(.35f));
+        g.drawEllipse(x - 17.f, y - 17.f, 34.f, 34.f, 2.f);
+        juce::Path star;
+        for (int i = 0; i < 10; ++i)
+        {
+            const float angle = -juce::MathConstants<float>::halfPi +
+                                i * juce::MathConstants<float>::pi / 5.f;
+            const float radius = i % 2 == 0 ? 12.f : 5.5f;
+            const juce::Point<float> point(x + std::cos(angle) * radius,
+                                           y + std::sin(angle) * radius);
+            if (i == 0)
+                star.startNewSubPath(point);
+            else
+                star.lineTo(point);
+        }
+        star.closeSubPath();
+        g.setColour(juce::Colour(0xfffff0b0));
+        g.fillPath(star);
         g.setColour(hue(p.appearance("accent")));
-        g.fillEllipse(x - 10, y - 10, 20, 20);
-        g.setColour(ink());
-        g.fillEllipse(x - 4, y - 3, 2, 3);
-        g.fillEllipse(x + 3, y - 3, 2, 3);
-        g.drawLine(x - 3, y + 4, x + 4, y + 4, 1.5f);
+        g.strokePath(star, juce::PathStrokeType(1.5f));
+        if (characterHead.isValid())
+            g.drawImageWithin(characterHead, juce::roundToInt(x - 14.f), juce::roundToInt(y - 15.f),
+                              28, 30, juce::RectanglePlacement::centred);
     }
     void mouseDown(const juce::MouseEvent &e) override
     {
@@ -516,10 +576,13 @@ struct RastroFxEditor::Pad : juce::Component
     void mouseDrag(const juce::MouseEvent &e) override
     {
         auto area = getLocalBounds().reduced(8);
-        p.params.getParameter("fxX")->setValueNotifyingHost(
-            juce::jlimit(0.f, 1.f, (e.x - area.getX()) / float(area.getWidth())));
-        p.params.getParameter("fxY")->setValueNotifyingHost(
-            juce::jlimit(0.f, 1.f, 1 - (e.y - area.getY()) / float(area.getHeight())));
+        const float x = juce::jlimit(0.f, 1.f, (e.x - area.getX()) / float(area.getWidth()));
+        const float y = juce::jlimit(0.f, 1.f, 1 - (e.y - area.getY()) / float(area.getHeight()));
+        trail[size_t(trailWrite)] = {x, y};
+        trailWrite = (trailWrite + 1) % int(trail.size());
+        trailCount = std::min(trailCount + 1, int(trail.size()));
+        p.params.getParameter("fxX")->setValueNotifyingHost(x);
+        p.params.getParameter("fxY")->setValueNotifyingHost(y);
         repaint();
     }
     void mouseUp(const juce::MouseEvent &) override
@@ -536,6 +599,7 @@ struct RastroFxEditor::Pad : juce::Component
                 p.params.getParameter(id)->setValueNotifyingHost(.5f);
             else
                 p.setValue(id, .5f);
+        trailCount = 0;
         repaint();
     }
 };
@@ -578,40 +642,71 @@ struct RastroFxEditor::ModPanel : juce::Component
     }
     void paint(juce::Graphics &g) override
     {
-        g.setColour(juce::Colour(0xfffffbef));
-        g.fillRoundedRectangle(getLocalBounds().toFloat(), 16);
-        label(g, "MOD / touch an orbit", {14, 5, getWidth() - 28, 30}, 19);
-        label(g, "LFO / motion generator", {14, 450, getWidth() - 28, 30}, 17);
-        label(g, "ENVELOPE / follow the input", {14, 745, getWidth() - 28, 30}, 17);
+        auto bounds = getLocalBounds().toFloat();
+        g.setColour(juce::Colour(0xff171025));
+        g.fillRoundedRectangle(bounds, 18.f);
+        g.setColour(juce::Colour(0xffa43cff).withAlpha(.4f));
+        g.drawRoundedRectangle(bounds.reduced(.75f), 18.f, 1.5f);
+        auto section = [&](float y, float height, int accent)
+        {
+            auto r = juce::Rectangle<float>(9.f, y, getWidth() - 18.f, height);
+            g.setColour(juce::Colour(0xff211832));
+            g.fillRoundedRectangle(r, 13.f);
+            g.setColour(hue(accent).withAlpha(.22f));
+            g.fillRoundedRectangle(r.withWidth(4.f), 2.f);
+            g.setColour(hue(accent).withAlpha(.42f));
+            g.drawRoundedRectangle(r, 13.f, 1.f);
+        };
+        section(37.f, 414.f, 2);
+        section(462.f, 264.f, 0);
+        section(733.f, 390.f, 1);
+        auto heading = [&](const juce::String &text, juce::Rectangle<int> area, int accent, float size)
+        {
+            g.setColour(hue(accent));
+            g.setFont(juce::FontOptions(size, juce::Font::bold));
+            g.drawFittedText(text, area, juce::Justification::centredLeft, 1, .7f);
+        };
+        heading("ORBIT / MODULATION", {14, 4, getWidth() - 28, 30}, 2, 18);
+        heading("LFO / MOTION", {18, 466, getWidth() - 36, 26}, 0, 16);
+        heading("ENVELOPE / FOLLOWER", {18, 737, getWidth() - 36, 26}, 1, 16);
+        g.setColour(juce::Colour(0xffd8d3e8));
+        g.setFont(juce::FontOptions(10.5f));
+        g.drawText("Move the star; X and Y can steer different FX.", 18, 219, getWidth() - 36, 18,
+                   juce::Justification::centredLeft);
         for (int i = 0; i < 5; ++i)
-            label(g, comboNames[i], {16, comboY(i) - 20, getWidth() - 32, 18}, 11);
+        {
+            g.setColour(i < 2 ? hue(i + 1) : i == 2 || i == 3 ? hue(0) : hue(1));
+            g.setFont(juce::FontOptions(10.5f, juce::Font::bold));
+            g.drawText(comboNames[i].toUpperCase(), 16, comboY(i) - 20, getWidth() - 32, 18,
+                       juce::Justification::centredLeft);
+        }
         auto drawSignal = [&](float v, int y, juce::Colour colour)
         {
-            g.setColour(ink());
+            g.setColour(juce::Colour(0xff0d0b18));
             g.fillRoundedRectangle(16.f, float(y), getWidth() - 32.f, 10, 5);
             g.setColour(colour);
             g.fillRoundedRectangle(16.f, float(y), (getWidth() - 32.f) * juce::jlimit(0.f, 1.f, v),
                                    10, 5);
         };
-        drawSignal((p.lfoMeter.load() + 1) * .5f, 710, hue(2));
-        drawSignal(p.envelopeMeter.load(), 1075, hue(1));
-        label(g,
-              "Amounts are bipolar. None disables a route.\nX/Y add around centre; LFO is bipolar; "
-              "envelope is unipolar.",
-              {16, 1100, getWidth() - 32, 58}, 11);
+        drawSignal((p.lfoMeter.load() + 1) * .5f, 704, hue(0));
+        drawSignal(p.envelopeMeter.load(), 1058, hue(1));
+        g.setColour(juce::Colour(0xffd8d3e8));
+        g.setFont(juce::FontOptions(9.5f));
+        g.drawFittedText("X/Y and LFO are bipolar. Envelope follows input level. None disables a route.",
+                         {16, 1075, getWidth() - 32, 42}, juce::Justification::centredLeft, 2, .7f);
     }
     int comboY(int i) const
     {
-        const int y[]{245, 295, 505, 560, 800};
+        const int y[]{258, 305, 525, 570, 805};
         return y[i];
     }
     void resized() override
     {
-        pad.setBounds(14, 40, getWidth() - 28, 174);
+        pad.setBounds(14, 41, getWidth() - 28, 172);
         for (int i = 0; i < 5; ++i)
             combos[i].setBounds(16, comboY(i), getWidth() - 32, 28);
         int w = (getWidth() - 32) / 2;
-        const int ys[]{330, 330, 600, 600, 845, 845, 960, 960};
+        const int ys[]{350, 350, 620, 620, 845, 845, 945, 945};
         for (int i = 0; i < 8; ++i)
             knobs[i]->setBounds(16 + (i % 2) * w, ys[i], w, 103);
     }
@@ -770,13 +865,18 @@ void RastroFxEditor::paint(juce::Graphics &g)
     if (logo.isValid())
         g.drawImageWithin(logo, 22, 17, 150, 42, juce::RectanglePlacement::centred);
     g.setColour(juce::Colour(0xfff9f5ec));
-    g.setFont(juce::FontOptions(22, juce::Font::bold));
-    g.drawText("FX / ORBITAL PLAYGROUND", juce::Rectangle<int>{186, 10, 390, 31},
+    g.setFont(juce::FontOptions(31, juce::Font::bold));
+    g.drawText("FX", juce::Rectangle<int>{184, 6, 54, 39}, juce::Justification::centredLeft);
+    g.setFont(juce::FontOptions(14, juce::Font::bold));
+    g.drawText("ORBITAL PLAYGROUND", juce::Rectangle<int>{250, 10, 330, 25},
                juce::Justification::centredLeft);
     g.setColour(juce::Colour(0xffbfc4d8));
-    g.setFont(juce::FontOptions(11));
-    g.drawText("15 sonic characters  /  shape your signal",
-               juce::Rectangle<int>{187, 39, 380, 20}, juce::Justification::centredLeft);
+    g.setFont(juce::FontOptions(10.5f));
+    g.drawText("by Gab Calisman", juce::Rectangle<int>{185, 41, 110, 17},
+               juce::Justification::centredLeft);
+    g.setFont(juce::FontOptions(9.5f));
+    g.drawText("15 SONIC CHARACTERS  /  SHAPE YOUR SIGNAL",
+               juce::Rectangle<int>{250, 36, 390, 17}, juce::Justification::centredLeft);
     g.setColour(panel);
     g.fillRoundedRectangle(10, 78, float(getWidth() - 20), 90, 14);
     label(g, "MIX", {22, 80, 60, 18}, 12);
@@ -785,12 +885,12 @@ void RastroFxEditor::paint(juce::Graphics &g)
     g.drawText("PRESETS", juce::Rectangle<int>{16, 174, 100, 20}, juce::Justification::centredLeft);
     g.setColour(juce::Colour(0xfff9f5ec));
     g.setFont(juce::FontOptions(16, juce::Font::bold));
-    g.drawText("MODULE BANK  /  add a sound to the rack",
+    g.drawText("FX MODULES  /  tap to add to your signal path",
                juce::Rectangle<int>{18, 242, getWidth() - 400, 24},
                juce::Justification::centredLeft);
     g.setColour(juce::Colour(0xffbfc4d8));
     g.setFont(juce::FontOptions(14, juce::Font::bold));
-    g.drawText("ACTIVE EFFECT CHAIN  /  drag cards to reorder",
+    g.drawText("YOUR SIGNAL PATH  /  drag cards to change the order",
                juce::Rectangle<int>{18, 340, getWidth() - 400, 24},
                juce::Justification::centredLeft);
     g.setColour(juce::Colour(0xff4b516d));
@@ -857,7 +957,7 @@ void RastroFxEditor::refresh()
         bool inserted = p.value(RastroFxProcessor::moduleId(i, "InRack")) >= .5f;
         insertChanged |= shownInserted[size_t(i)] != inserted;
         shownInserted[size_t(i)] = inserted;
-        moduleButtons[size_t(i)].setButtonText(juce::String(inserted ? "✓ " : "+ ") + modules[i].name);
+        moduleButtons[size_t(i)].setButtonText(juce::String(inserted ? "IN  " : "+  ") + modules[i].name);
         moduleButtons[size_t(i)].setColour(juce::TextButton::buttonColourId,
                                            inserted ? moduleHue(i) : juce::Colour(0xff292d49));
         moduleButtons[size_t(i)].setColour(juce::TextButton::textColourOffId,

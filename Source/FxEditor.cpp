@@ -170,8 +170,10 @@ struct RastroFxEditor::Segmented : juce::Component
     }
     void refresh()
     {
-        int selected = juce::jlimit(0, optionCount - 1,
-                                    int(std::round(processor.value(id) * float(optionCount - 1))));
+        auto *parameter = processor.params.getParameter(id);
+        int selected = juce::jlimit(
+            0, optionCount - 1,
+            int(std::round(parameter->getValue() * float(optionCount - 1))));
         for (int i = 0; i < optionCount; ++i)
         {
             bool active = i == selected;

@@ -527,7 +527,9 @@ static void editorFxTests()
                     findFx(*editor, parameterId + "Option" + juce::String(option)));
                 check(button != nullptr, "unique module selector has accessible options");
                 button->triggerClick();
-                float expected = id == 6 ? .75f : 1.f;
+                int optionCount = id == 6 ? 5 : 3;
+                float expected = rastro::fx::modules[id].knob[k].physical(
+                    float(option) / float(optionCount - 1));
                 check(std::abs(p.value(parameterId) - expected) < 1e-5,
                       "unique module selector controls real host parameter");
             }

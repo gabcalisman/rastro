@@ -633,6 +633,17 @@ void RastroWebEditor::timerCallback()
     for (auto &word : p.heldNotes)
         notes.add((double)word.load(std::memory_order_relaxed));
     t->setProperty("meter", engine.meter.load());
+    {
+        // last 256 scope points, oldest first (visualiser only)
+        juce::Array<juce::var> sc;
+        const int w = engine.scopeWrite.load(std::memory_order_relaxed);
+        for (int i = 0; i < 256; ++i)
+        {
+            const int k = (w - 256 + i + rastro::Engine::scopeSize) % rastro::Engine::scopeSize;
+            sc.add(std::round(engine.scope[size_t(k)].load(std::memory_order_relaxed) * 1000) / 1000);
+        }
+        t->setProperty("scope", sc);
+    }
     t->setProperty("act", activity);
     t->setProperty("env", engine.visualEnvelope.load());
     t->setProperty("wob", engine.visualWobble.load());

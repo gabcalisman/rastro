@@ -208,3 +208,9 @@ Separe: o que já existia; o que mudou; o que ficou incompleto; testes que passa
 - Luzes dos FX: cor de cada módulo (GHOST violeta, CRUMBLE âmbar, BLOOM rosa, WOBBLE ciano, DUST dourado, CRUSH lavanda) com força = atividade real; bypass/mix 0 apaga; várias cores misturadas com limite para manter rosto e roupa legíveis.
 - XP só libera itens visuais. Look salvo em `look.kit`; a Nova "Original" (desenho fixo) segue em LOOKS.
 - Limites honestos: peças recortadas de pranchas geradas (bordas um pouco suaves, alguns recortes imperfeitos); pele de braços/pernas desenhada em código onde a roupa não cobre; poses grandes limitadas pela vista frontal. Starlight/Galaxy (cabelos da tela antiga) não estão no kit.
+
+## Etapa 1 de som (24/10/2026) — branch `claude/etapa-1-som`
+
+- **Sem personagem nas telas principais.** PLAY, SOUND, RACK e JAM mostram um **visualizador** (`ui/viz.js`): a forma de onda real da saída enrolada num anel, um anel por nota (rastro), ecos do GHOST, brilho do BLOOM, balanço do WOBBLE, falhas do CRUMBLE, poeira do DUST, pixels do CRUSH — tudo pela atividade real. Cenário pintado só no LOCKER. Telemetria nova: `scope` (256 pontos da saída, ring buffer atômico no Engine).
+- **Som novo (parâmetros anexados, sessões antigas soam igual):** `hq` (leitura com Hermite em versões filtradas do sample, sem aliasing; liga o caminho do DRIVE), `filterMode` (LP/HP/BP/NOTCH), `filterSlope` (12/24 dB), `filterDrive` (saturação com oversampling 2×), `fenvOwn` + `fAttack/fDecay/fSustain/fRelease` (ADSR próprio do filtro), `lfoShape` (SIN/TRI/SQR/SAW/S&H), `lfoFade`, `lfoAmp` (→ volume), `lfoPan` (→ pan). Migração: estados sem esses parâmetros abrem com `hq` 0 e `fenvOwn` 0.
+- Testes novos na suíte dsp (etapa 1): HQ tira o aliasing (−79 dB num tom de 9 kHz duas oitavas acima), modos e inclinação do filtro, DRIVE com nível controlado e transparente em 0, ADSR do filtro independente, LFO no volume/pan sem cliques, FADE IN.

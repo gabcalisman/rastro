@@ -444,7 +444,12 @@
     // FILTER ENVELOPE: the filter follows the amp envelope shape, scaled by AMOUNT (negative closes the filter)
     const amt = v("envAmount"), fbase = amt >= 0 ? y0 : top, fy = function (y) { const n = (y0 - y) / (y0 - top); return fbase - (y0 - top) * n * amt; };
     const fl = v("synthEnable") > .5 && Math.abs(amt) > .005, fcol = fl ? "#2fe0ff" : "rgba(47,224,255,.5)";
-    const fp = [[4, fy(y0)], [p1[0], fy(top)], [p2[0], fy(sy)], [p3[0], fy(sy)], [p4[0], fy(y0)], [EW - 4, fy(y0)]];
+    let fp = [[4, fy(y0)], [p1[0], fy(top)], [p2[0], fy(sy)], [p3[0], fy(sy)], [p4[0], fy(y0)], [EW - 4, fy(y0)]];
+    if (v("fenvOwn") > .5) {
+      const fa = tPos(v("fAttack"), 4, seg1), fd = tPos(v("fDecay"), 4, seg2), fs = v("fSustain"), fr = tPos(v("fRelease"), 8, seg4), fsy = y0 - (y0 - top) * fs;
+      const q1 = [4 + fa, top], q2 = [q1[0] + fd, fsy], q3 = [q2[0] + hold, fsy], q4 = [q3[0] + fr, y0];
+      fp = [[4, fy(y0)], [q1[0], fy(top)], [q2[0], fy(fsy)], [q3[0], fy(fsy)], [q4[0], fy(y0)], [EW - 4, fy(y0)]];
+    }
     const fpath = fp.map(function (q) { return q[0].toFixed(1) + " " + q[1].toFixed(1); }).join(" L");
     $("#fenvSvg").innerHTML = '<defs><linearGradient id="fenvG" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2fe0ff" stop-opacity=".45"/><stop offset="1" stop-color="#2fe0ff" stop-opacity=".03"/></linearGradient></defs><g opacity="' + (fl ? 1 : .5) + '">' +
       '<path d="M' + fpath + ' L' + (EW - 4) + ' ' + fbase + ' L4 ' + fbase + ' Z" fill="url(#fenvG)"/>' +
@@ -477,27 +482,49 @@
   }
   function drawFilter() {
     const c = Math.log(Math.max(20, v("filterCutoff")) / 20) / Math.log(1000), q = v("filterResonance"), x = 8 + c * 200, live = v("synthEnable") > .5, op = live ? 1 : .5;
-    const curve = 'M0 14 H' + (x - 24) + ' C' + (x - 8) + ' 14 ' + (x - 6) + ' ' + (14 - q * 10) + ' ' + x + ' ' + (14 - q * 9) + ' S' + (x + 20) + ' 44 ' + (x + 36) + ' 46';
+    // response drawn from the real SVF formulas (log frequency axis, 20 Hz–20 kHz)
+    const fm = Math.round(v("filterMode")), sl = Math.round(v("filterSlope")), fc = Math.max(20, v("filterCutoff")), k = 2 - 1.9 * q;
+    const resp = function (fz) { const w = fz / fc, re = 1 - w * w, im = k * w, den = re * re + im * im; let h = fm === 1 ? (w * w) * (w * w) / den : fm === 2 ? (k * w) * (k * w) / den : fm === 3 ? re * re / den : 1 / den; h = Math.sqrt(h); if (sl === 1) { const k2 = 2 - .95 * q, den2 = re * re + (k2 * w) * (k2 * w); h *= Math.sqrt(fm === 1 ? (w * w) * (w * w) / den2 : fm === 2 ? (k2 * w) * (k2 * w) / den2 : fm === 3 ? re * re / den2 : 1 / den2); } return h; };
+    let curve = "";
+    for (let i = 0; i <= 120; i++) { const fz = 20 * Math.pow(1000, i / 120), db = 20 * Math.log10(Math.max(1e-6, resp(fz))), y = clamp(12.5 - db * .875, 1, 46); curve += (i ? " L" : "M") + (i * 2).toFixed(1) + " " + y.toFixed(1); }
     $("#filterSvg").innerHTML = '<defs><linearGradient id="fltG" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2fe0ff" stop-opacity=".5"/><stop offset="1" stop-color="#2fe0ff" stop-opacity=".03"/></linearGradient></defs><g opacity="' + op + '">' +
-      '<path d="' + curve + ' L240 46 L0 46 Z" fill="url(#fltG)"/><line x1="' + x + '" x2="' + x + '" y1="' + (14 - q * 9) + '" y2="46" stroke="#2fe0ff" stroke-opacity=".4" stroke-width="1" vector-effect="non-scaling-stroke"/>' +
+      '<path d="' + curve + ' L240 46 L0 46 Z" fill="url(#fltG)"/><line x1="' + (Math.log(Math.max(20, v("filterCutoff")) / 20) / Math.log(1000) * 240).toFixed(1) + '" x2="' + (Math.log(Math.max(20, v("filterCutoff")) / 20) / Math.log(1000) * 240).toFixed(1) + '" y1="1" y2="46" stroke="#2fe0ff" stroke-opacity=".4" stroke-width="1" vector-effect="non-scaling-stroke"/>' +
       '<path d="' + curve + '" fill="none" stroke="#2fe0ff" stroke-width="3" vector-effect="non-scaling-stroke"/></g>';
-    $("#filterDots").innerHTML = '<i class="c" style="left:' + (x / 240 * 100) + '%;top:' + ((14 - q * 9) / 46 * 100) + '%;opacity:' + op + '"></i>';
+    const xc = Math.log(fc / 20) / Math.log(1000) * 240, yc = clamp(12.5 - 20 * Math.log10(Math.max(1e-6, resp(fc))) * .875, 1, 46);
+    $("#filterDots").innerHTML = '<i class="c" style="left:' + (xc / 240 * 100) + '%;top:' + (yc / 46 * 100) + '%;opacity:' + op + '"></i>';
   }
   function drawLfo() {
-    const live = v("synthEnable") > .5 && v("lfoDepth") > 0, cyc = clamp(v("lfoRate") / 2, .5, 6), dep = .2 + v("lfoDepth") * .8, col = live ? "#2fe0ff" : "rgba(47,224,255,.55)";
-    let d = "M0 23"; for (let i = 0; i <= 120; i++) { const t = i / 120; d += " L" + (t * 240).toFixed(1) + " " + (23 - Math.sin(t * cyc * Math.PI * 2) * 18 * dep).toFixed(1); }
+    const live = v("synthEnable") > .5 && (v("lfoDepth") > 0 || v("lfoAmp") > 0 || v("lfoPan") > 0), cyc = clamp(v("lfoRate") / 2, 1, 6), dep = .2 + v("lfoDepth") * .8, col = live ? "#2fe0ff" : "rgba(47,224,255,.55)";
+    const shape = Math.round(v("lfoShape")), wave = function (ph) { ph = ph - Math.floor(ph); return shape === 1 ? (ph < .5 ? ph * 4 - 1 : 3 - ph * 4) : shape === 2 ? (ph < .5 ? 1 : -1) : shape === 3 ? ph * 2 - 1 : shape === 4 ? [.6, -.3, .9, -.8, .1, -.5, .7, -.1][Math.floor(ph * 8 + 0.0001) % 8] : Math.sin(ph * Math.PI * 2); };
+    let d = "M0 23"; for (let i = 0; i <= 240; i++) { const t = i / 240; d += " L" + (t * 240).toFixed(1) + " " + (23 - wave(t * cyc) * 18 * dep).toFixed(1); }
     $("#lfoSvg").innerHTML = '<line x1="0" x2="240" y1="23" y2="23" stroke="rgba(255,255,255,.15)" stroke-dasharray="4 4" vector-effect="non-scaling-stroke"/><path d="' + d + '" fill="none" stroke="' + col + '" stroke-width="3" vector-effect="non-scaling-stroke" style="filter:drop-shadow(0 0 4px rgba(47,224,255,.6))"/>';
   }
   function setupSynth() {
     const f = $("#filterKnobs");
     knob(f, "filterCutoff", "CUTOFF", { format: fmt.hz, curve: "log", color: "#ff8a3d", size: 76 });
-    knob(f, "filterResonance", "RESONANCE", { color: "#2fe0ff", size: 76, format: function (x) { return x.toFixed(2); } });
+    knob(f, "filterResonance", "RESONANCE", { color: "#2fe0ff", size: 66, format: function (x) { return x.toFixed(2); } });
+    knob(f, "filterDrive", "DRIVE", { color: "#ff4f6a", size: 66, title: "DRIVE: saturação antes do filtro, com oversampling (sem aliasing)" });
+    bindSeg("#fModeSeg", "fm", "filterMode"); bindSeg("#fSlopeSeg", "fs", "filterSlope");
+    bindSeg("#fenvOwnSeg", "fo", "fenvOwn");
+    const fa = $("#fenvAdsr");
+    knob(fa, "fAttack", "A", { format: fmt.ms, curve: "log", size: 42, color: "#ff8a3d" });
+    knob(fa, "fDecay", "D", { format: fmt.ms, curve: "log", size: 42, color: "#2fe0ff" });
+    knob(fa, "fSustain", "S", { size: 42, color: "#ff4fd8", format: fmt.pct });
+    knob(fa, "fRelease", "R", { format: fmt.ms, curve: "log", size: 42, color: "#b06bff" });
+    watch("fenvOwn", function (x) { fa.classList.toggle("off", x < .5); });
+    ["fenvOwn", "fAttack", "fDecay", "fSustain", "fRelease", "filterMode", "filterSlope", "filterDrive"].forEach(function (id) { watch(id, drawEnv); watch(id, drawFilter); });
+    bindToggle($("#hqBtn"), "hq");
     knob($("#fenvKnobs"), "envAmount", "AMOUNT", { format: fmt.bip, color: "#2fe0ff", size: 64, title: "Quanto o envelope abre (+) ou fecha (−) o filtro, ou muda a altura" });
     bindSeg("#envTargetSeg", "et", "envTarget");
     ["filterCutoff", "filterResonance", "synthEnable"].forEach(function (id) { watch(id, drawFilter); });
     const l = $("#lfoKnobs");
-    const lr = knob(l, "lfoRate", "RATE", { format: fmt.lfo, curve: "log", color: "#ff8a3d", size: 62 });
-    knob(l, "lfoDepth", "DEPTH", { color: "#2fe0ff", size: 62 });
+    const lr = knob(l, "lfoRate", "RATE", { format: fmt.lfo, curve: "log", color: "#ff8a3d", size: 50 });
+    knob(l, "lfoDepth", "DEPTH", { color: "#2fe0ff", size: 50, title: "Quanto o LFO move o destino (CUTOFF ou PITCH)" });
+    knob(l, "lfoFade", "FADE", { color: "#b06bff", size: 50, format: function (x) { return x < .005 ? "off" : x.toFixed(2) + " s"; }, title: "FADE IN: o LFO entra aos poucos depois de cada nota" });
+    knob(l, "lfoAmp", "→ VOL", { color: "#ff4fd8", size: 50, title: "LFO no volume (tremolo)" });
+    knob(l, "lfoPan", "→ PAN", { color: "#ffd23f", size: 50, title: "LFO no pan (som andando entre L e R)" });
+    bindSeg("#lfoShapeSeg", "ls", "lfoShape");
+    ["lfoShape", "lfoAmp", "lfoPan"].forEach(function (id) { watch(id, drawLfo); });
     bindSeg("#lfoTimingSeg", "lt", "lfoTiming"); bindSeg("#lfoDivSeg", "ld", "lfoDivision");
     watch("lfoTiming", function (x) { const sync = Math.round(x) === 2; lr.classList.toggle("disabled", sync); $("#lfoDivSeg").classList.toggle("off", !sync); });
     ["lfoRate", "lfoDepth", "synthEnable"].forEach(function (id) { watch(id, drawLfo); });
@@ -1700,6 +1727,7 @@
   $("#langBtn").addEventListener("click", function () { setLang(lang === "pt" ? "en" : "pt"); game.state.lang = lang; game.save(); });
 
   /* ================= frame loop ================= */
+  let vizHit = false, vizNote = 60, viz = null;
   let lastSerial = -1, lastFrame = performance.now(), midiFlash = 0, beatClock = 0, lastNoteAt = -1e9;
   function noteHeld(n) { return ((T.notes[n >> 5] >>> 0) & (1 << (n & 31))) !== 0; }
   function hexRgb(h) { const n = parseInt(h.slice(1), 16); return [n >> 16 & 255, n >> 8 & 255, n & 255]; }
@@ -1749,6 +1777,7 @@
         let lastN = -1; for (let n = 0; n < 128; n++) if (noteHeld(n)) lastN = n;
         if (lastN < 0) lastN = 60;
         motion.pitch = clamp((lastN - 36) / 48, 0, 1); motion.pad = ((lastN % 16) + 16) % 16; motion.vel = vel;
+        vizHit = true; vizNote = lastN;
         if (rig.pads && rig.pads.length) { const p = rig.pads[motion.pad]; if (p) p.v = .6 + vel * .4; }
         rig.flash = 1; rig.flashPos = ((lastN - base) / 48);
         spawnNotes(240 + (Math.random() - .5) * 60, 200, 1 + Math.round(vel * 2), vel);
@@ -1794,11 +1823,27 @@
     const ghostAct = acts[0] * alive, crumbleAct = acts[1] * alive, bloom = acts[2], wob = acts[3] * alive, dst = acts[4] * alive, crush = acts[5] * alive;
     motion.shakeT += dt; const shake = motion.shake * Math.exp(-motion.shakeT * 9) * Math.sin(motion.shakeT * 55);
     jamBurst = Math.max(0, jamBurst - dt * 1.5);
-    const sc0 = screen(), stageOn = sc0 === "palco" || sc0 === "limpo" || sc0 === "perform" || sc0 === "locker";
+    const sc0 = screen();
+    // Main screens show the sound visualiser instead of the character (decision 24/10/2026);
+    // the character and the painted room only appear in the LOCKER.
+    const vizNow = look.viz !== 0 && (sc0 === "limpo" || sc0 === "palco" || sc0 === "perform");
+    if (document.body.classList.contains("viz-on") !== vizNow) document.body.classList.toggle("viz-on", vizNow);
+    const stageOn = !vizNow && (sc0 === "locker");
     // light colour: effect colours (or fixed base), warmed and dimmed by a low filter cutoff, pulsed by the LFO
     let glow = look.glow === "auto" ? glowColour(AL.GLOW.cyan, acts.map(function (a) { return a * alive; })) : AL.GLOW[look.glow];
     if (synthOn) glow = mixHex(glow, "#ff8a3d", (1 - cutT) * .55);
     const envL = clamp(T.env || 0, 0, 1) * alive; // real envelope telemetry: follows attack, sustain and release
+    if (vizNow) {
+      if (!viz && window.RastroViz) viz = window.RastroViz.create($("#stage"));
+      if (viz) {
+        const pc = Math.round(vizNote) % 12, hueCol = ["#ff8a3d", "#ffb340", "#ffd23f", "#b8f04a", "#4ae0a0", "#2fe0ff", "#3fa8ff", "#6f8bff", "#a96bff", "#d06bff", "#ff4fd8", "#ff5f7a"][pc];
+        const ech = v("gTiming") > 1.5 ? .25 : clamp(v("gFreeMs") / 1000, .06, .8);
+        viz.draw({ scope: T.scope, meter: T.meter, env: clamp(T.env || 0, 0, 1), fx: acts.map(function (a) { return a * react; }), react: react * (animMode === 0 ? 0 : 1),
+          hit: vizHit && animMode > 0, vel: motion.vel || .7, noteName: window.RastroViz.noteName(vizNote), noteCol: [parseInt(hueCol.slice(1, 3), 16), parseInt(hueCol.slice(3, 5), 16), parseInt(hueCol.slice(5, 7), 16)],
+          echo: ech, cut: synthOn ? cutT : 1, lfo: synthOn ? Math.sin(motion.lfoPhase) : 0, lfoDepth: synthOn ? v("lfoDepth") : 0, wobRate: v("wRate") * 4 }, animMode === 0 ? 0 : dt);
+      }
+    }
+    vizHit = false;
     const glowAmt = clamp((motion.energy * .35 + envL * .55 + (motion.vel || 0) * midiFlash * .3 + Math.abs(lfo) * .25 + jamBurst * .5) * (synthOn ? .55 + cutT * .45 : 1) * react, 0, 1);
     if (stageOn && charSvg && animMode > 0) {
       const L0 = charPlace();

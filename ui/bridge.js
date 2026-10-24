@@ -69,6 +69,9 @@
   let results = [], look = "", progress = "";
   try { look = localStorage.getItem("rastro.preview.look") || ""; progress = localStorage.getItem("rastro.preview.progress") || ""; } catch (e) { /* storage off */ }
   add("avatarCharacter", 0, 15, 6, 1); add("sceneRoom", 0, 7, 5, 1); add("rackParallel", 0, 1, 0, 1); add("bDiffusion", 0, 1, .6, 0); add("wWidth", 0, 1, .5, 0);
+  add("hq", 0, 1, 1, 1); add("filterMode", 0, 3, 0, 1); add("filterSlope", 0, 1, 0, 1); add("filterDrive", 0, 1, 0, 0); add("fenvOwn", 0, 1, 1, 1);
+  add("fAttack", .001, 4, .005, 0); add("fDecay", .001, 4, .4, 0); add("fSustain", 0, 1, .3, 0); add("fRelease", .001, 8, .4, 0);
+  add("lfoShape", 0, 4, 0, 1); add("lfoFade", 0, 5, 0, 0); add("lfoAmp", 0, 1, 0, 0); add("lfoPan", 0, 1, 0, 0);
   ["knobDesign", "danceStyle", "danceAmount"].forEach(function (id, i) { add(id, 0, [4, 2, 2][i], [0, 0, 1][i], 1); });
   ["gJamLock", "cJamLock", "bJamLock", "wJamLock", "dJamLock", "kJamLock"].forEach(function (id) { add(id, 0, 1, 0, 1); });
   ["envTarget", "lfoTiming", "lfoDivision", "bendRange"].forEach(function (id, i) { add(id, 0, [1, 2, 3, 12][i], [0, 1, 0, 2][i], i === 3 ? 0 : 1); });
@@ -104,8 +107,10 @@
       const mixId = m + "Mix";
       act[i] = P[m + "On"].v > .5 && P[m + "Present"].v > .5 ? meter * P[mixId].v * .08 * (1 + Math.sin(now / (180 + i * 60)) * .3) : 0;
     });
+    // simulated output scope (preview only): held notes as sines, scaled by the level
+    const scope = []; for (let i = 0; i < 256; i++) { let v = 0; voices.forEach(function (x) { v += Math.sin((now / 1000 * 3 + i / 256 * .021) * 6.283 * 220 * Math.pow(2, (x.n - 60) / 12)) * x.e * x.v * .4; }); if (previewing) v += Math.sin(i * .3 + now / 90) * .3; scope.push(v * P.level.v); }
     fire("tick", {
-      meter: meter, act: act, env: voices.length ? voices[voices.length - 1].e || 0 : 0, wob: act[3] * 10, dust: act[4] * 10, crush: act[5] * 10, bloom: act[2] * 10,
+      scope: scope, meter: meter, act: act, env: voices.length ? voices[voices.length - 1].e || 0 : 0, wob: act[3] * 10, dust: act[4] * 10, crush: act[5] * 10, bloom: act[2] * 10,
       pos: pos, playing: voices.length > 0, preview: previewing, vel: lastVel, serial: serial, bpm: 0, beat: -1, hostPlaying: false,
       lookRev: 0, notes: held.slice(), canUndoJam: canUndo, order: order.slice(), search: Object.assign({}, search), capture: Object.assign({}, cap)
     });

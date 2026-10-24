@@ -157,20 +157,20 @@
   </section>
 
   <section id="filterPanel" class="panel">
-    <div class="panel-head"><i class="ph-ic" data-ic="filterIc"></i><h2>FILTER</h2><span class="pill-sel" title="O filtro do RASTRO é um passa-baixa ressonante">Low Pass</span></div>
-    <div class="well filter-graph graph"><div class="g-axis"><span>+12</span><span>0 dB</span><span>−24</span></div><div class="g-plot"><svg id="filterSvg" viewBox="0 0 240 46" preserveAspectRatio="none"></svg><div class="g-dots" id="filterDots"></div></div></div>
+    <div class="panel-head"><i class="ph-ic" data-ic="filterIc"></i><h2>FILTER</h2><div class="seg seg-small" id="fModeSeg" role="group" aria-label="Tipo de filtro"><button data-fm="0" title="Passa-baixa: tira os agudos">LP</button><button data-fm="1" title="Passa-alta: tira os graves">HP</button><button data-fm="2" title="Passa-banda: só a faixa do cutoff">BP</button><button data-fm="3" title="Notch: corta a faixa do cutoff">NOTCH</button></div><div class="seg seg-small" id="fSlopeSeg" role="group" aria-label="Inclinação"><button data-fs="0" title="12 dB por oitava (suave)">12</button><button data-fs="1" title="24 dB por oitava (forte)">24</button></div></div>
+    <div class="well filter-graph graph"><div class="g-axis"><span>+12</span><span>−12</span><span>−36</span></div><div class="g-plot"><svg id="filterSvg" viewBox="0 0 240 46" preserveAspectRatio="none"></svg><div class="g-dots" id="filterDots"></div></div></div>
     <div class="knob-row big" id="filterKnobs"></div>
   </section>
 
   <section id="fenvPanel" class="panel">
-    <div class="panel-head"><i class="ph-ic" data-ic="envIc"></i><h2>FILTER ENVELOPE</h2><span class="hint">segue o AMP ENVELOPE</span></div>
+    <div class="panel-head"><i class="ph-ic" data-ic="envIc"></i><h2>FILTER ENVELOPE</h2><div class="seg seg-small" id="fenvOwnSeg" role="group" aria-label="Fonte do envelope do filtro"><button data-fo="1" title="ADSR próprio do filtro">PRÓPRIO</button><button data-fo="0" title="Usa a forma do AMP ENVELOPE (como nas versões antigas)">SEGUE AMP</button></div></div>
     <div class="well fenv-graph graph"><div class="g-axis"><span>1.0</span><span>0.5</span><span>0.0</span></div><div class="g-plot"><svg id="fenvSvg" viewBox="0 0 300 70" preserveAspectRatio="none"></svg><div class="g-dots" id="fenvDots"></div></div></div>
-    <div class="fenv-row"><div class="knob-row big" id="fenvKnobs"></div>
+    <div class="fenv-row"><div class="knob-row big" id="fenvKnobs"></div><div class="knob-row" id="fenvAdsr"></div>
       <div class="fenv-side"><small>DESTINO</small><div class="seg seg-small" id="envTargetSeg" role="group" aria-label="Destino do envelope"><button data-et="0" title="O envelope abre/fecha o filtro">CUTOFF</button><button data-et="1" title="O envelope muda a altura">PITCH</button></div></div></div>
   </section>
 
   <section id="lfoPanel" class="panel">
-    <div class="panel-head"><i class="ph-ic" data-ic="lfoIc"></i><h2>LFO</h2><span class="hint">senoide</span></div>
+    <div class="panel-head"><i class="ph-ic" data-ic="lfoIc"></i><h2>LFO</h2><div class="seg seg-small" id="lfoShapeSeg" role="group" aria-label="Forma do LFO"><button data-ls="0" title="Senoide">SIN</button><button data-ls="1" title="Triângulo">TRI</button><button data-ls="2" title="Quadrada">SQR</button><button data-ls="3" title="Rampa">SAW</button><button data-ls="4" title="Aleatório em degraus (sample &amp; hold)">S&amp;H</button></div></div>
     <div class="lfo-row">
       <div class="well lfo-graph graph"><div class="g-plot"><svg id="lfoSvg" viewBox="0 0 240 46" preserveAspectRatio="none"></svg></div></div>
       <div class="knob-row" id="lfoKnobs"></div>
@@ -198,7 +198,7 @@
   </section>
 
   <section id="sGlobal" class="panel">
-    <div class="panel-head"><i class="ph-ic" data-ic="planet"></i><h2>GLOBAL</h2></div>
+    <div class="panel-head"><i class="ph-ic" data-ic="planet"></i><h2>GLOBAL</h2><button id="hqBtn" class="toggle hq-btn" title="HQ: leitura do sample em alta qualidade (sem aliasing nas notas agudas) e DRIVE com oversampling. Sessões antigas abrem com HQ desligado para soar igual a antes.">HQ</button></div>
     <div class="knob-row" id="sGlobalKnobs"></div>
   </section>
 
@@ -385,6 +385,7 @@
 <script src="novaart.js"></script>
 <script src="novakit_data.js"></script>
 <script src="novakit.js"></script>
+<script src="viz.js"></script>
 <script src="factory.js"></script>
 <script src="app.js"></script>
 </body>

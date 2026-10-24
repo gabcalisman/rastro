@@ -1296,3 +1296,27 @@ body .jam-btn i { color:var(--ui-accent-ink); }
 body #keys { background:var(--ui-surface); border-color:var(--ui-border); }
 body .wave-box { border-color:var(--ui-border); }
 body .pad { border-color:var(--ui-border); background-color:var(--ui-inset); }
+
+/* ===== Sound visualiser on the main screens (24/10/2026): no character, no painted room there ===== */
+.viz-canvas { position: absolute; left: 0; top: 0; width: 100%; height: 100%; display: none; z-index: 1; pointer-events: none; }
+body.viz-on .viz-canvas { display: block; }
+body.viz-on #stageArt, body.viz-on #fx-pixels, body.viz-on #fx-crumble, body.viz-on #popups { visibility: hidden; }
+body.viz-on #stage { background: #08040f; }
+#filterPanel .panel-head .seg button, #fenvPanel .panel-head .seg button, #lfoPanel .panel-head .seg button { min-height: 28px !important; padding: 0 8px !important; font-size: 10.5px !important; }
+#filterPanel .panel-head { gap: 6px; } #filterPanel #fModeSeg { margin-left: auto; }
+#fenvPanel #fenvOwnSeg, #lfoPanel #lfoShapeSeg { margin-left: auto; }
+#fenvAdsr.off { opacity: .35; pointer-events: none; }
+#fenvAdsr .knob { min-width: 50px !important; }
+.hq-btn { margin-left: auto; min-height: 30px; padding: 0 12px; font-weight: 800; }
+.hq-btn.on { background: #ff8a3d; color: #24100a; border-color: #ff8a3d; }
+body[data-screen="limpo"] #lfoPanel .lfo-row { display: grid; grid-template-columns: 96px 1fr; grid-template-rows: auto auto; gap: 4px 10px; align-items: center; }
+body[data-screen="limpo"] #lfoPanel .lfo-graph { grid-row: 1 / span 2; width: 96px !important; height: 116px !important; }
+body[data-screen="limpo"] #lfoPanel #lfoKnobs { justify-content: space-between; }
+body[data-screen="limpo"] #lfoPanel #lfoKnobs .knob { min-width: 52px !important; }
+body[data-screen="limpo"] #lfoPanel #lfoKnobs .k-label { margin-top: 2px; font-size: 11px; }
+body[data-screen="limpo"] #lfoPanel #lfoKnobs .k-value { min-width: 48px; font-size: 11px; padding: 1px 4px; }
+body[data-screen="limpo"] #lfoPanel .lfo-side { flex-direction: row; gap: 6px; }
+body[data-screen="limpo"] #lfoPanel .lfo-side .seg button { min-height: 26px !important; padding: 0 7px !important; font-size: 10px !important; }
+body[data-screen="limpo"] #fenvPanel .fenv-row { gap: 8px; }
+body[data-screen="limpo"] #fenvPanel #envTargetSeg button { padding: 0 8px !important; font-size: 10.5px !important; min-height: 30px !important; }
+body[data-screen="limpo"] #fenvPanel .fenv-side { margin-left: auto; }

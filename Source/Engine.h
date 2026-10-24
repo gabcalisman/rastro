@@ -19,8 +19,10 @@ class Engine
         unsigned modCounter = 0;
         double readStep = 1, modPitch = 1, modPitchTarget = 1;
         float glideCoefficient = 1, cutoff = 16000, resonance = .1f, last[2]{};
-        SynthEnvelope adsr;
-        LowPass lowpass[2];
+        SynthEnvelope adsr, fadsr;
+        MultiFilter lowpass[2], stage2[2]; // stage 0 is numerically identical to the old LowPass
+        Saturator2x sat[2];
+        float fenv = 0, drive = 0, lfoAge = 0;
     };
     std::array<Voice, 16> voices{};
     double sr = 44100;
@@ -36,6 +38,8 @@ class Engine
     std::array<bool, 16> pedals{};
     std::array<float, 16> bendRaw{}, bendTarget{}, bend{}, wheel{};
     float lfoPhase = 0, lfo = 0, lfoSpeed = 1, stealTail[2]{};
+    float lfoPrevPhase = 0, lfoHeld = 0, lfoSmooth = 0;
+    uint32_t lfoSeed = 0x9E3779B9u;
     bool gated(const Voice &v, const Settings &p) const
     {
         if (v.note == 255 || v.trigger == 2)
@@ -69,6 +73,12 @@ class Engine
     std::atomic<float> &visualX = rack.visualX;
     std::atomic<float> &visualY = rack.visualY;
     std::atomic<float> position{0};
+    // Output scope for the interface visualiser: every 4th output frame (mono) in a ring buffer.
+    // Written with relaxed atomics on the audio thread; read by the message thread. No locks.
+    static constexpr int scopeSize = 512;
+    std::array<std::atomic<float>, scopeSize> scope{};
+    std::atomic<int> scopeWrite{0};
+    int scopeDecim = 0;
     std::atomic<float> noteVelocity{0};
     std::atomic<unsigned> noteSerial{0};
     std::atomic<bool> previewActive{false}, playbackActive{false};
@@ -198,14 +208,22 @@ class Engine
         v->channel = channel;
         v->trigger = p.triggerMode;
         v->adsr.start();
+        v->fadsr.start();
+        v->drive = p.filterDrive;
         if (legato && before.synth == p.synth)
         {
             v->adsr = before.adsr;
+            v->fadsr = before.fadsr;
             v->env = before.env;
+            v->fenv = before.fenv;
+            v->lfoAge = before.lfoAge;
+            v->drive = before.drive;
             for (int c = 0; c < 2; ++c)
             {
                 v->filter[c] = before.filter[c];
                 v->lowpass[c] = before.lowpass[c];
+                v->stage2[c] = before.stage2[c];
+                v->sat[c] = before.sat[c];
             }
         }
         v->cutoff = p.cutoff;
@@ -355,7 +373,21 @@ class Engine
             if (lfoPhase < 0)
                 lfoPhase += 1;
         }
-        lfo = std::sin(lfoPhase * 6.28318530718f);
+        if (p.lfoShape == 0)
+            lfo = std::sin(lfoPhase * 6.28318530718f);
+        else
+        {
+            if (lfoPhase < lfoPrevPhase) // new cycle: next random step for sample & hold
+            {
+                lfoSeed = lfoSeed * 1664525u + 1013904223u;
+                lfoHeld = float(lfoSeed >> 8) / float(1u << 24) * 2 - 1;
+            }
+            // square / saw / S&H edges get a 3 ms slew so volume and pan never click
+            const float raw = lfoWave(p.lfoShape, lfoPhase, lfoHeld);
+            lfoSmooth += (raw - lfoSmooth) * float(1 - std::exp(-1 / (sr * .003)));
+            lfo = lfoSmooth;
+        }
+        lfoPrevPhase = lfoPhase;
         float signal[2]{};
         for (int c = 0; c < 2; ++c)
         {
@@ -422,6 +454,15 @@ class Engine
                     else
                         v.env += v.release ? -float(1 / (sr * .03)) : float(1 / (sr * .004));
                     v.env = std::min(1.f, v.env);
+                    if (v.synth)
+                    {
+                        if (p.fenvOwn)
+                            v.fenv = v.fadsr.tick(sr, p.fAttack, p.fDecay, p.fSustain,
+                                                  v.forced ? .02f : p.fRelease, !v.release);
+                        v.lfoAge += float(1 / sr);
+                        v.drive += (p.filterDrive - v.drive) * smoothing;
+                    }
+                    const float lfoFadeK = p.lfoFade > 0 ? std::min(1.f, v.lfoAge / p.lfoFade) : 1.f;
                     if (v.env <= 0)
                     {
                         v.note = -1;
@@ -442,8 +483,9 @@ class Engine
                         .035f + .85f * (1 - velocity + velocity * std::min(1.f, v.gain / .23f));
                     if (v.synth && v.modCounter++ % 16 == 0)
                     {
-                        float amount = std::clamp(p.lfoDepth + wheel[v.channel], 0.f, 1.f);
-                        float filterOctaves = (p.envTarget == 0 ? p.envAmount * v.env * 4 : 0) +
+                        float amount = std::clamp(p.lfoDepth + wheel[v.channel], 0.f, 1.f) * lfoFadeK;
+                        const float envNow = p.fenvOwn ? v.fenv : v.env;
+                        float filterOctaves = (p.envTarget == 0 ? p.envAmount * envNow * 4 : 0) +
                                               (p.lfoTarget == 0 ? lfo * amount * 2 : 0);
                         float target = p.cutoff * std::pow(2.f, filterOctaves);
                         float follow = float(1 - std::exp(-16 / (sr * .015)));
@@ -451,14 +493,27 @@ class Engine
                         v.resonance += (p.resonance - v.resonance) * follow;
                         for (auto &filter : v.lowpass)
                             filter.coefficients(sr, v.cutoff, v.resonance);
-                        float semitones = (p.envTarget == 1 ? p.envAmount * v.env * 12 : 0) +
+                        if (p.filterSlope == 1)
+                            for (auto &filter : v.stage2)
+                                filter.coefficients(sr, v.cutoff, v.resonance * .5f);
+                        float semitones = (p.envTarget == 1 ? p.envAmount * envNow * 12 : 0) +
                                           (p.lfoTarget == 1 ? lfo * amount * 2 : 0);
                         v.modPitchTarget = std::pow(2., semitones / 12);
                     }
+                    const double readSpeed = v.readStep * (v.note == 255 ? 1 : bend[v.channel] * v.modPitch);
+                    // LFO → volume (tremolo) and → pan, only with the synth on, scaled by the fade-in
+                    float lfoGain[2]{1, 1};
+                    if (v.synth && (p.lfoAmp > 0 || p.lfoPan > 0))
+                    {
+                        const float trem = 1 - p.lfoAmp * lfoFadeK * (.5f + .5f * lfo);
+                        const float pan = p.lfoPan * lfoFadeK * lfo;
+                        lfoGain[0] = trem * std::min(1.f, 1 - pan);
+                        lfoGain[1] = trem * std::min(1.f, 1 + pan);
+                    }
                     for (int c = 0; c < 2; ++c)
                     {
-                        float z =
-                            sample->data[c][a] + f * (sample->data[c][a + 1] - sample->data[c][a]);
+                        float z = p.hq ? sample->readHQ(c, v.pos, readSpeed)
+                                       : sample->data[c][a] + f * (sample->data[c][a + 1] - sample->data[c][a]);
                         if ((v.looping || (mode == 1 && !v.release)) && v.fade > 0 && mode != 3)
                         {
                             double other = v.pos;
@@ -478,14 +533,25 @@ class Engine
                                 other = std::clamp(other, 0., double(sample->size() - 1) - .0001);
                                 int a2 = std::clamp(int(other), 0, sample->size() - 2);
                                 float f2 = float(other - a2);
-                                float next = sample->data[c][a2] +
-                                             f2 * (sample->data[c][a2 + 1] - sample->data[c][a2]);
+                                float next = p.hq ? sample->readHQ(c, other, readSpeed)
+                                                  : sample->data[c][a2] +
+                                                        f2 * (sample->data[c][a2 + 1] - sample->data[c][a2]);
                                 z += (next - z) * std::clamp(blend, 0.f, 1.f);
                             }
                         }
                         v.filter[c] += cutoff * (z - v.filter[c]);
-                        float filtered = v.synth ? v.lowpass[c].process(v.filter[c]) : v.filter[c];
-                        v.last[c] = filtered * v.env * v.gain * edge;
+                        float filtered = v.filter[c];
+                        if (v.synth)
+                        {
+                            // HQ keeps the oversampled drive stage always in the path (constant
+                            // latency), so turning DRIVE up never jumps; at 0 it is transparent.
+                            if (p.hq || p.filterDrive > 0 || v.drive > 1e-4f)
+                                filtered = v.sat[c].process(filtered, v.drive);
+                            filtered = v.lowpass[c].process(filtered, p.filterMode);
+                            if (p.filterSlope == 1)
+                                filtered = v.stage2[c].process(filtered, p.filterMode);
+                        }
+                        v.last[c] = filtered * v.env * v.gain * edge * lfoGain[c];
                         signal[c] += v.last[c];
                     }
                     position.store(float(v.pos / sample->size()), std::memory_order_relaxed);
@@ -501,6 +567,13 @@ class Engine
         l = signal[0];
         r = signal[1];
         rack.process(l, r, p);
+        if (++scopeDecim >= 4)
+        {
+            scopeDecim = 0;
+            const int w = scopeWrite.load(std::memory_order_relaxed);
+            scope[size_t(w)].store(.5f * (l + r), std::memory_order_relaxed);
+            scopeWrite.store((w + 1) % scopeSize, std::memory_order_relaxed);
+        }
     }
 };
 } // namespace rastro

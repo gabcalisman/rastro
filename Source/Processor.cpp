@@ -135,6 +135,21 @@ juce::AudioProcessorValueTreeState::ParameterLayout RastroProcessor::layout()
     // bit-identical to the old BLOOM and WOBBLE, so old sessions keep their exact sound.
     add("bDiffusion", 0, 1, .6f); // BLOOM: smears the echoes into a smooth tail
     add("wWidth", 0, 1, .5f);     // WOBBLE: left/right move apart, chorus opens in stereo
+    // Etapa 1 de som (24/10/2026), appended. Old states restore the legacy values (see
+    // restoreState): hq 0 and fenvOwn 0; every other default already is the legacy sound.
+    add("hq", 0, 1, 1, 1);           // band-limited playback + oversampled drive path
+    add("filterMode", 0, 3, 0, 1);   // LP, HP, BP, Notch
+    add("filterSlope", 0, 1, 0, 1);  // 12 / 24 dB
+    add("filterDrive", 0, 1, 0);
+    add("fenvOwn", 0, 1, 1, 1);      // filter envelope: 0 follows AMP ENVELOPE, 1 its own ADSR
+    add("fAttack", .001f, 4, .005f);
+    add("fDecay", .001f, 4, .4f);
+    add("fSustain", 0, 1, .3f);
+    add("fRelease", .001f, 8, .4f);
+    add("lfoShape", 0, 4, 0, 1);     // sine, triangle, square, saw, sample & hold
+    add("lfoFade", 0, 5, 0);         // seconds for the LFO to fade in after each note
+    add("lfoAmp", 0, 1, 0);          // LFO → volume
+    add("lfoPan", 0, 1, 0);          // LFO → pan
     return l;
 }
 RastroProcessor::RastroProcessor(bool directCaptureForTests)
@@ -238,6 +253,19 @@ rastro::Settings RastroProcessor::settings() const
     p.parallel = value("rackParallel") > .5f;
     p.bloomDiffusion = value("bDiffusion");
     p.wobbleWidth = value("wWidth");
+    p.hq = value("hq") > .5f;
+    p.filterMode = (int)value("filterMode");
+    p.filterSlope = (int)value("filterSlope");
+    p.filterDrive = value("filterDrive");
+    p.fenvOwn = value("fenvOwn") > .5f;
+    p.fAttack = value("fAttack");
+    p.fDecay = value("fDecay");
+    p.fSustain = value("fSustain");
+    p.fRelease = value("fRelease");
+    p.lfoShape = (int)value("lfoShape");
+    p.lfoFade = value("lfoFade");
+    p.lfoAmp = value("lfoAmp");
+    p.lfoPan = value("lfoPan");
     auto permutation = rastro::decodeOrder((int)value("rackOrder"));
     for (int i = 0; i < rastro::moduleCount; ++i)
     {
@@ -791,7 +819,8 @@ bool RastroProcessor::restoreState(const void *data, int n)
                 // parameter keeps the behaviour it had when it was saved.
                 if (id == "gOn" || id == "cOn" || id == "bOn")
                     v = 1;
-                if (id == "colourSet" || id == "bDiffusion" || id == "wWidth")
+                if (id == "colourSet" || id == "bDiffusion" || id == "wWidth" || id == "hq" ||
+                    id == "fenvOwn")
                     v = 0;
                 node.setProperty("value", v, nullptr);
                 tree.addChild(node, -1, nullptr);

@@ -425,6 +425,137 @@ int main()
         }
         check(clicks == 0, "click detected");
     }
+    // ===== Etapa 1 de som: HQ playback, filter modes/slope/drive, filter ADSR, LFO shapes/fade/amp/pan =====
+    {
+        const double sr = 48000;
+        auto sine = [&](double hz, float amp = .6f) {
+            rastro::Sample smp;
+            smp.rate = sr;
+            for (int c = 0; c < 2; ++c)
+            {
+                smp.data[c].resize(96000);
+                for (int i = 0; i < 96000; ++i)
+                    smp.data[c][i] = amp * float(std::sin(i * hz * 6.283185307 / sr));
+            }
+            smp.buildPeaks(); // also builds the band-limited levels
+            return smp;
+        };
+        struct Out { std::vector<float> l, r; float rms = 0, peak = 0, maxStep = 0; };
+        auto render = [&](const rastro::Sample &smp, rastro::Settings s, int note, int frames, int skip = 2400) {
+            s.enabled = {false, false, false, false, false, false};
+            s.level = 1;
+            s.mode = 1; // loop: steady tone
+            rastro::Engine engine;
+            engine.prepare(sr);
+            engine.noteOn(note, 1, &smp, s);
+            Out o;
+            o.l.resize(size_t(frames)); o.r.resize(size_t(frames));
+            double sum = 0;
+            float prev = 0;
+            audio = true;
+            for (int i = 0; i < frames; ++i)
+            {
+                float l, r;
+                engine.frame(l, r, &smp, s);
+                check(std::isfinite(l) && std::isfinite(r), "etapa1: finite output");
+                if (i >= skip)
+                {
+                    sum += double(l) * l;
+                    o.peak = std::max(o.peak, std::abs(l));
+                    o.maxStep = std::max(o.maxStep, std::abs(l - prev));
+                }
+                o.l[size_t(i)] = l; o.r[size_t(i)] = r;
+                prev = l;
+            }
+            audio = false;
+            o.rms = float(std::sqrt(sum / std::max(1, frames - skip)));
+            return o;
+        };
+        rastro::Settings base;
+        base.velocity = 0; // no velocity tone filter: measure the engine itself
+        // 1. HQ playback removes aliasing: a 9 kHz tone played 2 octaves up (36 kHz) must vanish
+        {
+            auto hi = sine(9000);
+            auto lin = base, hq = base;
+            hq.hq = true;
+            const float a = render(hi, lin, 84, 24000).rms, b = render(hi, hq, 84, 24000).rms;
+            std::cerr << "HQ aliasing: linear " << a << " vs HQ " << b << std::endl;
+            check(b < a * .1f, "HQ playback must remove aliasing");
+            auto lo = sine(1000);
+            const float c = render(lo, lin, 72, 24000).rms, d = render(lo, hq, 72, 24000).rms;
+            check(std::abs(c - d) < c * .1f, "HQ keeps the level of in-band content");
+        }
+        auto synth = base;
+        synth.synth = true;
+        synth.attack = .001f; synth.sustain = 1;
+        auto tone200 = sine(200), tone4k = sine(4000), tone3k = sine(3000);
+        // 2. filter modes
+        {
+            auto lp = synth, hp = synth, bp = synth, nt = synth;
+            lp.cutoff = hp.cutoff = 2000;
+            hp.filterMode = 1;
+            bp.cutoff = nt.cutoff = 200; bp.filterMode = 2; nt.filterMode = 3; bp.resonance = nt.resonance = .3f;
+            const float L = render(tone200, lp, 60, 24000).rms, H = render(tone200, hp, 60, 24000).rms,
+                        B = render(tone200, bp, 60, 24000).rms, N = render(tone200, nt, 60, 24000).rms;
+            std::cerr << "filter 200 Hz: LP " << L << " HP " << H << " BP " << B << " notch " << N << std::endl;
+            check(H < L * .1f, "HP removes lows");
+            check(B > L * .5f, "BP passes its centre");
+            check(N < L * .3f, "notch rejects its centre");
+            auto s12 = synth, s24 = synth;
+            s12.cutoff = s24.cutoff = 1000; s24.filterSlope = 1;
+            const float a = render(tone4k, s12, 60, 24000).rms, b = render(tone4k, s24, 60, 24000).rms;
+            std::cerr << "slope at 2 oct: 12dB " << a << " 24dB " << b << std::endl;
+            check(b < a * .4f, "24 dB slope is steeper");
+        }
+        // 3. drive: adds harmonics, stays bounded, controlled level
+        {
+            auto clean = synth, hot = synth;
+            hot.filterDrive = 1; hot.hq = clean.hq = true;
+            auto a = render(tone200, clean, 60, 24000), b = render(tone200, hot, 60, 24000);
+            float diff = 0;
+            for (size_t i = 4800; i < a.l.size(); ++i) diff += std::abs(a.l[i] - b.l[i]);
+            std::cerr << "drive: rms " << a.rms << " -> " << b.rms << ", peak " << b.peak << std::endl;
+            check(diff > 50, "drive changes the sound");
+            check(b.peak < 1.2f && b.rms < a.rms * 2.5f && b.rms > a.rms * .5f, "drive level controlled");
+            // HQ path with drive 0 is transparent (only a few samples of latency)
+            auto t0 = synth; t0.hq = true;
+            auto t1 = synth;
+            check(std::abs(render(tone200, t0, 60, 24000).rms - render(tone200, t1, 60, 24000).rms) < .002f,
+                  "HQ drive stage at 0 is transparent");
+        }
+        // 4. filter envelope with its own ADSR
+        {
+            auto amp = synth, own = synth;
+            amp.cutoff = own.cutoff = 150; amp.envAmount = own.envAmount = 1;
+            own.fenvOwn = true; own.fAttack = 1.5f; own.fSustain = 1;
+            const float a = render(tone3k, amp, 60, 4800, 0).rms, b = render(tone3k, own, 60, 4800, 0).rms;
+            std::cerr << "filter env: follows amp " << a << " own slow attack " << b << std::endl;
+            check(b < a * .5f, "own filter ADSR shapes the filter independently");
+        }
+        // 5. LFO shapes, fade, volume and pan (no clicks with square tremolo)
+        {
+            auto plain = synth, sq = synth, pan = synth, fade = synth, sh = synth;
+            sq.lfoShape = 2; sq.lfoAmp = 1; sq.lfoRate = 4;
+            pan.lfoPan = 1; pan.lfoRate = 3;
+            sh.lfoShape = 4; sh.lfoAmp = 1; sh.lfoRate = 6;
+            fade.lfoAmp = 1; fade.lfoRate = 8; fade.lfoFade = 2; fade.lfoShape = 2;
+            auto a = render(tone200, plain, 60, 48000), b = render(tone200, sq, 60, 48000);
+            std::cerr << "square tremolo: max step " << b.maxStep << " vs plain " << a.maxStep << std::endl;
+            check(b.rms < a.rms * .85f, "LFO to volume works");
+            check(b.maxStep < a.maxStep * 1.3f, "square LFO never clicks");
+            auto c = render(tone200, pan, 60, 48000);
+            float lr = 0;
+            for (size_t i = 0; i < c.l.size(); ++i) lr += std::abs(c.l[i] - c.r[i]);
+            check(lr > 100, "LFO to pan moves the sound");
+            auto d = render(tone200, sh, 60, 48000);
+            check(d.maxStep < a.maxStep * 1.3f, "sample & hold never clicks");
+            // fade-in: the first 200 ms barely move, later the tremolo is full
+            auto e = render(tone200, fade, 60, 96000, 0);
+            auto depth = [&](int from, int to) { float lo = 9, hi = 0; for (int i = from; i < to; i += 64) { float m = 0; for (int k = 0; k < 64; ++k) m = std::max(m, std::abs(e.l[size_t(i + k)])); lo = std::min(lo, m); hi = std::max(hi, m); } return hi > 0 ? lo / hi : 1; };
+            check(depth(2400, 9600) > depth(86000, 95000) + .3f, "LFO fade-in");
+        }
+        std::cerr << "ok    etapa 1 (HQ, filter modes, slope, drive, filter ADSR, LFO shapes/fade/vol/pan)" << std::endl;
+    }
     std::cout << "PASS: sample playback, release, all effects, extreme trims, polyphony, 4 sample "
                  "rates, serial/parallel rack, rack audit (every control, bypass, Mix 0, fades, width); "
                  "no allocations in frame\n";

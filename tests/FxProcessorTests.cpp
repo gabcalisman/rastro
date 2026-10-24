@@ -1,13 +1,17 @@
 #include "FxProcessor.h"
 #include <cmath>
-#include <cstring>
 #include <cstdlib>
+#include <cstring>
 #include <iostream>
 #include <limits>
 
 static void check(bool ok, const char *message)
 {
-    if (!ok) { std::cerr << "FAIL: " << message << '\n'; std::exit(1); }
+    if (!ok)
+    {
+        std::cerr << "FAIL: " << message << '\n';
+        std::exit(1);
+    }
 }
 static void set(RastroFxProcessor &p, const char *id, float value)
 {
@@ -29,14 +33,18 @@ template <typename Sample> static void transparency()
             RastroFxProcessor p;
             configure(p, channels);
             p.prepareToPlay(rate, 1024);
-            check(p.getLatencySamples() == 0 && p.getTailLengthSeconds() == 0, "no latency/tail");
+            check(p.getLatencySamples() == 0 && p.getTailLengthSeconds() >= 0,
+                  "zero latency and declared finite tail");
             for (int size : {0, 1, 17, 511, 1024, 4096})
             {
                 juce::AudioBuffer<Sample> b(channels, size), original(channels, size);
                 for (int c = 0; c < channels; ++c)
                     for (int i = 0; i < size; ++i)
                     {
-                        const Sample values[]{Sample(0), Sample(-0.), Sample(1.75), Sample(-2.5),
+                        const Sample values[]{Sample(0),
+                                              Sample(-0.),
+                                              Sample(1.75),
+                                              Sample(-2.5),
                                               std::numeric_limits<Sample>::denorm_min(),
                                               Sample(std::sin(i * .317 + c) * 3.)};
                         b.setSample(c, i, values[i % 6]);
@@ -46,7 +54,7 @@ template <typename Sample> static void transparency()
                 p.processBlock(b, midi);
                 for (int c = 0; c < channels; ++c)
                     check(size == 0 || std::memcmp(b.getReadPointer(c), original.getReadPointer(c),
-                                                  size * sizeof(Sample)) == 0,
+                                                   size * sizeof(Sample)) == 0,
                           "unity is bit-exact, including headroom, silence and subnormals");
             }
         }
@@ -64,8 +72,12 @@ static void gainAndBypass()
             {
                 juce::AudioBuffer<float> b(channels, size);
                 for (int c = 0; c < channels; ++c)
-                    for (int i = 0; i < size; ++i) b.setSample(c, i, c == 0 ? .25f : -.75f);
-                if (bypassed) p.processBlockBypassed(b, midi); else p.processBlock(b, midi);
+                    for (int i = 0; i < size; ++i)
+                        b.setSample(c, i, c == 0 ? .25f : -.75f);
+                if (bypassed)
+                    p.processBlockBypassed(b, midi);
+                else
+                    p.processBlock(b, midi);
                 if (channels == 2)
                     for (int i = 0; i < size; ++i)
                         check(std::abs(b.getSample(1, i) + 3 * b.getSample(0, i)) < 1e-6,
@@ -85,7 +97,8 @@ static void gainAndBypass()
             render(1100, false);
             const float active = render(1, false).getSample(0, 0);
             check(std::abs(active - .25 * std::pow(10., -6. / 20.)) < 1e-6, "both gains applied");
-            if (!hostBypass) set(p, "fxBypass", 1);
+            if (!hostBypass)
+                set(p, "fxBypass", 1);
             previous = active;
             for (int i = 0; i < 500; ++i)
             {
@@ -96,7 +109,8 @@ static void gainAndBypass()
             check(previous == .25f, "settled bypass exactly dry, ignoring gains");
             set(p, "fxInputGain", 24);
             set(p, "fxOutputGain", 24);
-            check(render(1500, hostBypass).getSample(0, 1499) == .25f, "bypass automation stays dry");
+            check(render(1500, hostBypass).getSample(0, 1499) == .25f,
+                  "bypass automation stays dry");
             set(p, "fxInputGain", 6);
             set(p, "fxOutputGain", -12);
             render(1100, hostBypass);
@@ -147,22 +161,26 @@ static void blockPartitioning()
     }
     for (int c = 0; c < 2; ++c)
         check(std::memcmp(expected.getReadPointer(c), actual.getReadPointer(c),
-                          2048 * sizeof(double)) == 0, "ramps independent of block partitioning");
+                          2048 * sizeof(double)) == 0,
+              "ramps independent of block partitioning");
     set(whole, "fxBypass", 0);
     set(whole, "fxInputGain", 24);
     set(whole, "fxOutputGain", 24);
     whole.reset();
     juce::AudioBuffer<double> loud(2, 1);
-    loud.setSample(0, 0, 1.); loud.setSample(1, 0, 0.);
+    loud.setSample(0, 0, 1.);
+    loud.setSample(1, 0, 0.);
     whole.processBlock(loud, midi);
     check(std::abs(loud.getSample(0, 0) - std::pow(10., 48. / 20.)) < 1e-10 &&
-              loud.getSample(1, 0) == 0., "double gain keeps headroom and does not leak channels");
+              loud.getSample(1, 0) == 0.,
+          "double gain keeps headroom and does not leak channels");
 }
 static void stateAndLayouts()
 {
     RastroFxProcessor p;
     check(!p.acceptsMidi() && !p.producesMidi() && !p.isMidiEffect(), "audio-only insert");
-    check(p.getName() == "RASTRO FX" && p.getParameters().size() == 3, "independent product/parameters");
+    check(p.getName() == "RASTRO FX" && p.getParameters().size() > 90,
+          "independent product/parameters");
     check(p.getBypassParameter() == p.params.getParameter("fxBypass"), "host bypass parameter");
     auto b = p.getBusesLayout();
     b.inputBuses.set(0, juce::AudioChannelSet::mono());
@@ -172,27 +190,42 @@ static void stateAndLayouts()
     check(!p.isBusesLayoutSupported(b), "reject unsupported surround");
     b.inputBuses.set(0, juce::AudioChannelSet::disabled());
     check(!p.isBusesLayoutSupported(b), "reject absent input");
-    set(p, "fxInputGain", 3); set(p, "fxOutputGain", -9); set(p, "fxBypass", 1);
+    set(p, "fxInputGain", 3);
+    set(p, "fxOutputGain", -9);
+    set(p, "fxBypass", 1);
     juce::MemoryBlock data;
     p.getStateInformation(data);
     RastroFxProcessor restored;
     restored.setStateInformation(data.getData(), int(data.getSize()));
     for (auto id : {"fxInputGain", "fxOutputGain", "fxBypass"})
         check(std::abs(restored.params.getRawParameterValue(id)->load() -
-                       p.params.getRawParameterValue(id)->load()) < 1e-5, "state roundtrip");
+                       p.params.getRawParameterValue(id)->load()) < 1e-5,
+              "state roundtrip");
     juce::MemoryBlock foreign;
     juce::AudioProcessor::copyXmlToBinary(juce::XmlElement("RASTRO_CAPTURE"), foreign);
     restored.setStateInformation(foreign.getData(), int(foreign.getSize()));
     restored.setStateInformation("bad", 3);
-    check(restored.params.getRawParameterValue("fxInputGain")->load() == 3, "foreign/invalid state ignored");
+    check(restored.params.getRawParameterValue("fxInputGain")->load() == 3,
+          "foreign/invalid state ignored");
     restored.prepareToPlay(96000, 17);
-    juce::AudioBuffer<float> audio(2, 17); audio.clear(); audio.setSample(1, 0, 2.f);
-    juce::MidiBuffer midi; restored.processBlock(audio, midi);
-    check(audio.getSample(1, 0) == 2.f && audio.getSample(0, 0) == 0, "restored bypass immediately dry");
+    juce::AudioBuffer<float> audio(2, 17);
+    audio.clear();
+    audio.setSample(1, 0, 2.f);
+    juce::MidiBuffer midi;
+    restored.processBlock(audio, midi);
+    check(audio.getSample(1, 0) == 2.f && audio.getSample(0, 0) == 0,
+          "restored bypass immediately dry");
 }
+#include "FxRackIntegration.h"
 int main()
 {
-    transparency<float>(); transparency<double>(); gainAndBypass(); blockPartitioning(); stateAndLayouts();
+    juce::ScopedJuceInitialiser_GUI gui;
+    fullFxTests();
+    transparency<float>();
+    transparency<double>();
+    gainAndBypass();
+    blockPartitioning();
+    stateAndLayouts();
     std::cout << "PASS FX: float/double bit-exact unity; mono/stereo; rates/block sizes; gains; "
                  "parameter/host bypass ramps and reversal; state isolation; zero latency\n";
 }

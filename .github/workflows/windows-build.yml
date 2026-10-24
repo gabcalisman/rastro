@@ -1,6 +1,8 @@
 name: Windows build
 
 on:
+  push:
+    branches: [codex/rastro-fx-foundation]
   workflow_dispatch:
 
 permissions:
@@ -60,6 +62,8 @@ jobs:
           Copy-Item -Recurse docs/previews "$package/Previews"
           Copy-Item README.md "$package/README.md"
           Copy-Item docs/RASTRO-FX.md "$package/RASTRO-FX.md"
+          New-Item -ItemType Directory -Force "$package/Previews/FX" | Out-Null
+          Copy-Item "$env:BUILD_DIR/fx-editor-*.png" "$package/Previews/FX/"
           Copy-Item docs/INSTALL-WINDOWS.txt "$package/INSTALL-WINDOWS.txt"
           @"
           RASTRO PLAY, Capture and FX by Gab Calisman
@@ -68,14 +72,15 @@ jobs:
           Tested checkout: $(git rev-parse HEAD)
           Runner and binary architecture: Windows x64 (PE AMD64 verified).
           Built and packaged: PLAY VST3/Standalone + Capture VST3 + FX VST3 (four PE executables, all verified AMD64). AU is macOS only.
-          Eight portable suites and the FX processor suite passed natively on the runner (nine suites). No pluginval, DAW, hardware or GUI test was performed.
+          Eight portable suites and the FX processor suite passed natively on the runner (nine suites). FX DSP/state and offscreen editor renders were tested. No pluginval, DAW, hardware or native-window GUI test was performed.
+          Previews/FX contains actual offscreen FX editor renders from this test run, not DAW screenshots.
           Static MSVC runtime. Unsigned test build; not a release.
           M4A decoding is not implemented on Windows. WAV/AIFF/MP3 are available offline.
           "@ | Set-Content -Encoding utf8 "$package/BUILD-INFO.txt"
           Compress-Archive -Path $package -DestinationPath "dist/$env:PACKAGE_NAME.zip"
           $hash = (Get-FileHash "dist/$env:PACKAGE_NAME.zip" -Algorithm SHA256).Hash.ToLower()
           "$hash  $env:PACKAGE_NAME.zip" | Set-Content -Encoding ascii "dist/$env:PACKAGE_NAME.zip.sha256"
-          "### Download RASTRO Windows x64`nArtifact: **$env:PACKAGE_NAME**. Built and packaged PLAY VST3/Standalone + Capture VST3 + FX VST3; all four PE executables verified AMD64. Nine native suites passed (eight portable + FX processor). No pluginval, DAW, hardware or GUI test was performed. M4A unavailable on Windows." >> $env:GITHUB_STEP_SUMMARY
+          "### Download RASTRO Windows x64`nArtifact: **$env:PACKAGE_NAME**. Built and packaged PLAY VST3/Standalone + Capture VST3 + FX VST3; all four PE executables verified AMD64. Nine native suites passed (eight portable + FX processor). FX DSP/state and offscreen editor renders were tested. No pluginval, DAW, hardware or native-window GUI test was performed. M4A unavailable on Windows." >> $env:GITHUB_STEP_SUMMARY
       - name: Upload downloadable Windows ZIP
         uses: actions/upload-artifact@v4
         with:

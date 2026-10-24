@@ -124,7 +124,7 @@ jobs:
           set -euo pipefail
           root="$BUILD_DIR/Rastro_artefacts/Release"
           package="staging/$PACKAGE_NAME"
-          mkdir -p "$package/AU" "$package/VST3" "$package/Standalone" "$package/Previews" dist
+          mkdir -p "$package/AU" "$package/VST3" "$package/Standalone" "$package/Previews/FX" dist
           ditto "$root/AU/RASTRO.component" "$package/AU/RASTRO.component"
           ditto "$root/VST3/RASTRO.vst3" "$package/VST3/RASTRO.vst3"
           ditto "$root/Standalone/RASTRO.app" "$package/Standalone/RASTRO.app"
@@ -134,6 +134,7 @@ jobs:
           ditto "$BUILD_DIR/RastroFx_artefacts/Release/VST3/RASTRO FX.vst3" "$package/VST3/RASTRO FX.vst3"
           cp README.md "$package/README.md"
           cp docs/RASTRO-FX.md "$package/RASTRO-FX.md"
+          cp "$BUILD_DIR"/fx-editor-*.png "$package/Previews/FX/"
           cp docs/INSTALL-MAC.txt "$package/INSTALL-MAC.txt"
           ditto docs/previews "$package/Previews/Historical-JUCE"
           ditto docs/previews-web "$package/Previews/Web-PR5"
@@ -147,11 +148,12 @@ jobs:
             echo "Runner architecture: $(uname -m)"
             echo "Bundle architectures: arm64 + x86_64 (verified with lipo)"
             echo "Minimum deployment target: macOS 12.0; Logic has its own OS requirements."
-            echo "Built and packaged: PLAY AU/VST3/Standalone + Capture AU/VST3 + FX AU/VST3 (seven bundles). Checks: eleven native suites including FX/CoreAudio M4A/capture IPC passed; PLAY, Capture and FX VST3s passed pluginval 1.0.3 level 5 seed 42; AUs aumu Rstr GbCa, aufx Rcpt GbCa and aufx Rfx1 GbCa passed auval; all seven bundles passed architecture and signature verification."
+            echo "Built and packaged: PLAY AU/VST3/Standalone + Capture AU/VST3 + FX AU/VST3 (seven bundles). Checks: eleven native suites including FX DSP/state/offscreen editor, CoreAudio M4A and capture IPC passed; PLAY, Capture and FX VST3s passed pluginval 1.0.3 level 5 seed 42; AUs aumu Rstr GbCa, aufx Rcpt GbCa and aufx Rfx1 GbCa passed auval; all seven bundles passed architecture and signature verification."
             echo "Ad-hoc signed for testing; NOT Developer ID signed or notarized."
             echo "Web editor enabled. PR #5 is an unfinished visual draft, not the approved NOVA redesign."
             echo "Previews/Web-PR5: Linux Chromium captures with SIMULATED telemetry; not Mac/WebKit or DSP validation."
             echo "Previews/Historical-JUCE: older native-editor captures; not this web redesign."
+            echo "Previews/FX: real offscreen FX editor renders from this native test run; not Logic screenshots."
             echo "Native arm64 execution, hardware audio/MIDI and Logic Pro playback NOT tested."
             sw_vers
             xcodebuild -version

@@ -1,0 +1,43 @@
+Release Linux / CTest + Xvfb + Xfwm4
+Exit code: 0
+
+Internal ctest changing into directory: /workspace/rastro/build
+Test project /workspace/rastro/build
+      Start  1: dsp
+ 1/12 Test  #1: dsp ..............................   Passed    0.64 sec
+      Start  2: character
+ 2/12 Test  #2: character ........................   Passed    1.03 sec
+      Start  3: playback
+ 3/12 Test  #3: playback .........................   Passed    1.11 sec
+      Start  4: mp3
+ 4/12 Test  #4: mp3 ..............................   Passed    0.00 sec
+      Start  5: synth
+ 5/12 Test  #5: synth ............................   Passed    0.19 sec
+      Start  6: capture
+ 6/12 Test  #6: capture ..........................   Passed    0.06 sec
+      Start  7: timing
+ 7/12 Test  #7: timing ...........................   Passed    1.40 sec
+      Start  8: patches
+ 8/12 Test  #8: patches ..........................   Passed    0.66 sec
+      Start  9: processor
+ 9/12 Test  #9: processor ........................   Passed   16.01 sec
+      Start 10: recordings
+10/12 Test #10: recordings .......................   Passed    0.85 sec
+      Start 11: capture_bridge
+11/12 Test #11: capture_bridge ...................   Passed    0.63 sec
+      Start 12: fx_processor
+12/12 Test #12: fx_processor .....................   Passed    2.24 sec
+
+100% tests passed, 0 tests failed out of 12
+
+Total Test time (real) =  24.83 sec
+
+Final FX-only rerun after XY gesture fix (Exit code: 0):
+Internal ctest changing into directory: /workspace/rastro/build
+Test project /workspace/rastro/build
+    Start 12: fx_processor
+1/1 Test #12: fx_processor .....................   Passed    2.07 sec
+
+100% tests passed, 0 tests failed out of 1
+
+Total Test time (real) =   2.07 sec

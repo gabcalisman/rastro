@@ -292,6 +292,139 @@ int main()
             check(diff(lw, rw) > 1, "WOBBLE width opens stereo");
         }
     }
+    // Click detector: a smooth low sine must stay smooth through every playback mode, loop wraps,
+    // ping-pong turns, voice stealing (more notes than voices) and the CRUMBLE fragment windows.
+    // A click is a jump in the second difference far above what the music itself produces.
+    {
+        const double sr = 48000;
+        rastro::Sample sample;
+        sample.rate = sr;
+        const int n = 30011; // not a whole number of cycles: the loop seam does not line up by itself
+        for (int c = 0; c < 2; ++c)
+        {
+            sample.data[c].resize((size_t)n);
+            for (int i = 0; i < n; ++i)
+                sample.data[c][i] = .6f * std::sin(float(i * 110 * 6.283185307 / sr));
+        }
+        float lastDip = 1;
+        auto worstClick = [&](rastro::Settings s, int notes, int noteLen, int frames, bool hold)
+        {
+            rastro::Engine engine;
+            engine.prepare(sr);
+            float p1 = 0, p2 = 0, worst = 0, winPeak = 0, minPeak = 1e9f, maxPeak = 0;
+            int nextOn = 0, k = 0;
+            audio = true;
+            for (int i = 0; i < frames; ++i)
+            {
+                if (i == nextOn && k < notes)
+                {
+                    engine.noteOn(48 + (k * 5) % 24, .9f, &sample, s);
+                    if (!hold)
+                        ; // released below
+                    ++k;
+                    nextOn += noteLen;
+                }
+                if (!hold && k > 0 && i == (k - 1) * noteLen + noteLen - 1)
+                    engine.noteOff(48 + ((k - 1) * 5) % 24, s);
+                float l, r;
+                engine.frame(l, r, &sample, s);
+                if (i > 2)
+                    worst = std::max(worst, std::abs(l - 2 * p1 + p2));
+                winPeak = std::max(winPeak, std::abs(l));
+                if (i % 600 == 599)
+                {
+                    if (i > 6000) { minPeak = std::min(minPeak, winPeak); maxPeak = std::max(maxPeak, winPeak); }
+                    winPeak = 0;
+                }
+                p2 = p1;
+                p1 = l;
+            }
+            audio = false;
+            lastDip = maxPeak > 0 ? minPeak / maxPeak : 1;
+            return worst;
+        };
+        rastro::Settings base;
+        base.enabled.fill(false);
+        base.level = 1;
+        base.root = 60;
+        struct Case { const char *name; int mode; bool region; bool synth; int voice; int notes; int len; bool hold; };
+        const Case cases[]{
+            {"one shot", 0, false, false, 0, 6, 9000, true},
+            {"loop mode wrap", 1, false, false, 0, 1, 1, true},
+            {"reverse", 2, false, false, 0, 4, 9000, true},
+            {"ping-pong turns", 3, false, false, 0, 1, 1, true},
+            {"region LOOP wrap", 0, true, false, 0, 1, 1, true},
+            {"voice stealing (24 notes on 16 voices)", 1, false, false, 0, 24, 700, true},
+            {"synth voice stealing", 1, false, true, 0, 24, 700, true},
+            {"mono retrigger", 1, false, false, 1, 12, 2000, false},
+            {"gate release", 1, false, true, 0, 8, 3000, false},
+        };
+        float reference = 0;
+        int clicks = 0;
+        {
+            auto s = base;
+            s.mode = 1;
+            s.regionLoop = true;
+            s.loopCrossfade = 20;
+            reference = worstClick(s, 1, 1, 4000, true); // inside the sample: pure sine curvature
+        }
+        for (auto &c : cases)
+        {
+            auto s = base;
+            s.mode = c.mode;
+            s.regionLoop = c.region;
+            s.loopCrossfade = 5;
+            s.synth = c.synth;
+            s.voiceMode = c.voice;
+            const float w = worstClick(s, c.notes, c.len, 120000, c.hold);
+            const bool dipCase = c.notes == 1; // one held looping note: its level must stay steady
+            const bool bad = w > std::max(.012f, reference * 6) || (dipCase && lastDip < .8f);
+            std::cerr << (bad ? "CLICK " : "ok    ") << c.name << ": jump " << w << " (smooth " << reference << "), level steadiness " << lastDip << std::endl;
+            clicks += bad;
+        }
+        // Level dips: a constant (DC) sample held in every looping mode must keep a constant level,
+        // so any fade-out/fade-in at a loop wrap or ping-pong turn shows up directly.
+        {
+            rastro::Sample dc;
+            dc.rate = sr;
+            for (int c = 0; c < 2; ++c)
+                dc.data[c].assign(9001, .5f);
+            const char *names[]{"loop mode wrap", "ping-pong turns", "region LOOP wrap"};
+            const int modes[]{1, 3, 0};
+            for (int m = 0; m < 3; ++m)
+            {
+                auto s = base;
+                s.mode = modes[m];
+                s.regionLoop = m == 2;
+                rastro::Engine engine;
+                engine.prepare(sr);
+                engine.noteOn(60, .9f, &dc, s);
+                float lo = 1e9f, hi = 0;
+                audio = true;
+                for (int i = 0; i < 60000; ++i)
+                {
+                    float l, r;
+                    engine.frame(l, r, &dc, s);
+                    if (i > 2000) { lo = std::min(lo, std::abs(l)); hi = std::max(hi, std::abs(l)); }
+                }
+                audio = false;
+                const bool bad = lo < hi * .97f;
+                std::cerr << (bad ? "DIP   " : "ok    ") << names[m] << ": level min/max " << lo / std::max(1e-9f, hi) << std::endl;
+                clicks += bad;
+            }
+        }
+        // CRUMBLE fragments must be windowed whole: no cut-off window at the end of each period
+        {
+            auto s = base;
+            s.mode = 1;
+            s.enabled[1] = true;
+            s.crumble = {.3f, .1f, 1};
+            const float w = worstClick(s, 1, 1, 96000, true);
+            std::cerr << (w > .02f ? "CLICK " : "ok    ") << "CRUMBLE fragments: " << w << std::endl;
+            clicks += w > .02f;
+        }
+        check(clicks == 0, "click detected");
+    }
     std::cout << "PASS: sample playback, release, all effects, extreme trims, polyphony, 4 sample "
                  "rates, serial/parallel rack, rack audit (every control, bypass, Mix 0, fades, width); "
                  "no allocations in frame\n";

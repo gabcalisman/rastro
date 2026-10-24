@@ -142,13 +142,30 @@ class Engine
             }
             held[heldCount++] = {note, channel, vel};
         }
-        Voice *v = &voices[0];
+        // Free voice first; when all are busy, steal the quietest one (released voices first).
+        Voice *v = nullptr;
         for (auto &x : voices)
             if (x.note < 0)
             {
                 v = &x;
                 break;
             }
+        if (!v)
+        {
+            v = &voices[0];
+            float quietest = 1e9f;
+            for (auto &x : voices)
+            {
+                if (x.note == 255)
+                    continue;
+                const float level = x.env * x.gain * (x.release ? .25f : 1.f);
+                if (level < quietest)
+                {
+                    quietest = level;
+                    v = &x;
+                }
+            }
+        }
         if (note == 255)
             for (auto &x : voices)
                 if (x.note == 255)
@@ -172,7 +189,8 @@ class Engine
         auto before = *v;
         bool legato = p.voiceMode == 2 && before.note >= 0 && !before.release && note != 255 &&
                       before.synth == p.synth && (before.trigger == 2) == (p.triggerMode == 2);
-        if (before.note >= 0 && !legato && (p.synth || p.voiceMode > 0))
+        // Any voice that was still sounding hands its last output to a short tail (no hard cut).
+        if (before.note >= 0 && !legato)
             for (int c = 0; c < 2; ++c)
                 stealTail[c] = std::clamp(stealTail[c] + before.last[c], -2.f, 2.f);
         *v = {};
@@ -389,7 +407,9 @@ class Engine
                     else if (v.pos >= v.end || v.pos < v.begin)
                     {
                         if (mode == 1 && !v.release)
-                            v.pos = v.begin + std::fmod(v.pos - v.begin, span);
+                            v.pos = v.fade > 0 && span > v.fade
+                                        ? v.begin + v.fade + std::fmod(v.pos - v.end, span - v.fade)
+                                        : v.begin + std::fmod(v.pos - v.begin, span);
                         else
                         {
                             v.note = -1;
@@ -409,10 +429,15 @@ class Engine
                     }
                     int a = std::clamp((int)v.pos, 0, sample->size() - 2);
                     float f = float(v.pos - a);
+                    // Short fades only where the sound really starts or stops. A wrapping loop or a
+                    // ping-pong turn is continuous, so it must not dip to silence on every pass.
+                    const bool wraps = v.looping || mode == 3 || (mode == 1 && !v.release);
                     float edge =
-                        v.looping ? 1.f
-                                  : float(std::min({1., (v.pos - v.begin) / std::max(1., sr * .002),
-                                                    (v.end - v.pos) / std::max(1., sr * .003)}));
+                        wraps ? float(std::min(1., v.travel / std::max(1., sr * .002)))
+                              : float(std::min({1., (v.pos - v.begin) / std::max(1., sr * .002),
+                                                (v.end - v.pos) / std::max(1., sr * .003)}));
+                    if (v.looping)
+                        edge = 1;
                     float cutoff =
                         .035f + .85f * (1 - velocity + velocity * std::min(1.f, v.gain / .23f));
                     if (v.synth && v.modCounter++ % 16 == 0)
@@ -434,7 +459,7 @@ class Engine
                     {
                         float z =
                             sample->data[c][a] + f * (sample->data[c][a + 1] - sample->data[c][a]);
-                        if (v.looping && v.fade > 0 && mode != 3)
+                        if ((v.looping || (mode == 1 && !v.release)) && v.fade > 0 && mode != 3)
                         {
                             double other = v.pos;
                             float blend = 0;

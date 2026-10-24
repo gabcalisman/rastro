@@ -253,8 +253,13 @@ class EffectRack
                 if (module == 1)
                 {
                     grain[c][grainWrite] = in;
-                    float w = .5f - .5f * std::cos(6.2831853f * (phase % fragmentLength) /
-                                                   fragmentLength);
+                    // Only whole fragments are played: the incomplete repeat at the end of a period
+                    // stays silent, so its window never gets cut off mid-way (that was a click).
+                    const int whole = (period / fragmentLength) * fragmentLength;
+                    float w = phase < whole ? .5f - .5f * std::cos(6.2831853f *
+                                                                    (phase % fragmentLength) /
+                                                                    fragmentLength)
+                                            : 0.f;
                     wet = grain[c][(fragment + phase % fragmentLength) % grainSize] * w;
                     if (clocked && !p.transportPlaying)
                     {

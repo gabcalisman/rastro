@@ -168,7 +168,7 @@ cmake --build build-mac --config Release --parallel 2
 ctest --test-dir build-mac -C Release --output-on-failure
 ```
 
-São **dez suítes** no Mac por padrão (oito portáveis + importação CoreAudio + captura/IPC/WAV). Para incluir a décima primeira, de processador/editor, configure `-DRASTRO_INTEGRATION_TESTS=ON`, compile e execute numa sessão gráfica autenticada. O CI não inclui essa suíte GUI.
+São **onze suítes** no Mac por padrão (oito portáveis + importação CoreAudio + captura/IPC/WAV + processador FX). Para incluir a décima segunda, de processador/editor PLAY, configure `-DRASTRO_INTEGRATION_TESTS=ON`, compile e execute numa sessão gráfica autenticada. O CI não inclui essa suíte GUI.
 
 5. Os produtos esperados são:
 
@@ -226,3 +226,10 @@ Faltam testes no Mac do usuário: instalação/segurança, `auval`, CoreAudio co
 ## Escopo desta entrega por etapas
 
 [Registro inicial e sequência](docs/DEVELOPMENT-STAGES.md). A revisão amplia a interface/customização e completa fluxos reais de JAM/presets. O DSP de sampler, synth e seis efeitos foi auditado e preservado; não foram adicionados efeitos novos, motores independentes, mobile, vídeo, IR ou multisample. Patch Lab continua a busca aproximada já implementada. Captura no Logic continua exigindo o insert complementar. Uma arte ambiental mais detalhada/editor livre de decoração e expansão da busca ficam pendentes; a aprovação estética ainda depende da sua revisão das capturas.
+
+## RASTRO FX — primeira etapa
+
+Novo plugin de áudio independente, com entrada/saída mono ou estéreo, passagem
+transparente em ganho unitário, bypass suave e ganhos de entrada/saída automatizáveis.
+Identificadores e comportamento do PLAY e do Capture preservados. Veja
+[escopo, identificadores, build e testes do FX](docs/RASTRO-FX.md).

@@ -26,9 +26,9 @@ jobs:
       - name: Build all Windows formats and portable tests
         run: >-
           cmake --build "$env:BUILD_DIR" --config Release
-          --target Rastro_VST3 Rastro_Standalone RastroCapture_VST3
+          --target Rastro_VST3 Rastro_Standalone RastroCapture_VST3 RastroFx_VST3
           rastro_tests rastro_character_tests rastro_playback_tests rastro_mp3_tests
-          rastro_synth_tests rastro_capture_tests rastro_timing_tests rastro_patch_tests
+          rastro_synth_tests rastro_capture_tests rastro_timing_tests rastro_patch_tests rastro_fx_tests
           --parallel 3
       - name: Run native portable tests
         run: ctest --test-dir "$env:BUILD_DIR" -C Release --output-on-failure
@@ -71,7 +71,7 @@ jobs:
           Compress-Archive -Path $package -DestinationPath "dist/$env:PACKAGE_NAME.zip"
           $hash = (Get-FileHash "dist/$env:PACKAGE_NAME.zip" -Algorithm SHA256).Hash.ToLower()
           "$hash  $env:PACKAGE_NAME.zip" | Set-Content -Encoding ascii "dist/$env:PACKAGE_NAME.zip.sha256"
-          "### Download RASTRO Windows x64`nArtifact: **$env:PACKAGE_NAME**. VST3, Standalone and recorder-only Capture VST3. Eight native portable suites passed; no DAW/hardware test. M4A unavailable on Windows." >> $env:GITHUB_STEP_SUMMARY
+          "### Download RASTRO Windows x64`nArtifact: **$env:PACKAGE_NAME**. VST3, Standalone and recorder-only Capture VST3. Eight portable suites and the FX processor suite passed; no DAW/hardware test. M4A unavailable on Windows." >> $env:GITHUB_STEP_SUMMARY
       - name: Upload downloadable Windows ZIP
         uses: actions/upload-artifact@v4
         with:

@@ -16,6 +16,36 @@ AU é exclusivo do macOS. O FX não tem Standalone. Seu estado usa
 etapa (`fxInputGain`, `fxOutputGain`, `fxBypass`) mantêm os IDs e índices; estados
 antigos sem rack são completados com os novos módulos desligados.
 
+## Interface
+
+No macOS o FX abre uma interface web (`ui-fx/`, embutida no plugin e servida pelo
+`RastroFxWebEditor` no WebView do sistema), como o PLAY. Em Linux/Windows e nos testes
+continua o editor nativo `RastroFxEditor`, cujo cabeçalho agora mostra só
+**RASTRO FX by Gab Calisman**.
+
+- **Família PLAY:** logo oficial do RASTRO (`ui-fx/logo-rastro.png`, recortado de `ui/logo.png`),
+  fontes RastroSerif/RastroSans, painéis violeta e knobs com arco neon. No palco fica o
+  **produtor de luz** do PLAY (`ui-fx/viz.js`, copiado da branch `claude/etapa-1-som` com as cores
+  estendidas aos 15 módulos), desenhado pela forma de onda real da saída. Os transientes da
+  entrada disparam anéis na cor do módulo mais ativo, com ecos violeta quando o GHOST está ligado.
+- **Cada efeito é um aparelho:** material próprio (vidro, cerâmica, laca, fita, vinil, LCD, veludo,
+  cosmos, cobre, borracha, aço, neon…), letreiro, knobs no material do aparelho, LED, footswitch e
+  um display animado que desenha o que o módulo faz com os valores atuais. O display do SWING é o
+  editor do padrão de 8 pontos.
+- **Cadeia:** arraste o topo de um aparelho para mudar a ordem; arraste um efeito da prateleira
+  para dentro da cadeia (ou toque nele) para inserir; × tira da cadeia. SÉRIE/PARALELO no
+  cabeçalho; no paralelo, o cabo se divide e a dica do painel explica a soma das saídas.
+- **Modulação:** pad XY com rastro, destinos agrupados por módulo e quantidade bipolar; LFO e
+  follower com osciloscópio do sinal real de modulação.
+- **Presets/A-B:** navegador de fábrica, SALVAR/ABRIR `.rastrofx`, A/B e copiar para o outro lado.
+
+Toda ação escreve um parâmetro real do host (com gesto de automação); o que se move vem de
+telemetria real: picos de entrada/saída, LFO, follower e um osciloscópio da saída (anel
+sem locks de 512 pontos, 1 a cada 4 amostras; só leitura pela interface, não altera o áudio).
+Aberto fora do plugin, `ui-fx/index.html` usa um motor simulado, identificado na tela.
+Compatibilidade: WebKit do macOS com Safari 15 ou mais novo (polyfill de `roundRect` e
+fallbacks para `color-mix`).
+
 ## Rack e áudio
 
 Arraste o cabeçalho de um card ou use **UP / DOWN**. A ordem também é automatizável
@@ -237,6 +267,13 @@ A produção dos artefatos nativos e seus validadores só pode ser confirmada pe
 resultados dos workflows desta revisão; não deve ser inferida do sucesso local.
 
 ## Evidência local desta revisão
+
+Rodada de interface (branch `claude/rastro-fx-ui`, sobre a de som): `rastro_fx_tests` passou;
+`FxWebEditor.cpp` e `FxProcessor.cpp` compilaram com `RASTRO_FX_WEB_UI=1`/`JUCE_WEB_BROWSER=1`
+contra os headers do JUCE 8.0.6 (sem WebKit no Linux, o binário web só é gerado no Mac).
+Interações testadas no Chromium com o motor simulado: inserir por toque, arrastar da prateleira,
+reordenar, remover, footswitch, knobs, paralelo, pad XY e cadeia vazia, sem erros de JavaScript.
+Não foi testado no WebKit/Safari nem no Logic neste ambiente.
 
 Rodada de som (branch `claude/rastro-fx-sound`): build Release Linux do alvo FX (VST3 +
 `rastro_fx_tests`) com JUCE 8.0.6; `rastro_fx_tests` **passou** (todos os grupos, incluindo

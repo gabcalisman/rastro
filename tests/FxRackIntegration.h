@@ -530,7 +530,8 @@ static void editorFxTests()
     p.loadFactory(6);
     for (int id = 0; id < rastro::fx::count; ++id)
         set(p, RastroFxProcessor::moduleId(id, "InRack").toRawUTF8(), 1);
-    auto editor = std::unique_ptr<juce::AudioProcessorEditor>(p.createEditor());
+    // The native editor is the fallback on every platform (the macOS build opens the web UI).
+    auto editor = std::unique_ptr<juce::AudioProcessorEditor>(new RastroFxEditor(p));
     auto *fx = dynamic_cast<RastroFxEditor *>(editor.get());
     check(fx != nullptr, "FX has a custom editor");
     for (auto size :

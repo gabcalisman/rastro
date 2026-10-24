@@ -1,5 +1,6 @@
 #include "FxProcessor.h"
 #include "FxEditor.h"
+#include "FxWebEditor.h"
 using namespace rastro::fx;
 namespace
 {
@@ -377,6 +378,15 @@ void RastroFxProcessor::process(juce::AudioBuffer<Sample> &buffer, bool hostBypa
         outMeter =
             std::max(outMeter, float(std::max(std::abs(buffer.getSample(0, sample)),
                                               std::abs(buffer.getSample(mono ? 0 : 1, sample)))));
+        if (++scopeDecimation >= 4)
+        {
+            scopeDecimation = 0;
+            const float mid = float(.5 * (double(buffer.getSample(0, sample)) +
+                                          double(buffer.getSample(mono ? 0 : 1, sample))));
+            const int w = scopeWrite.load(std::memory_order_relaxed);
+            scope[size_t(w)].store(std::isfinite(mid) ? mid : 0.f, std::memory_order_relaxed);
+            scopeWrite.store((w + 1) % scopeSize, std::memory_order_relaxed);
+        }
         for (int m = 0; m < count; ++m)
             peaks[m] = std::max(peaks[m], frame.enabled[m] * frame.mix[m]);
     }
@@ -410,7 +420,14 @@ juce::AudioProcessorParameter *RastroFxProcessor::getBypassParameter() const
 {
     return params.getParameter("fxBypass");
 }
-juce::AudioProcessorEditor *RastroFxProcessor::createEditor() { return new RastroFxEditor(*this); }
+juce::AudioProcessorEditor *RastroFxProcessor::createEditor()
+{
+#if RASTRO_FX_WEB_UI
+    return new RastroFxWebEditor(*this);
+#else
+    return new RastroFxEditor(*this);
+#endif
+}
 void RastroFxProcessor::setValue(const juce::String &id, float v)
 {
     if (auto *p = params.getParameter(id))

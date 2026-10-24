@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>RASTRO FX</title>
+<link rel="stylesheet" href="fx.css">
+</head>
+<body>
+<div id="frame">
+  <div id="app">
+    <!-- ============ HEADER ============ -->
+    <header id="top">
+      <div class="logo" aria-label="RASTRO FX by Gab Calisman">
+        <img class="lg-img" src="logo-rastro.png" alt="RASTRO">
+        <span class="lg-side"><span class="lg-fx">FX</span><span class="lg-by">by Gab Calisman</span></span>
+      </div>
+
+      <div id="presetBar">
+        <button class="pb-arrow" id="presetPrev" aria-label="Preset anterior"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button>
+        <button class="pb-name" id="presetOpen" aria-haspopup="listbox">
+          <span class="pb-title" id="presetName">INIT</span>
+          <span class="pb-sub" id="presetSub">Preset de fábrica</span>
+          <svg class="pb-caret" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg>
+        </button>
+        <button class="pb-arrow" id="presetNext" aria-label="Próximo preset"><svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></button>
+        <div id="presetMenu" role="listbox" hidden></div>
+      </div>
+
+      <div id="abBox" title="Comparar dois ajustes">
+        <button class="ab" data-slot="0">A</button><button class="ab" data-slot="1">B</button>
+        <button class="ab-copy" id="abCopy" title="Copiar o ajuste atual para o outro lado">COPIAR <span id="abCopyTo">→ B</span></button>
+      </div>
+
+      <div class="top-tools">
+        <button class="tool" id="savePreset" title="Salvar preset (.rastrofx)"><svg viewBox="0 0 24 24"><path d="M5 4h11l3 3v13H5z M8 4v5h7V4 M8 20v-6h8v6"/></svg><span>SALVAR</span></button>
+        <button class="tool" id="openPreset" title="Abrir preset (.rastrofx)"><svg viewBox="0 0 24 24"><path d="M3 7h6l2 2h10v10H3z"/></svg><span>ABRIR</span></button>
+      </div>
+
+      <div id="routing" role="radiogroup" aria-label="Roteamento">
+        <button data-r="0" role="radio">SÉRIE</button><button data-r="1" role="radio">PARALELO</button>
+        <i class="rt-thumb"></i>
+      </div>
+    </header>
+
+    <!-- ============ SIGNAL CHAIN ============ -->
+    <section id="chainPanel" class="panel">
+      <div class="panel-head">
+        <h2>Cadeia de sinal</h2>
+        <span class="hint" id="chainHint">arraste os aparelhos para mudar a ordem · arraste da prateleira para adicionar</span>
+      </div>
+      <div id="chainScroll">
+        <div id="chain">
+          <svg id="cable" aria-hidden="true"></svg>
+          <div class="jack jack-in"><b>IN</b></div>
+          <div id="devices"></div>
+          <div id="dropEnd" class="drop-end"><span>+</span><small>solte aqui</small></div>
+          <div class="jack jack-out"><b>OUT</b></div>
+        </div>
+      </div>
+      <div id="emptyChain" hidden>
+        <div class="empty-orbit"></div>
+        <p><b>Cadeia vazia.</b> O som passa limpo, bit a bit.<br>Arraste um efeito da prateleira para cá, ou toque nele.</p>
+      </div>
+    </section>
+
+    <!-- ============ STAGE + MASTER ============ -->
+    <section id="stagePanel" class="panel">
+      <div id="stage">
+        <div id="stageTag"><span id="stageDot"></span><span id="stageText">sinal limpo</span></div>
+      </div>
+      <div id="master">
+        <div class="meter" id="inMeter"><i></i><b>IN</b></div>
+        <div class="mk" id="mkInput"></div>
+        <div class="mk" id="mkMix"></div>
+        <div class="mk" id="mkOutput"></div>
+        <div class="meter" id="outMeter"><i></i><b>OUT</b></div>
+      </div>
+      <button id="bypass" class="stomp-wide" aria-pressed="false"><span class="led"></span><span>BYPASS</span></button>
+    </section>
+
+    <!-- ============ SHELF ============ -->
+    <section id="shelfPanel" class="panel">
+      <div class="panel-head"><h2>Prateleira</h2><span class="hint">15 aparelhos · toque para ligar/desligar da cadeia</span></div>
+      <div id="shelf"></div>
+    </section>
+
+    <!-- ============ MODULATION ============ -->
+    <section id="modPanel" class="panel">
+      <div class="mod-col" id="xyCol">
+        <div class="panel-head"><h2>Pad XY</h2><span class="hint">mova a estrela</span></div>
+        <div id="xyRow">
+          <div id="xyPad"><canvas id="xyCanvas"></canvas><div id="xyStar"><svg viewBox="0 0 24 24"><path d="M12 1l2.4 8.6L23 12l-8.6 2.4L12 23l-2.4-8.6L1 12l8.6-2.4z"/></svg></div><span class="xy-ax xy-x">X</span><span class="xy-ax xy-y">Y</span></div>
+          <div class="route-stack">
+            <div class="route" id="routeX"><span class="rt-badge">X</span><select class="target"></select><div class="mini-knob"></div></div>
+            <div class="route" id="routeY"><span class="rt-badge">Y</span><select class="target"></select><div class="mini-knob"></div></div>
+          </div>
+        </div>
+      </div>
+      <div class="mod-col" id="lfoCol">
+        <div class="panel-head"><h2>LFO</h2><span class="hint" id="lfoHint"></span></div>
+        <canvas id="lfoCanvas" class="mod-scope"></canvas>
+        <div class="shape-row" id="lfoShapes">
+          <button data-s="0" title="Seno"><svg viewBox="0 0 32 16"><path d="M1 8 Q8 -4 16 8 T31 8"/></svg></button>
+          <button data-s="1" title="Triângulo"><svg viewBox="0 0 32 16"><path d="M1 14 L9 2 L23 14 L31 2"/></svg></button>
+          <button data-s="2" title="Dente de serra"><svg viewBox="0 0 32 16"><path d="M1 14 L16 2 L16 14 L31 2"/></svg></button>
+          <button data-s="3" title="Quadrada"><svg viewBox="0 0 32 16"><path d="M1 14 V2 H16 V14 H31 V2"/></svg></button>
+        </div>
+        <div class="route" id="routeLfo"><span class="rt-badge">→</span><select class="target"></select></div>
+        <div class="knob-row" id="lfoKnobs"></div>
+      </div>
+      <div class="mod-col" id="envCol">
+        <div class="panel-head"><h2>Follower</h2><span class="hint">segue o volume da entrada</span></div>
+        <canvas id="envCanvas" class="mod-scope"></canvas>
+        <div class="route" id="routeEnv"><span class="rt-badge">→</span><select class="target"></select></div>
+        <div class="knob-row" id="envKnobs"></div>
+      </div>
+    </section>
+
+    <div id="toast" hidden></div>
+    <div id="sim" hidden>Prévia no navegador com motor simulado. No plugin, tudo usa o áudio real.</div>
+  </div>
+</div>
+<script src="fxbridge.js"></script>
+<script src="viz.js"></script>
+<script src="fxart.js"></script>
+<script src="fx.js"></script>
+</body>
+</html>

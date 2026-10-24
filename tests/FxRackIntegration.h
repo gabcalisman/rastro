@@ -520,6 +520,10 @@ static void editorFxTests()
             }
             else
             {
+                auto *row = findFx(*editor, "fxRow" + juce::String(id));
+                auto *viewport = dynamic_cast<juce::Viewport *>(findFx(*editor, "fxRackViewport"));
+                check(row != nullptr && viewport != nullptr, "module card is available in rack");
+                viewport->setViewPosition(0, row->getY());
                 auto *segmented = findFx(*editor, parameterId);
                 check(segmented != nullptr, "unique module selector is visible");
                 int option = id == 6 ? 3 : 2;
@@ -546,6 +550,10 @@ static void editorFxTests()
     check(p.value("fxM0InRack") == 0, "module bank removes an inserted effect");
     shelf->triggerClick();
     check(p.value("fxM0InRack") == 1, "module bank inserts an effect into the rack");
+    auto *rackViewport = dynamic_cast<juce::Viewport *>(findFx(*editor, "fxRackViewport"));
+    auto *firstRow = findFx(*editor, "fxRow0");
+    check(rackViewport != nullptr && firstRow != nullptr, "rack viewport contains inserted row");
+    rackViewport->setViewPosition(0, firstRow->getY());
     auto *remove = dynamic_cast<juce::Button *>(findFx(*editor, "fxRemove0"));
     check(remove != nullptr, "rack row exposes a remove control");
     remove->triggerClick();

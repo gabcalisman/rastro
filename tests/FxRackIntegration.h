@@ -528,9 +528,14 @@ static void editorFxTests()
                 check(button != nullptr, "unique module selector has accessible options");
                 button->triggerClick();
                 int optionCount = id == 6 ? 5 : 3;
-                float expected = rastro::fx::modules[id].knob[k].physical(
-                    float(option) / float(optionCount - 1));
-                check(std::abs(p.value(parameterId) - expected) < 1e-5,
+                auto *parameter = p.params.getParameter(parameterId);
+                float normalized = float(option) / float(optionCount - 1);
+                float expected = parameter->convertFrom0to1(normalized);
+                float actual = p.value(parameterId);
+                if (std::abs(actual - expected) >= 1e-5)
+                    std::cerr << "selector " << parameterId << " expected " << expected << " got "
+                              << actual << " normalized " << parameter->getValue() << '\n';
+                check(std::abs(actual - expected) < 1e-5,
                       "unique module selector controls real host parameter");
             }
         }

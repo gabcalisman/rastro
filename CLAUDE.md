@@ -165,3 +165,11 @@ Separe: o que já existia; o que mudou; o que ficou incompleto; testes que passa
 - Telas PLAY, SOM e RACK: o Estúdio Palco ocupa a janela inteira, o personagem fica **grande no meio**, em cima da plataforma; painéis nas colunas laterais (452 px cada) e teclado embaixo. Nada de palco numa caixa no canto.
 - PLAY: waveform + playback à esquerda, rack à direita. SOM: ADSR + MIDI/voz à esquerda, filtro/LFO + macros à direita. RACK: rack em coluna à esquerda, efeito selecionado + pad XY à direita.
 - Antes de mudar layout, abrir as referências (anexos do Gab) e comparar lado a lado.
+
+## Decisão (23/10/2026, 21h) — Nova cartunesca como personagem principal
+
+- Gab trocou a direção: personagem **cartunesco** (Nova, alien azul) com animação de game: esqueleto, física, ação e reação. Referências: folha de 5 poses + telas PLAY/SOUND/FX RACK/PATCH LAB/LOCKER/JAM.
+- `ui/nova.js`: Nova desenhada em código (traço escuro, cores chapadas). Esqueleto quadril → peito → pescoço → cabeça; IK de dois ossos nas pernas (pés plantados) e nos braços (mãos no instrumento, sempre 2). Física: pontas do cabelo, brinco de estrela e cordões do moletom. Ação/reação: tecla sob o dedo pela nota, cabeça e sorriso nos acentos, groove de 6 poses no beat, vida parada (respira, pisca, olha em volta).
+- Slots independentes: cabelo, chapéu (um por vez), fones, óculos, roupa de cima, calça, tênis, instrumento. Miniaturas do Locker renderizadas pela própria Nova. Look salvo em `look.nova`.
+- O alien pintado (`puppet.js`) e o 3D (PR #3, pausado) ficam como estão, sem uso no padrão.
+- Áudio: corrigidos cliques reais (loop/ping-pong caíam a zero a cada volta, roubo de voz cortava seco, janela do CRUMBLE cortada). Detectores de clique na suíte dsp.

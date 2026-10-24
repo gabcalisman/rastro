@@ -739,3 +739,7 @@ body[data-screen="limpo"][data-etab="instrument"] #macroPanel { display: block; 
 body[data-screen="limpo"][data-etab="fx"] #fxPanel { height: 250px; }
 body[data-screen="limpo"] #hud { left: 484px; right: 484px; top: 742px; }
 .lab-mascot svg, .lab-mascot .puppet-canvas { display: none; }
+
+.sum-row img { width: 40px; height: 40px; flex: none; border-radius: 8px; background: rgba(255, 255, 255, .06); }
+body[data-screen="locker"] #lkSummary { width: 250px; max-height: 700px; overflow-y: auto; }
+.it .thumb img { background: radial-gradient(rgba(255, 179, 64, .12), transparent 70%); }

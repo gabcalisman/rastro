@@ -1248,3 +1248,51 @@ body[data-screen="limpo"] #samplePanel .wave-tools,
 body[data-screen="limpo"] #samplePanel .sp-row,
 body[data-screen="limpo"] #fxPanel .fx-tools { min-width: 0; }
 body[data-screen="limpo"] #samplePanel .sample-name { min-width: 0; }
+/* Palette tokens reach every UI surface while the character, room art and per-FX colours stay authored. */
+body { --ui-page:#12071c; --ui-surface:#1d0d2c; --ui-surface-top:#28163a; --ui-card:#261832; --ui-inset:#150d22; --ui-border:rgba(176,107,255,.30); --ui-ink:#f5ecff; --ui-muted:#b9a5d6; --ui-accent:#ffb340; --ui-accent-2:#ff4fd8; --ui-accent-ink:#1a0b24; --bg:var(--ui-page); --gold:var(--ui-accent); --gold2:#ffd27a; --accent:var(--ui-accent); --accent2:var(--ui-accent-2); }
+body.pal-dusk { --ui-page:#1a0a12; --ui-surface:#2c1220; --ui-surface-top:#391929; --ui-card:#321827; --ui-inset:#1d0c17; --ui-border:rgba(255,160,46,.34); --ui-ink:#fff1e4; --ui-muted:#e3b7a0; --ui-accent:#ff8a3d; --ui-accent-2:#ff4f7a; --ui-accent-ink:#24100a; --bg:var(--ui-page); --gold:var(--ui-accent); --gold2:#ffd0a0; --accent:var(--ui-accent); --accent2:var(--ui-accent-2); }
+body.pal-cosmic { --ui-page:#050b1e; --ui-surface:#0e1a3a; --ui-surface-top:#15264a; --ui-card:#132344; --ui-inset:#081329; --ui-border:rgba(47,224,255,.34); --ui-ink:#eaf4ff; --ui-muted:#9fb8e6; --ui-accent:#2fe0ff; --ui-accent-2:#6f8bff; --ui-accent-ink:#04131d; --bg:var(--ui-page); --gold:var(--ui-accent); --gold2:#9ff3ff; --accent:var(--ui-accent); --accent2:var(--ui-accent-2); }
+body.pal-wine { --ui-page:#16050c; --ui-surface:#300c1c; --ui-surface-top:#421326; --ui-card:#381020; --ui-inset:#1e0711; --ui-border:rgba(255,143,163,.34); --ui-ink:#fff1e4; --ui-muted:#e3b9c4; --ui-accent:#ff6f9a; --ui-accent-2:#ffb347; --ui-accent-ink:#2b0c17; --bg:var(--ui-page); --gold:var(--ui-accent); --gold2:#ffc1ce; --accent:var(--ui-accent); --accent2:var(--ui-accent-2); }
+body.pal-sunrise { --ui-page:#f2e2cf; --ui-surface:#fff7ec; --ui-surface-top:#fffaf3; --ui-card:#f3e5d2; --ui-inset:#ead8c4; --ui-border:rgba(160,90,40,.34); --ui-ink:#2b170c; --ui-muted:#6a4630; --ui-accent:#ff8a3d; --ui-accent-2:#8a3cf0; --ui-accent-ink:#24100a; --bg:var(--ui-page); --gold:var(--ui-accent); --gold2:#9a4d1b; --accent:var(--ui-accent); --accent2:var(--ui-accent-2); }
+body { background:var(--ui-page); color:var(--ui-ink); }
+body .panel:not(#stage) { --ink:var(--ui-ink); --muted:var(--ui-muted); --dim:var(--ui-muted); --line:var(--ui-border); --line2:var(--ui-border); background:linear-gradient(180deg,var(--ui-surface-top),var(--ui-surface)) !important; color:var(--ui-ink) !important; border-color:var(--ui-border) !important; }
+body .panel:not(#stage) .panel-head h2, body .panel:not(#stage) h2, body .panel:not(#stage) h3 { color:var(--ui-ink) !important; }
+body .panel:not(#stage) .hint, body .panel:not(#stage) small { color:var(--ui-muted); }
+body #navTabs button, body #editTabs button { background:var(--ui-surface) !important; border-color:var(--ui-border) !important; color:var(--ui-ink) !important; }
+body #navTabs button.on, body #editTabs button.on { border-color:var(--ui-accent) !important; color:var(--ui-accent) !important; box-shadow:0 0 12px var(--ui-border), inset 0 0 0 1px var(--ui-accent) !important; }
+body .chip-btn:not(.locked), body .icon-btn, body .toggle:not(.on), body .seg button:not(.on) { border-color:var(--ui-border); color:var(--ui-ink); }
+body .well, body .search, body .lib-list li, body .preset-list { background:var(--ui-inset); color:var(--ui-ink); border-color:var(--ui-border); }
+body #appBg { background:var(--ui-page) !important; }
+body[data-screen="locker"] .panel:not(#stage) { --ink:var(--ui-ink); --muted:var(--ui-muted); --dim:var(--ui-muted); --line:var(--ui-border); --line2:var(--ui-border); }
+body[data-screen="locker"] #lkItems { background:var(--ui-inset) !important; color:var(--ui-ink); }
+body[data-screen="locker"] #lkCats button { background:var(--ui-card); border-color:var(--ui-border); color:var(--ui-ink); }
+body[data-screen="locker"] #lkCats button.on { background:var(--ui-accent); color:var(--ui-accent-ink); }
+body[data-screen="locker"] #lkCats button.on i { color:var(--ui-accent-ink); }
+body[data-screen="locker"] #itemGrid .it, body[data-screen="locker"] #itemGrid .wcard { background:var(--ui-card); border-color:var(--ui-border); color:var(--ui-ink); }
+body[data-screen="locker"] #itemGrid .it .thumb { background:var(--ui-inset); border-color:var(--ui-border); }
+body[data-screen="locker"] #itemGrid .it b, body[data-screen="locker"] #itemGrid .wcard b { color:var(--ui-ink); }
+body[data-screen="locker"] #itemGrid .it small, body[data-screen="locker"] #itemGrid .wcard small { color:var(--ui-muted); }
+body[data-screen="locker"] #itemGrid .it.worn, body[data-screen="locker"] #itemGrid .wcard.on { border-color:var(--ui-accent); box-shadow:0 0 0 1px var(--ui-accent), 0 0 14px rgba(255,138,61,.2); }
+body[data-screen="locker"] #lkLevel, body[data-screen="locker"] #lkScenes, body[data-screen="locker"] #lkCurrent, body[data-screen="locker"] #lkActs, body[data-screen="locker"] #keys { background:var(--ui-surface); border-color:var(--ui-border); color:var(--ui-ink); }
+body[data-screen="locker"] .lk-big { background:var(--ui-card); border-color:var(--ui-border); color:var(--ui-ink); }
+body[data-screen="locker"] .lk-big.save { background:var(--ui-accent); color:var(--ui-accent-ink); }
+body[data-screen="locker"] .scene-b, body[data-screen="locker"] .cur-b { border-color:var(--ui-border); background:var(--ui-card); }
+body[data-screen="locker"] .scene-b.on, body[data-screen="locker"] .cur-b.on { border-color:var(--ui-accent); }
+/* Camarim: quieter cards, more breathing room, and item-only art. */
+body[data-screen="locker"] #itemGrid.kit { grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; }
+body[data-screen="locker"] #itemGrid .it { height:166px; padding:8px; border-width:1.5px; border-radius:13px; box-shadow:inset 0 1px 0 rgba(255,255,255,.05); transition:transform .16s ease,border-color .16s ease,box-shadow .16s ease; }
+body[data-screen="locker"] #itemGrid .it:hover { transform:translateY(-2px); }
+body[data-screen="locker"] #itemGrid .it .thumb { height:104px; min-height:0; margin-bottom:5px; border-radius:9px; border:1px solid var(--ui-border); overflow:hidden; }
+body[data-screen="locker"] #itemGrid .it .thumb img { width:100%; height:100%; max-width:100%; max-height:100%; object-fit:contain; padding:6px; }
+body[data-screen="locker"] #itemGrid .it b { font-size:11px; }
+body[data-screen="locker"] #itemGrid .it small { font-size:9px; }
+body #navTabs button.on, body #editTabs button.on { background:var(--ui-accent) !important; color:var(--ui-accent-ink) !important; }
+body #navTabs button.on i, body #editTabs button.on i { color:var(--ui-accent-ink) !important; }
+body .preset { background:var(--ui-inset); border-color:var(--ui-border); }
+body .preset .pb-arrow, body .preset .pb-heart, body .hbtn { color:var(--ui-ink); }
+body .preset .pb-arrow { border-color:var(--ui-border); }
+body .jam-btn { background:var(--ui-accent); border-color:var(--ui-accent); color:var(--ui-accent-ink); box-shadow:0 0 14px var(--ui-border); }
+body .jam-btn i { color:var(--ui-accent-ink); }
+body #keys { background:var(--ui-surface); border-color:var(--ui-border); }
+body .wave-box { border-color:var(--ui-border); }
+body .pad { border-color:var(--ui-border); background-color:var(--ui-inset); }

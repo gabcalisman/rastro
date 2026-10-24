@@ -1367,11 +1367,11 @@
   const NV = window.RastroNova;
   // NOVA modular (Gab's kit): every slot is independent; one item per slot (hat and beanie share "headwear")
   const KT = window.RastroNovaKit;
-  const SLOT_TABS = [["hair", "Hair", "face"], ["headwear", "Headwear", "hat"], ["glasses", "Glasses", "glasses"], ["headphones", "Headphones", "phones"], ["earring", "Earrings", "star"],
-    ["top", "Top", "jacket"], ["bottom", "Bottoms", "pants"], ["shoes", "Shoes", "shoe"], ["instrument", "Instrument", "guitar"]];
-  const LK_CATS = SLOT_TABS.map(function (t) { return [t[0], t[1], t[2], "peça avulsa"]; }).concat([["looks", "Looks", "hanger", "salvos e original"]]).concat([
-    ["knobs", "Knobs", "knob", "todos os knobs reais"], ["palettes", "Palette", "palette", "cores da interface"], ["stage", "Stage", "room", "onde ela toca"],
-    ["dance", "Pose", "dance", "estilos e tempo"], ["glow", "Brilho", "glow", "cor da luz"], ["react", "Reatividade", "spark", "intensidade visual"],
+  const SLOT_TABS = [["hair", "Cabelos", "face"], ["headwear", "Chapéus", "hat"], ["glasses", "Óculos", "glasses"], ["headphones", "Fones", "phones"], ["earring", "Brincos", "star"],
+    ["top", "Parte de cima", "jacket"], ["bottom", "Parte de baixo", "pants"], ["shoes", "Calçados", "shoe"], ["instrument", "Instrumentos", "guitar"]];
+  const LK_CATS = SLOT_TABS.map(function (t) { return [t[0], t[1], t[2], "peça avulsa"]; }).concat([["looks", "Visuais", "hanger", "salvos e original"]]).concat([
+    ["knobs", "Knobs", "knob", "todos os knobs reais"], ["palettes", "Cores", "palette", "cores da interface"], ["stage", "Cenário", "room", "onde ela toca"],
+    ["dance", "Dança", "dance", "estilos e tempo"], ["glow", "Luzes", "glow", "cor da luz"], ["react", "Reatividade", "spark", "intensidade visual"],
     ["saved", "Meus looks", "look", "salvos"], ["challenges", "Desafios", "star", "XP opcional"]]);
   const WARDROBE = [
     { name: "Night Hoodie", s: {} },
@@ -1395,8 +1395,8 @@
     if (!kitRig) { const holder = document.createElement("div"); holder.style.cssText = "position:absolute;width:1px;height:1px;overflow:hidden;left:-9999px"; holder.innerHTML = '<svg><g></g></svg>'; document.body.appendChild(holder); kitRig = KT.create(holder.querySelector("g"), slots); }
     kitRig.setSlots(slots); kitRig.pose();
     const c = document.createElement("canvas"); c.width = c.height = size; const g = c.getContext("2d"), cr = KCROP[crop];
-    g.translate(size / 2, size / 2); g.scale(size / cr[2], size / cr[2]); g.translate(-cr[0], -cr[1]);
-    kitRig.renderTo(g, {});
+    if (crop !== "full" && kitRig.renderSlotTo) kitRig.renderSlotTo(g, crop, slots[crop]);
+    else { g.translate(size / 2, size / 2); g.scale(size / cr[2], size / cr[2]); g.translate(-cr[0], -cr[1]); kitRig.renderTo(g, {}); }
     try { return (kitCache[key] = c.toDataURL("image/png")); } catch (e) { return ""; }
   }
   // images load asynchronously: re-render the Locker once they are in

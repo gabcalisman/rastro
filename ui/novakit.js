@@ -113,6 +113,7 @@
     R.update = function (s, dt) { pose(R, s, dt); drawToCanvas(R, s); };
     R.step = function (s, dt) { pose(R, s, dt); };
     R.renderTo = function (g, s) { if (!R.P) pose(R, s || { alive: 0 }, 0); drawCharacter(g, R, s || {}, 1); };
+    R.renderSlotTo = function (g, slot, id) { renderSlot(g, slot, id); };
     R.pose = function () { R.st = {}; R.ear = { a: 0, v: 0 }; R.hair = { a: 0, v: 0 }; pose(R, { alive: 0 }, 0); };
     R.setSlots = function (o) { R.slots = clean(Object.assign({}, R.slots, o || {})); R.L.inst = R.slots.instrument; preload(R.slots); };
     R.destroy = function () { canvas.remove(); };
@@ -186,6 +187,36 @@
 
   // ---------- drawing ----------
   function piece(g, name) { const b = IT[name]; if (!b || !ready(name)) return; g.drawImage(IMG[name], b.box[0], b.box[1], b.box[2], b.box[3]); }
+  // Locker cards render only the selected layers, never a crop of Nova's whole body.
+  function slotParts(slot, id) {
+    if (!id || id === "none") return [];
+    let names = [];
+    if (slot === "hair") names = ["hair_" + id];
+    else if (slot === "headwear") names = ["hw_" + id];
+    else if (slot === "glasses") names = ["gl_" + id];
+    else if (slot === "headphones") names = ["hp_" + id];
+    else if (slot === "earring") names = ["er_" + id];
+    else if (slot === "top") names = ["top_" + id, "top_" + id + "_uL", "top_" + id + "_uR", "top_" + id + "_lL", "top_" + id + "_lR"];
+    else if (slot === "bottom") names = id === "skirt" ? ["bot_skirt"] : ["bot_" + id + "_L", "bot_" + id + "_R"];
+    else if (slot === "shoes") names = ["shoe_" + id + "_L", "shoe_" + id + "_R"];
+    else if (slot === "instrument") names = ["inst_" + id];
+    return names.filter(function (name) { return IT[name] && IT[name].box; });
+  }
+  function renderSlot(g, slot, id) {
+    const names = slotParts(slot, id), boxes = names.map(function (name) { return IT[name].box; });
+    if (!boxes.length || !g.canvas) return;
+    names.forEach(img);
+    const x0 = Math.min.apply(null, boxes.map(function (b) { return b[0]; }));
+    const y0 = Math.min.apply(null, boxes.map(function (b) { return b[1]; }));
+    const x1 = Math.max.apply(null, boxes.map(function (b) { return b[0] + b[2]; }));
+    const y1 = Math.max.apply(null, boxes.map(function (b) { return b[1] + b[3]; }));
+    const pad = Math.max(12, g.canvas.width * .08);
+    const scale = Math.min((g.canvas.width - pad * 2) / (x1 - x0), (g.canvas.height - pad * 2) / (y1 - y0));
+    g.save(); g.translate(g.canvas.width / 2, g.canvas.height / 2); g.scale(scale, scale);
+    g.translate(-(x0 + x1) / 2, -(y0 + y1) / 2);
+    names.forEach(function (name) { piece(g, name); });
+    g.restore();
+  }
   // bone transform: rest joint/angle → current joint/angle
   function bone(g, j0, a0, j1, a1) { g.translate(j1.x, j1.y); g.rotate(a1 - a0); g.translate(-j0.x, -j0.y); }
   // leg transform: rest hip→ankle onto current hip→ankle (affine: stretch along the leg, width kept)

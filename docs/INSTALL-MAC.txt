@@ -1,0 +1,41 @@
+RASTRO PLAY - macOS universal test build (macOS 12+)
+1. Download the artifact while signed into GitHub with access to the private repository.
+2. Extract it, then extract the INNER RASTRO-macOS-universal.zip in Finder.
+   Read BUILD-INFO.txt to confirm the source commit and verified architectures arm64 + x86_64.
+3. Quit Logic and other hosts. In Finder use Go > Go to Folder and enter:
+   ~/Library/Audio/Plug-Ins/Components/
+   Create the folder if necessary. Copy the WHOLE AU/RASTRO.component into it.
+   Optionally copy AU/RASTRO Capture.component too (recorder-only companion).
+   Move old test bundles out first; avoid duplicate user/system installations.
+4. For other VST3 hosts, copy the whole VST3 bundles into:
+   ~/Library/Audio/Plug-Ins/VST3/
+   Logic uses AU, not VST3. Standalone/RASTRO.app can be copied to ~/Applications/.
+5. Reopen Logic > Settings > Plug-in Manager, find manufacturer Gab Calisman and rescan RASTRO.
+   In an empty project create a Software Instrument track:
+   AU Instruments > Gab Calisman > RASTRO > Stereo.
+6. IMPORTAR loads rendered WAV/AIFF/MP3/M4A. M4A uses local CoreAudio: six synthetic AAC-LC/ALAC
+   variants are checked by CI. QuickTime Editable is excluded; export rendered .m4a from Voice Memos.
+7. Try the on-screen keyboard, then MIDI. PITCH MODE changes repitch versus fixed speed.
+   One Shot ignores note-off; Gate/Hold uses ADSR release. LOOP repeats without BPM stretching.
+8. Save the project, quit/reopen and verify the embedded sample and parameters. Test bounce too.
+9. Optional direct capture: open Standalone, select input device, grant microphone permission,
+   keep monitoring OFF initially, check input level, REC, STOP, then preview/play the sample.
+   In Logic, put RASTRO Capture in Audio FX on an AUDIO track/aux carrying the source. Enable input monitoring/record-arm for live input or play an existing region so Logic renders audio through the insert.
+   In PLAY open CAPTURAR, select the Capture ID, use RECORD IN INSERT and STOP. The finalized take appears automatically; USE RECORDING loads it and returns to the waveform. No external export is needed.
+   This companion routing still needs verification in Logic; CI does not test it in a DAW.
+10. Open Previews/ABRIR-PREVIAS.html (or its PNGs) to inspect actual Linux JUCE captures, not Mac screenshots.
+
+These bundles are ad-hoc signed, not Developer ID signed or notarized. Use standard macOS privacy/
+security review for a trusted test build; do not disable Gatekeeper. If validation fails, report the
+macOS/Logic version, Mac chip, error and BUILD-INFO commit instead of force-enabling the plugin.
+
+Optional Terminal check after installation:
+  auval -v aumu Rstr GbCa
+Optional recorder check:
+  auval -v aufx Rcpt GbCa
+The workflow attempts auval for both AUs; check the actual result in BUILD-INFO.txt and the run logs. Logic playback, Apple silicon execution, Retina and physical audio/MIDI tests are not claimed by CI.
+
+Capture diagnostics: EMPTY = no frames/host callbacks; NO SIGNAL = silent frames; SAVE ERROR = actual WAV/disk failure. A connected insert is not proof that Logic is sending audio. New takes use ~/Library/Application Support/RASTRO/Captures; the old ~/Library/RASTRO/Captures location is still readable. No take is deleted automatically.
+UI defaults to 1100x760; RASTRO Play logo, fixed-proportion reels, redesigned character and direct SYNTH/ADSR access. The envelope graph reflects real controls; Sustain is percent. Screenshots in Previews are Linux JUCE renders, not Logic screenshots.
+
+New visual workshop: COLOURS/KNOBS/CHARACTER/ROOM/DANCE/RACK. Save/open .rastro-look files by group; undo/redo stays inside the current workshop opening. Patch Lab defaults to Sound only when loading, so your look stays intact; Full + look replaces the saved visual/preferences too. JAM respects module locks in the RACK page.

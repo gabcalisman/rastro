@@ -122,22 +122,28 @@
 
   // ---------------- the character ----------------
   // groove loop: 6 poses from Gab's sheet, one per beat, blended (units: character pixels)
+  // Dance phrase from the official reference (04-nova-dance-fx): anticipation → side-step → keytar accent →
+  // follow-through → recovery, then the same to the other side. One pose per beat, blended.
+  // hx hip shift, dp knee dip, lean (chest), cr shoulder counter-rotation, tilt (head), kt keytar tilt,
+  // lf/rf foot [x offset, lift], up = free hand points up (accent), nod
   const GROOVE = [
-    { hx: 0, dp: 6, lean: -.05, tilt: -.05, kt: .04, lf: [0, 0], rf: [0, 0], nod: 0 },          // 1 stand, lean back a touch
-    { hx: -14, dp: 16, lean: .06, tilt: .06, kt: 0, lf: [-24, 18], rf: [0, 0], nod: .06 },     // 2 step out left, heel lifted
-    { hx: -6, dp: 12, lean: .1, tilt: .09, kt: -.03, lf: [-14, 6], rf: [10, 0], nod: .08 },     // 3 walk through
-    { hx: 12, dp: 10, lean: .14, tilt: .12, kt: -.06, lf: [0, 0], rf: [14, 0], nod: .1 },       // 4 lean in over the keys
-    { hx: 18, dp: 22, lean: .02, tilt: -.04, kt: .02, lf: [0, 0], rf: [22, 14], nod: .02 },     // 5 shift right, toe tap
-    { hx: 0, dp: 58, lean: .16, tilt: .1, kt: .05, lf: [-10, 0], rf: [10, 0], nod: .12 }       // 6 crouch accent
+    { hx: -10, dp: 34, lean: .08, cr: -.06, tilt: .04, kt: .02, lf: [0, 0], rf: [0, 0], up: 0, nod: .06 },     // 1 anticipation: weight shift, knees flex
+    { hx: 22, dp: 22, lean: -.04, cr: .1, tilt: -.06, kt: -.03, lf: [-6, 0], rf: [34, 0], up: 0, nod: .02 },    // 2 side-step right, hips vs shoulders
+    { hx: 8, dp: 30, lean: -.14, cr: .04, tilt: -.16, kt: -.1, lf: [-10, 0], rf: [30, 0], up: 1, nod: -.06 },   // 3 keytar accent: lean back, point up
+    { hx: 0, dp: 18, lean: .1, cr: -.04, tilt: .1, kt: .06, lf: [-10, 0], rf: [20, 0], up: .25, nod: .1 },     // 4 follow-through, hair keeps going
+    { hx: -4, dp: 10, lean: .02, cr: 0, tilt: .02, kt: 0, lf: [0, 0], rf: [8, 0], up: 0, nod: .03 },           // 5 recovery to neutral
+    { hx: 10, dp: 34, lean: .08, cr: .06, tilt: -.04, kt: .02, lf: [0, 0], rf: [0, 0], up: 0, nod: .06 },      // 6 anticipation (other side)
+    { hx: -22, dp: 22, lean: -.04, cr: -.1, tilt: .06, kt: .03, lf: [-34, 0], rf: [6, 0], up: 0, nod: .02 },   // 7 side-step left
+    { hx: -6, dp: 26, lean: .12, cr: -.04, tilt: .12, kt: .04, lf: [-26, 0], rf: [6, 14], up: 0, nod: .1 }     // 8 lean in over the keys, toe lift
   ];
   const sstep = function (x) { return x * x * (3 - 2 * x); };
   function groovePose(b) {
-    const n = Math.floor(b), f = sstep(b - n), A = GROOVE[((n % 6) + 6) % 6], B = GROOVE[(((n + 1) % 6) + 6) % 6], o = {};
+    const N = GROOVE.length, n = Math.floor(b), f = sstep(b - n), A = GROOVE[((n % N) + N) % N], B = GROOVE[(((n + 1) % N) + N) % N], o = {};
     for (const k in A) o[k] = Array.isArray(A[k]) ? A[k].map(function (v, i) { return v + (B[k][i] - v) * f; }) : A[k] + (B[k] - A[k]) * f;
     return o;
   }
   // skeleton (feet at y=0, up is negative)
-  const SK = { hipY: -232, hipW: 34, thigh: 98, shin: 96, ankleH: 46, footL: V(-70, 0), footR: V(70, 0), chest: 158, shoulderW: 64, upper: 74, fore: 70, neck: 34, headR: 104 };
+  const SK = { hipY: -232, hipW: 34, thigh: 98, shin: 96, ankleH: 46, footL: V(-84, 0), footR: V(80, 0), chest: 158, shoulderW: 64, upper: 74, fore: 70, neck: 34, headR: 104 };
 
   function create(parent, slots) {
     const R = { root: parent, look: "nova", L: { w: 520, hip: [260, 440], feet: 668, name: "Nova", inst: "keytar" }, st: {}, t: 0, slots: Object.assign({}, DEFAULT, slots || {}), hist: [], P: null };
@@ -208,7 +214,8 @@
     P.legL = [hipL, legL.mid, legL.end]; P.legR = [hipR, legR.mid, legR.end];
     // chest (rotates over the hips), breathing
     P.lean = lean; P.chestTop = add(P.hip, rot(V(0, -SK.chest - breathe * 1.5), lean));
-    P.shL = add(P.hip, rot(V(-SK.shoulderW, -SK.chest + 18), lean)); P.shR = add(P.hip, rot(V(SK.shoulderW, -SK.chest + 18), lean));
+    const cr = spring(st, "cr", G.cr * I, 8, dt);
+    P.shL = add(P.hip, rot(V(-SK.shoulderW, -SK.chest + 18 + cr * 120), lean)); P.shR = add(P.hip, rot(V(SK.shoulderW, -SK.chest + 18 - cr * 120), lean));
     // head
     P.headAng = lean * .6 + tilt - R.accent * .22 * amp;
     P.neck = P.chestTop;
@@ -232,6 +239,9 @@
     } else {
       tl = inF(V(keyX, -26 + 10 * press)); tr = inF(V(150, 4));
     }
+    const upK = clamp(spring(st, "up", Math.max(G.up * I, R.accent > .5 ? amp : 0), 9, dt), 0, 1);
+    if (inst !== "pads" && upK > .01) tr = lerp(tr, add(P.shR, V(52, -150)), upK);
+    P.pointUp = upK;
     tl.y += Math.sin(R.t * 10) * 2 * (playing ? alive : 0);
     const armL = ik(P.shL, tl, SK.upper, SK.fore, function (k) { return k.y - k.x * .4; });
     const armR = ik(P.shR, tr, SK.upper, SK.fore, function (k) { return k.y + k.x * .4; });
@@ -307,7 +317,7 @@
     legs(g, P, S);
     torso(g, P, S);
     if (S.instrument === "pads") { instrument(g, P, S); arm(g, P.armL, S, true); arm(g, P.armR, S, false); head(g, P, S); }
-    else { upperArm(g, P.armR, S); head(g, P, S); instrument(g, P, S); arm(g, P.armL, S, true); foreArm(g, P.armR, S); }
+    else { upperArm(g, P.armR, S); head(g, P, S); instrument(g, P, S); arm(g, P.armL, S, true); foreArm(g, P.armR, S, P.pointUp > .5); }
   }
 
   function legs(g, P, S) {
@@ -372,16 +382,22 @@
   }
   function sleeveCol(S) { const t = item("top", S.top); return S.top === "tee" ? null : t.col[0]; }
   function upperArm(g, A, S) { const c = sleeveCol(S); capsulePath(g, A[0], A[1], 28, 25); ink(g, c || SKIN); if (S.top === "tee") { capsulePath(g, A[0], lerp(A[0], A[1], .55), 30, 27); ink(g, item("top", S.top).col[0]); } }
-  function foreArm(g, A, S) {
+  function foreArm(g, A, S, point) {
     const c = sleeveCol(S), tc = item("top", S.top).col;
     capsulePath(g, A[1], A[2], 25, 20); ink(g, c || SKIN);
     if (c) { frame(g, A[1], A[2], function (l) { g.beginPath(); g.ellipse(0, l - 8, 25, 13, 0, 0, Math.PI * 2); ink(g, S.top === "hoodie" ? tc[1] : tc[2], 4); }); }
-    hand(g, A);
+    hand(g, A, point);
   }
   function arm(g, A, S, front) { upperArm(g, A, S); foreArm(g, A, S); }
-  function hand(g, A) {
+  function hand(g, A, point) {
     frame(g, A[1], A[2], function (l) {
       g.translate(0, l + 4);
+      if (point) { // index finger up, the rest curled (accent pose)
+        g.beginPath(); g.ellipse(0, 8, 20, 18, 0, 0, Math.PI * 2); ink(g, SKIN);
+        g.beginPath(); g.ellipse(-6, 34, 7, 20, -.05, 0, Math.PI * 2); ink(g, SKIN, 4);
+        g.beginPath(); g.ellipse(16, 12, 8, 11, -.6, 0, Math.PI * 2); ink(g, SKIN, 4);
+        return;
+      }
       // palm + four cartoon fingers + thumb
       g.beginPath(); g.ellipse(0, 6, 22, 20, 0, 0, Math.PI * 2); ink(g, SKIN);
       for (let i = 0; i < 4; i++) { const x = -15 + i * 10; g.beginPath(); g.ellipse(x, 26, 6, 14, (i - 1.5) * .12, 0, Math.PI * 2); ink(g, SKIN, 4); }

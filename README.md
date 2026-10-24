@@ -168,7 +168,7 @@ cmake --build build-mac --config Release --parallel 2
 ctest --test-dir build-mac -C Release --output-on-failure
 ```
 
-São **dez suítes** no Mac por padrão (oito portáveis + importação CoreAudio + captura/IPC/WAV). Para incluir a décima primeira, de processador/editor, configure `-DRASTRO_INTEGRATION_TESTS=ON`, compile e execute numa sessão gráfica autenticada. O CI não inclui essa suíte GUI.
+São **onze suítes** no Mac por padrão (oito portáveis + importação CoreAudio + captura/IPC/WAV + processador FX). Para incluir a décima segunda, de processador/editor PLAY, configure `-DRASTRO_INTEGRATION_TESTS=ON`, compile e execute numa sessão gráfica autenticada. O CI não inclui essa suíte GUI.
 
 5. Os produtos esperados são:
 
@@ -226,3 +226,20 @@ Faltam testes no Mac do usuário: instalação/segurança, `auval`, CoreAudio co
 ## Escopo desta entrega por etapas
 
 [Registro inicial e sequência](docs/DEVELOPMENT-STAGES.md). A revisão amplia a interface/customização e completa fluxos reais de JAM/presets. O DSP de sampler, synth e seis efeitos foi auditado e preservado; não foram adicionados efeitos novos, motores independentes, mobile, vídeo, IR ou multisample. Patch Lab continua a busca aproximada já implementada. Captura no Logic continua exigindo o insert complementar. Uma arte ambiental mais detalhada/editor livre de decoração e expansão da busca ficam pendentes; a aprovação estética ainda depende da sua revisão das capturas.
+
+## RASTRO FX / Orbital Playground
+
+Plugin de áudio independente com quinze módulos reais, rack vertical reordenável,
+série/paralelo, mix e bypass por módulo, ganhos e dry/wet globais, medidores,
+XY atribuível, LFO, envelope follower, A/B e presets de fábrica/usuário com nome e
+aparência próprios. Editor nativo cartunesco com controles avançados expostos.
+
+GHOST, CRUMBLE, BLOOM, WOBBLE, DUST e CRUSH preservam os algoritmos do PLAY; MOUTH,
+ORBIT, TRAIL, CHOIR, PRISM, EMBER, SQUASH, SIEVE e SWING acrescentam formantes,
+flanger, echo, chorus, pitch echo/crystal, drive/tube/tape, saturação/compressão,
+filtros e panner editável. PLAY, Capture e PR #5 permanecem preservados.
+
+Nesta branch, os workflows Mac/Windows iniciam por push e incluem o FX nos ZIPs,
+com BUILD-INFO e capturas reais do editor. O estado dos runs nativos precisa ser
+conferido no Actions; um build Linux não valida Logic ou Windows.
+Veja [controles, algoritmos, presets, instalação e testes do FX](docs/RASTRO-FX.md).

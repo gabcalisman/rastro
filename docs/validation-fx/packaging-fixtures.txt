@@ -1,0 +1,3 @@
+PASS Windows: PowerShell syntax; actual packaging/PE checks with fixtures; ZIP contains all four binaries and FX docs; SHA256/BUILD-INFO/summary; rejects missing/wrong-architecture FX and extra binary
+PASS Mac (native utilities mocked): seven bundles signed/architecture-checked; actual package script includes all seven binaries/FX docs/logs; ZIP/SHA256/summary; missing FX prevents ZIP
+Fixture evidence: /workspace/tooling/rastro-packaging-t0zb695q

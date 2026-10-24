@@ -62,7 +62,7 @@
   }
   window.addEventListener("resize", fit);
   let toastTimer = 0;
-  function toast(msg, ms) { const t = $("#toast"); t.textContent = msg; t.classList.add("show"); clearTimeout(toastTimer); toastTimer = setTimeout(function () { t.classList.remove("show"); }, ms || 2800); }
+  function toast(msg, ms) { const t = $("#toast"); t.textContent = window.RastroI18n ? window.RastroI18n.t(msg) : msg; t.classList.add("show"); clearTimeout(toastTimer); toastTimer = setTimeout(function () { t.classList.remove("show"); }, ms || 2800); }
   function screen() { return document.body.dataset.screen; }
   function setScreen(sc) {
     const prev = screen();
@@ -1046,7 +1046,7 @@
   const DEFAULT_STYLE = { bounce: 1, sway: 1, nod: 1, dip: 1, lean: .3, hop: 0, nodHit: 1, jitter: 0 };
   let charKind = "alien", rig = {}, charSvg = null, sceneKind = "", sc = {}, puppet = null;
   const motion = { squash: 0, squashV: 0, strike: 0, look: 0, energy: 0, shake: 0, shakeT: 9, alive: 0, lastSound: -1e9, nod: 0, nodV: 0, dark: 0, lfoPhase: 0, peak: .05, hit: false, pitch: .5, pad: 0, x: 240, y: 412, rot: 0 };
-  const look = { kit: Object.assign({}, window.RastroNovaKit.DEFAULT), hair: "default", dark: 1, art: 0, nova: Object.assign({}, window.RastroNova.DEFAULT), pose: "disco", dance: "groove", sync: 1, bpm: 110, strip: 1, knob: "kn_00", glow: "auto", react: 1, kb: 0 };
+  const look = { fig: Object.assign({ on: 1 }, window.RastroViz.FIG_DEFAULT), kit: Object.assign({}, window.RastroNovaKit.DEFAULT), hair: "default", dark: 1, art: 0, nova: Object.assign({}, window.RastroNova.DEFAULT), pose: "disco", dance: "groove", sync: 1, bpm: 110, strip: 1, knob: "kn_00", glow: "auto", react: 1, kb: 0 };
   let lookTimer = 0;
   function saveLook() { look.kitV = 1; clearTimeout(lookTimer); lookTimer = setTimeout(function () { R.call("lookSet", JSON.stringify(look)); }, 300); }
   function readLook(json) {
@@ -1057,6 +1057,8 @@
         if (o.nova && typeof o.nova === "object") { look.nova = Object.assign({}, window.RastroNova.DEFAULT); Object.keys(look.nova).forEach(function (k) { if (typeof o.nova[k] === "string" && window.RastroNova.item(k, o.nova[k]).id === o.nova[k]) look.nova[k] = o.nova[k]; }); }
         look.hair = typeof o.hair === "string" && (o.hair === "default" || window.RastroNovaArt.HAIRS.indexOf(o.hair) >= 0) ? o.hair : "default";
         if (o.kit && typeof o.kit === "object") look.kit = window.RastroNovaKit.clean(o.kit);
+        if (o.fig && typeof o.fig === "object") { const FI = window.RastroViz.FIG_ITEMS; look.fig = Object.assign({ on: 1 }, window.RastroViz.FIG_DEFAULT); Object.keys(FI).forEach(function (k) { if (FI[k].some(function (it) { return it[0] === o.fig[k]; })) look.fig[k] = o.fig[k]; }); look.fig.on = o.fig.on === 0 ? 0 : 1; }
+        if (o.pal && typeof o.pal === "object") { const ok2 = ["page", "surface", "accent", "accent2", "ink"].every(function (k) { return /^#[0-9a-f]{6}$/i.test(o.pal[k] || ""); }); if (ok2) look.pal = { on: o.pal.on ? 1 : 0, page: o.pal.page, surface: o.pal.surface, accent: o.pal.accent, accent2: o.pal.accent2, ink: o.pal.ink }; }
         look.art = o.art === 1 && o.kitV ? 1 : 0; look.dark = o.dark === 0 ? 0 : 1;
         if (AL.DANCES.some(function (d) { return d.id === o.dance; })) look.dance = o.dance;
         look.sync = o.sync === 0 ? 0 : 1; look.bpm = clamp(Math.round(o.bpm || 110), 60, 180); look.strip = o.strip === 0 ? 0 : 1;
@@ -1069,7 +1071,7 @@
     } catch (e) { /* keep defaults */ }
   }
   function applyLook() {
-    document.body.classList.toggle("strip-off", !look.strip); applyKnobClass(); applyKb(); applyTheme();
+    document.body.classList.toggle("strip-off", !look.strip); applyKnobClass(); applyKb(); look.dark = 1; applyTheme(); applyCustomPalette();
     if (charSvg) buildCharacter();
     if (screen() === "locker") renderLocker();
   }
@@ -1394,12 +1396,14 @@
   const NV = window.RastroNova;
   // NOVA modular (Gab's kit): every slot is independent; one item per slot (hat and beanie share "headwear")
   const KT = window.RastroNovaKit;
-  const SLOT_TABS = [["hair", "Cabelos", "face"], ["headwear", "Chapéus", "hat"], ["glasses", "Óculos", "glasses"], ["headphones", "Fones", "phones"], ["earring", "Brincos", "star"],
-    ["top", "Parte de cima", "jacket"], ["bottom", "Parte de baixo", "pants"], ["shoes", "Calçados", "shoe"], ["instrument", "Instrumentos", "guitar"]];
-  const LK_CATS = SLOT_TABS.map(function (t) { return [t[0], t[1], t[2], "peça avulsa"]; }).concat([["looks", "Visuais", "hanger", "salvos e original"]]).concat([
-    ["knobs", "Knobs", "knob", "todos os knobs reais"], ["palettes", "Cores", "palette", "cores da interface"], ["stage", "Cenário", "room", "onde ela toca"],
-    ["dance", "Dança", "dance", "estilos e tempo"], ["glow", "Luzes", "glow", "cor da luz"], ["react", "Reatividade", "spark", "intensidade visual"],
-    ["saved", "Meus looks", "look", "salvos"], ["challenges", "Desafios", "star", "XP opcional"]]);
+  // ESTÚDIO: the light producer. Every slot is independent and drawn in light (no cut-out art).
+  const FIGI = window.RastroViz.FIG_ITEMS;
+  const SLOT_TABS = [["hair", "Cabelo", "face"], ["hat", "Chapéu", "hat"], ["phones", "Fones", "phones"], ["glasses", "Óculos", "glasses"],
+    ["desk", "Instrumento", "knob"], ["style", "Traço de luz", "spark"], ["colour", "Cor da luz", "glow"]];
+  const LK_CATS = [["producer", "Producer", "dance", "liga / desliga"]].concat(SLOT_TABS.map(function (t) { return [t[0], t[1], t[2], "peça"]; })).concat([["looks", "Meus visuais", "hanger", "salvos"]]).concat([
+    ["knobs", "Knobs", "knob", "todos os knobs reais"], ["palettes", "Cores", "palette", "cores da interface"],
+    ["react", "Reatividade", "spark", "intensidade visual"],
+    ["challenges", "Desafios", "star", "XP opcional"]]);
   const WARDROBE = [
     { name: "Night Hoodie", s: {} },
     { name: "Sunset Beanie", s: { headwear: "beanie", headphones: "studio" } },
@@ -1501,8 +1505,37 @@
     const grid = $("#itemGrid"); grid.innerHTML = ""; grid.className = "item-grid three";
     const title = LK_CATS.filter(function (c) { return c[0] === lkCat; })[0];
     $("#slotTitle").textContent = title ? title[1].toUpperCase() : ""; $("#slotNote").textContent = "";
-    warmKit();
-    if (KT.SLOTS.indexOf(lkCat) >= 0) {
+    if (FIGI[lkCat]) {
+      const slot = lkCat;
+      $("#slotNote").textContent = slot === "hat" ? "um por vez · só visual" : slot === "desk" ? "as mãos tocam nele no ritmo das notas" : slot === "colour" ? "de onde vem a cor da luz" : "troca só esta parte · XP só libera visual";
+      grid.className = "item-grid kit";
+      FIGI[slot].forEach(function (it) {
+        const id = it[0], locked = it[2] > game.state.level, worn = look.fig[slot] === id, prev = Object.assign({}, look.fig); prev[slot] = id;
+        const crop = slot === "desk" ? [0, -60, 600] : slot === "style" || slot === "colour" ? [0, -150, 560] : [0, -280, 300];
+        const card = itemCard({ thumb: "", name: it[1], note: locked ? lockedNote(it[2]) : worn ? "equipado" : "liberado", worn: worn, locked: locked,
+          click: function () { if (locked) { toast("Libera no nível " + it[2] + " (faltam " + game.xpTo(it[2]) + " XP). Só visual."); return; } look.fig[slot] = id; look.fig.on = 1; saveLook(); renderLocker(); } });
+        const th = $(".thumb", card); if (th) th.appendChild(window.RastroViz.figureThumb(prev, 150, crop));
+        grid.appendChild(card);
+      });
+    } else if (lkCat === "producer") {
+      $("#slotNote").textContent = "o producer de luz aparece no centro de todas as telas";
+      grid.className = "item-grid kit";
+      [[1, "Producer de luz", "contorno feito do seu som"], [0, "Só as ondas", "anéis, sem personagem"]].forEach(function (o) {
+        const card = itemCard({ thumb: "", name: o[1], note: o[2], worn: look.fig.on === o[0], locked: false, click: function () { look.fig.on = o[0]; saveLook(); renderLocker(); } });
+        const th = $(".thumb", card); if (th && o[0]) th.appendChild(window.RastroViz.figureThumb(look.fig, 150, [0, -150, 560]));
+        grid.appendChild(card);
+      });
+    } else if (lkCat === "looks") {
+      $("#slotNote").textContent = "visuais que você salvou (SALVAR VISUAL)";
+      grid.className = "item-grid kit";
+      const saved = game.state.looks.filter(function (lk) { return lk.fig; });
+      if (!saved.length) { const n = document.createElement("div"); n.className = "soon-card"; n.innerHTML = "<b>NENHUM AINDA</b><span>Monte o seu producer e clique em SALVAR VISUAL.</span>"; grid.appendChild(n); }
+      saved.forEach(function (lk) {
+        const card = itemCard({ thumb: "", name: lk.name, note: "clique para usar", worn: false, locked: false, click: function () { look.fig = Object.assign({ on: 1 }, window.RastroViz.FIG_DEFAULT, lk.fig); if (lk.dance) look.dance = lk.dance; saveLook(); renderLocker(); toast("Visual aplicado: " + lk.name); } });
+        const th = $(".thumb", card); if (th) th.appendChild(window.RastroViz.figureThumb(lk.fig, 150, [0, -150, 560]));
+        grid.appendChild(card);
+      });
+    } else if (false && KT.SLOTS.indexOf(lkCat) >= 0) {
       const slot = lkCat;
       $("#slotNote").textContent = slot === "headwear" ? "um item de cabeça por vez (chapéu, gorro, boné ou chifres)" : slot === "instrument" ? "muda a pose das mãos, nunca o som" : "troca só esta peça · XP só libera visual";
       grid.className = "item-grid kit";
@@ -1524,7 +1557,7 @@
           click: function () { if (soon) { toast(locked ? "Libera com " + HL[id] + " XP." : "Arte em preparo: precisa ser recortada em boa resolução."); return; } look.hair = id; saveLook(); if (puppet && puppet.setSlots) puppet.setSlots({ hair: id }); renderLocker(); } });
         b.classList.add("hair-card"); grid.appendChild(b);
       });
-    } else if (lkCat === "looks") {
+    } else if (lkCat === "kit-looks") {
       $("#slotNote").textContent = "a modular troca peça por peça; a Original é o desenho fixo do Gab (sem trocas)";
       grid.className = "item-grid kit";
       const cards = [{ name: "Nova modular", note: "padrão · troca peças", art: 0, img: kitThumb(look.kit, "full", 200) }, { name: "Original", note: "desenho fixo do Gab", art: 1, img: "nv_thumb.png" }];
@@ -1618,13 +1651,49 @@
       kg.appendChild(b);
     });
   }
+  // custom palette (visual only): five colours drive every --ui token; contrast is checked
+  function hexRgb(h) { const n = parseInt(h.slice(1), 16); return [n >> 16 & 255, n >> 8 & 255, n & 255]; }
+  function lumi(h) { return hexRgb(h).map(function (c) { c /= 255; return c <= .03928 ? c / 12.92 : Math.pow((c + .055) / 1.055, 2.4); }).reduce(function (a, c, i) { return a + c * [.2126, .7152, .0722][i]; }, 0); }
+  function contrast(a, b) { const x = lumi(a), y = lumi(b); return (Math.max(x, y) + .05) / (Math.min(x, y) + .05); }
+  function mixHexes(a, b, t) { const A = hexRgb(a), B = hexRgb(b); return "#" + A.map(function (c, i) { const v2 = Math.round(c + (B[i] - c) * t).toString(16); return v2.length < 2 ? "0" + v2 : v2; }).join(""); }
+  function applyCustomPalette() {
+    const st = document.body.style, P2 = look.pal;
+    const keys = ["--ui-page", "--ui-surface", "--ui-surface-top", "--ui-card", "--ui-inset", "--ui-border", "--ui-ink", "--ui-muted", "--ui-accent", "--ui-accent-2", "--ui-accent-ink", "--bg", "--panel", "--panel-solid", "--ink", "--muted", "--line", "--line2", "--gold", "--accent", "--accent2", "--glow"];
+    if (!P2 || !P2.on) { keys.forEach(function (k) { st.removeProperty(k); }); return; }
+    const a = P2.accent, A = hexRgb(a);
+    const set = { "--ui-page": P2.page, "--ui-surface": P2.surface, "--ui-surface-top": mixHexes(P2.surface, P2.ink, .06), "--ui-card": mixHexes(P2.surface, P2.ink, .04), "--ui-inset": mixHexes(P2.page, "#000000", .25),
+      "--ui-border": "rgba(" + A.join(",") + ",.34)", "--ui-ink": P2.ink, "--ui-muted": mixHexes(P2.ink, P2.surface, .35), "--ui-accent": a, "--ui-accent-2": P2.accent2,
+      "--ui-accent-ink": contrast(a, "#ffffff") > contrast(a, "#141414") ? "#ffffff" : "#141414", "--bg": P2.page, "--panel": P2.surface, "--panel-solid": P2.surface, "--ink": P2.ink, "--muted": mixHexes(P2.ink, P2.surface, .35),
+      "--line": "rgba(" + A.join(",") + ",.28)", "--line2": "rgba(" + A.join(",") + ",.5)", "--gold": a, "--accent": a, "--accent2": P2.accent2, "--glow": a };
+    Object.keys(set).forEach(function (k) { st.setProperty(k, set[k]); });
+  }
+  function renderPaletteMaker(pg) {
+    const P2 = look.pal || (look.pal = { on: 0, page: "#120a1e", surface: "#22163a", accent: "#ff8a3d", accent2: "#2fe0ff", ink: "#f5ecff" });
+    const box = document.createElement("div"); box.className = "pal-maker";
+    const fields = [["page", "Fundo"], ["surface", "Painéis"], ["accent", "Destaque"], ["accent2", "Destaque 2"], ["ink", "Texto"]];
+    box.innerHTML = '<b>CRIAR MINHA PALETA</b><div class="pm-row">' + fields.map(function (f) { return '<label><input type="color" data-k="' + f[0] + '" value="' + P2[f[0]] + '"><span>' + f[1] + '</span></label>'; }).join("") + '</div><div class="pm-foot"><span class="pm-ok"></span><button class="chip-btn pm-use"></button></div>';
+    const ok = $(".pm-ok", box), use = $(".pm-use", box);
+    const check = function () {
+      const c1 = contrast(P2.ink, P2.surface), c2 = contrast(P2.ink, P2.page);
+      ok.textContent = c1 >= 4.5 && c2 >= 4.5 ? "contraste ok (" + c1.toFixed(1) + ":1)" : "texto pouco legível (" + Math.min(c1, c2).toFixed(1) + ":1, mínimo 4,5) — ajustamos o texto automaticamente";
+      ok.classList.toggle("bad", !(c1 >= 4.5 && c2 >= 4.5));
+      use.textContent = P2.on ? "EM USO" : "USAR MINHA PALETA"; use.classList.toggle("on", !!P2.on);
+    };
+    $$("input", box).forEach(function (inp) { inp.addEventListener("input", function () { P2[inp.dataset.k] = inp.value;
+      if (inp.dataset.k !== "ink" && (contrast(P2.ink, P2.surface) < 4.5 || contrast(P2.ink, P2.page) < 4.5)) P2.ink = lumi(P2.surface) > .3 ? "#141414" : "#f5f2fa";
+      $$("input", box).forEach(function (o) { o.value = P2[o.dataset.k]; }); check(); if (P2.on) applyCustomPalette(); saveLook(); }); });
+    use.addEventListener("click", function () { P2.on = P2.on ? 0 : 1; applyCustomPalette(); saveLook(); check(); renderLocker(); });
+    check(); pg.appendChild(box);
+  }
   function renderPalettes(pg) {
+    renderPaletteMaker(pg);
     const cur = paletteFor(v("colourSet"));
     PALETTES.forEach(function (p) {
       const locked = p.level > game.state.level;
       const b = document.createElement("button"); b.className = "pal-row" + (cur === p ? " on" : "") + (locked ? " locked" : "");
       b.innerHTML = p.sw.map(function (c) { return '<i style="background:' + c + ';box-shadow:0 0 8px ' + c + '"></i>'; }).join("") + '<b>' + p.name + (locked ? " 🔒" : "") + '</b>';
-      b.addEventListener("click", function () { if (locked) { toast("Libera no nível " + p.level + "."); return; } gesture("colourSet", p.id); });
+      if (look.pal && look.pal.on) b.classList.remove("on");
+      b.addEventListener("click", function () { if (locked) { toast("Libera no nível " + p.level + "."); return; } if (look.pal) { look.pal.on = 0; applyCustomPalette(); saveLook(); } gesture("colourSet", p.id); setTimeout(renderLocker, 60); });
       pg.appendChild(b);
     });
   }
@@ -1644,9 +1713,9 @@
     });
     const cl = $("#lkCurList"); cl.innerHTML = "";
     SLOT_TABS.forEach(function (t) {
-      const id = look.kit[t[0]], nm = KT.NAMES[t[0]][id];
-      const b = document.createElement("button"); b.className = "cur-b" + (lkCat === t[0] ? " on" : "") + (look.art ? " dim" : ""); b.title = t[1] + ": " + nm + (look.art ? " (vale na Nova modular)" : "");
-      b.innerHTML = id === "none" ? '<span data-ic="' + t[2] + '" class="cur-ic"></span>' : '<img src="' + kitThumb(look.kit, t[0], 80) + '" alt="">';
+      const id = look.fig[t[0]], it = FIGI[t[0]].filter(function (x) { return x[0] === id; })[0] || ["", ""];
+      const b = document.createElement("button"); b.className = "cur-b fig" + (lkCat === t[0] ? " on" : ""); b.title = t[1] + ": " + it[1];
+      b.innerHTML = '<small>' + t[1] + '</small><b>' + it[1] + '</b>';
       ICO.hydrate(b); b.addEventListener("click", function () { lkMode = "mix"; lkCat = t[0]; renderLocker(); }); cl.appendChild(b);
     });
   }
@@ -1655,13 +1724,12 @@
     $("#lookUndo").hidden = true;
     $("#lookRandom").addEventListener("click", function () {
       // one unlocked item per slot (never two items in the same slot)
-      const s2 = {}; KT.SLOTS.forEach(function (sl) { const ok = KT.items(sl).filter(function (it) { return it.level <= game.state.level; }); s2[sl] = ok[(Math.random() * ok.length) | 0].id; });
-      const ds = AL.DANCES.filter(function (d) { return d.level <= game.state.level; }); look.dance = ds[(Math.random() * ds.length) | 0].id;
-      wearKit(s2, 0); toast("Look sorteado entre os itens liberados.");
+      Object.keys(FIGI).forEach(function (sl) { const ok = FIGI[sl].filter(function (it) { return it[2] <= game.state.level; }); look.fig[sl] = ok[(Math.random() * ok.length) | 0][0]; });
+      look.fig.on = 1; saveLook(); renderLocker(); toast("Visual sorteado entre os itens liberados.");
     });
     $("#lookSave").addEventListener("click", function () {
       if (game.state.looks.length >= 12) { toast("Limite de 12 looks. Apague um para salvar outro."); return; }
-      game.state.looks.push({ name: "Look " + (game.state.looks.length + 1), art: look.art, kit: Object.assign({}, look.kit), nova: Object.assign({}, look.nova), dance: look.dance, glow: look.glow, knob: look.knob }); game.save(); toast("Look salvo em Meus looks.");
+      game.state.looks.push({ name: "Visual " + (game.state.looks.length + 1), fig: Object.assign({}, look.fig), art: look.art, kit: Object.assign({}, look.kit), nova: Object.assign({}, look.nova), dance: look.dance, glow: look.glow, knob: look.knob }); game.save(); toast("Look salvo em Meus looks.");
       if (screen() === "locker") renderLocker();
     });
     $$("#lkModeSeg button").forEach(function (b) { b.addEventListener("click", function () { lkMode = b.dataset.lkm; renderLocker(); }); });
@@ -1723,12 +1791,16 @@
     const EN = { "nav.sons": "SAMPLES", "nav.patches": "INSTRUMENTS", "nav.favs": "FAVORITES", save: "SAVE" }, PT = { "nav.sons": "SONS", "nav.patches": "PATCHES", "nav.favs": "FAVORITOS", save: "SALVAR" };
     $$("[data-i18n]").forEach(function (el) { const t = (l === "en" ? EN : PT)[el.dataset.i18n]; if (t) el.textContent = t; });
     $("#langState").textContent = l === "en" ? "English" : "Português";
+    const lt = $("#langTop"); if (lt) { lt.textContent = l === "en" ? "EN" : "PT"; lt.title = l === "en" ? "Language: English (click for Português)" : "Idioma: Português (clique para English)"; }
+    if (window.RastroI18n) window.RastroI18n.setLang(l);
   }
   $("#langBtn").addEventListener("click", function () { setLang(lang === "pt" ? "en" : "pt"); game.state.lang = lang; game.save(); });
+  $("#langTop").addEventListener("click", function () { setLang(lang === "pt" ? "en" : "pt"); game.state.lang = lang; game.save(); });
 
   /* ================= frame loop ================= */
   let vizHit = false, vizNote = 60, viz = null;
   let lastSerial = -1, lastFrame = performance.now(), midiFlash = 0, beatClock = 0, lastNoteAt = -1e9;
+  function heldList() { const out = []; for (let n = 0; n < 128; n++) if (noteHeld(n)) out.push(n); return out; }
   function noteHeld(n) { return ((T.notes[n >> 5] >>> 0) & (1 << (n & 31))) !== 0; }
   function hexRgb(h) { const n = parseInt(h.slice(1), 16); return [n >> 16 & 255, n >> 8 & 255, n & 255]; }
   function rgbHex(c) { return "#" + c.map(function (x) { const h = Math.round(clamp(x, 0, 255)).toString(16); return h.length < 2 ? "0" + h : h; }).join(""); }
@@ -1826,7 +1898,7 @@
     const sc0 = screen();
     // Main screens show the sound visualiser instead of the character (decision 24/10/2026);
     // the character and the painted room only appear in the LOCKER.
-    const vizNow = look.viz !== 0 && (sc0 === "limpo" || sc0 === "palco" || sc0 === "perform");
+    const vizNow = look.viz !== 0 && (sc0 === "limpo" || sc0 === "palco" || sc0 === "perform" || sc0 === "lab" || sc0 === "locker");
     if (document.body.classList.contains("viz-on") !== vizNow) document.body.classList.toggle("viz-on", vizNow);
     const stageOn = !vizNow && (sc0 === "locker");
     // light colour: effect colours (or fixed base), warmed and dimmed by a low filter cutoff, pulsed by the LFO
@@ -1839,7 +1911,8 @@
         const pc = Math.round(vizNote) % 12, hueCol = ["#ff8a3d", "#ffb340", "#ffd23f", "#b8f04a", "#4ae0a0", "#2fe0ff", "#3fa8ff", "#6f8bff", "#a96bff", "#d06bff", "#ff4fd8", "#ff5f7a"][pc];
         const ech = v("gTiming") > 1.5 ? .25 : clamp(v("gFreeMs") / 1000, .06, .8);
         viz.draw({ scope: T.scope, meter: T.meter, env: clamp(T.env || 0, 0, 1), fx: acts.map(function (a) { return a * react; }), react: react * (animMode === 0 ? 0 : 1),
-          hit: vizHit && animMode > 0, vel: motion.vel || .7, noteName: window.RastroViz.noteName(vizNote), noteCol: [parseInt(hueCol.slice(1, 3), 16), parseInt(hueCol.slice(3, 5), 16), parseInt(hueCol.slice(5, 7), 16)],
+          hit: vizHit && animMode > 0, vel: motion.vel || .7, noteName: window.RastroViz.noteName(vizNote), chord: v("voiceMode") < .5 ? window.RastroViz.chordName(heldList()) : "", noteCol: [parseInt(hueCol.slice(1, 3), 16), parseInt(hueCol.slice(3, 5), 16), parseInt(hueCol.slice(5, 7), 16)],
+          fig: look.fig.on ? look.fig : null, bottomPad: sc0 === "palco" ? 200 : 0, beat: beatClock, pitch: motion.pitch, pad: motion.pad,
           echo: ech, cut: synthOn ? cutT : 1, lfo: synthOn ? Math.sin(motion.lfoPhase) : 0, lfoDepth: synthOn ? v("lfoDepth") : 0, wobRate: v("wRate") * 4 }, animMode === 0 ? 0 : dt);
       }
     }

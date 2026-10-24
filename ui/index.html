@@ -33,6 +33,7 @@
         <button id="tPause" class="tbtn" data-ic="pause" title="Pausar: para a prévia e congela a animação, guardando a posição" aria-label="Pausar"></button>
         <button id="tStop" class="tbtn" data-ic="stop" title="Parar: volta ao início do trecho, encerra gravação e devolve a pose inicial" aria-label="Parar"></button>
       </div>
+      <button id="langTop" class="hbtn icon lang-top" title="Idioma: Português (clique para English)">PT</button>
       <button id="themeBtn" class="hbtn icon" data-ic="moon" title="Tema: escuro / claro (só visual, nunca muda o som)"></button>
       <button id="menuBtn" class="hbtn icon menu-btn" data-ic="menu" title="Menu: telas, arquivos e opções" aria-haspopup="true"></button>
     </div>
@@ -53,7 +54,7 @@
     <button data-main="som" title="ADSR, filtro, LFO, polifonia, pitch e performance"><i data-ic="sliders"></i>SOUND</button>
     <button data-main="rack" title="Cadeia de efeitos: a ordem é a ordem do som"><i data-ic="cube"></i>RACK</button>
     <button data-main="patches" title="Salvar, carregar, comparar e organizar sons"><i data-ic="folder"></i>PATCH LAB</button>
-    <button data-main="estudio" title="Personagem, guarda-roupa, instrumentos, knobs, cenário e cores"><i data-ic="hanger"></i>LOCKER</button>
+    <button data-main="estudio" title="Personagem, guarda-roupa, instrumentos, knobs, cenário e cores"><i data-ic="hanger"></i>ESTÚDIO</button>
     <button data-main="jam" title="JAM: modo de performance (personagem, patch, teclado e controles essenciais)"><i data-ic="wave"></i>JAM</button>
   </nav>
 
@@ -251,7 +252,7 @@
   <section id="lkLevel" class="panel lk-level"><span class="lk-star" data-ic="star"></span><b>LVL <span id="lkLvl">1</span></b><div class="bar"><div id="lkBar"></div></div><span id="lkXp" class="mono">0 / 100 XP</span></section>
   <section id="lkSummary" class="panel lk-summary"><h3>RASTRO</h3><small>CUSTOMIZE YOUR LOOK</small><div id="lkSumList"></div></section>
   <section id="lkRight" class="panel lk-right">
-    <div class="lk-head2"><i class="ph-ic big" data-ic="hanger"></i><h2>CAMARIM</h2><small>Desbloqueie visuais tocando, criando e explorando. Eles nunca mudam o seu som.</small></div><div class="lk-top"><div class="seg lk-mode" id="lkModeSeg"><button data-lkm="wardrobe"><i data-ic="hanger"></i>WARDROBE</button><button data-lkm="mix"><i data-ic="sliders"></i>MIX &amp; MATCH</button></div>
+    <div class="lk-head2"><i class="ph-ic big" data-ic="hanger"></i><h2>ESTÚDIO</h2><small>Desbloqueie visuais tocando, criando e explorando. Eles nunca mudam o seu som.</small></div><div class="lk-top"><div class="seg lk-mode" id="lkModeSeg"><button data-lkm="wardrobe"><i data-ic="hanger"></i>WARDROBE</button><button data-lkm="mix"><i data-ic="sliders"></i>MIX &amp; MATCH</button></div>
       <div class="lk-say"><b id="lkSayT">LOOKS COMPLETOS</b><small id="lkSayS">Escolha um visual inteiro. Toque notas para ver ele dançar.</small></div></div>
     <div id="lkWardrobe" class="wardrobe"></div>
     <div id="lkMix" class="lk-mix"><div id="lkCats" class="lk-cats"></div><div id="lkItems" class="lk-items"><div class="panel-head"><h2 id="slotTitle">AUDIO</h2><span id="slotNote" class="hint"></span></div><div class="item-grid" id="itemGrid"></div></div></div>
@@ -328,7 +329,7 @@
     <button data-go="limpo"><b>LIMPO</b><small>sample, synth e rack</small></button>
     <button data-go="perform"><b>PERFORM</b><small>biblioteca, X/Y, macros</small></button>
     <button data-go="palco"><b>PALCO</b><small>personagem na tela toda</small></button>
-    <button data-go="locker"><b>LOCKER</b><small>ateliê do personagem</small></button>
+    <button data-go="locker"><b>ESTÚDIO</b><small>producer de luz, knobs e cores</small></button>
     <button data-go="lab"><b>PATCH LAB</b><small>gerar e comparar patches</small></button>
     <button data-go="captura"><b>CAPTURA</b><small>gravar uma fonte</small></button>
     <div class="menu-sec">ARQUIVO</div>
@@ -386,6 +387,7 @@
 <script src="novakit_data.js"></script>
 <script src="novakit.js"></script>
 <script src="viz.js"></script>
+<script src="i18n.js"></script>
 <script src="factory.js"></script>
 <script src="app.js"></script>
 </body>

@@ -1320,3 +1320,22 @@ body[data-screen="limpo"] #lfoPanel .lfo-side .seg button { min-height: 26px !im
 body[data-screen="limpo"] #fenvPanel .fenv-row { gap: 8px; }
 body[data-screen="limpo"] #fenvPanel #envTargetSeg button { padding: 0 8px !important; font-size: 10.5px !important; min-height: 30px !important; }
 body[data-screen="limpo"] #fenvPanel .fenv-side { margin-left: auto; }
+
+/* ===== Estúdio (24/10, tarde): light producer, palette maker; no painted room ===== */
+#themeBtn, #mTheme { display: none !important; }
+body[data-screen="locker"] #lkScenes { display: none !important; }
+body[data-screen="locker"] #lkCurrent { left: 16px !important; width: 1120px !important; }
+.cur-b.fig { width: auto; min-width: 118px; height: 62px; flex: 1; display: flex; flex-direction: column; align-items: flex-start; justify-content: center; padding: 4px 10px; text-align: left; gap: 2px; background: var(--ui-inset, #150d22) !important; color: var(--ui-ink, #f5ecff); }
+.cur-b.fig small { font: 700 9.5px var(--f-ui); letter-spacing: .5px; text-transform: uppercase; color: var(--ui-muted, #b9a5d6); }
+.cur-b.fig b { font: 700 12.5px var(--f-ui); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.cur-b.fig.on { border-color: var(--ui-accent, #ff8a3d) !important; }
+#itemGrid .it .thumb canvas { width: 100%; height: 100%; object-fit: contain; border-radius: 7px; }
+.pal-maker { grid-column: 1 / -1; display: flex; flex-direction: column; gap: 10px; padding: 12px; border-radius: 12px; border: 2px solid var(--ui-border, rgba(176,107,255,.3)); background: var(--ui-inset, #150d22); margin-bottom: 8px; }
+.pal-maker > b { font: 800 13px var(--f-ui); letter-spacing: .6px; color: var(--ui-ink, #fff); }
+.pm-row { display: flex; gap: 10px; flex-wrap: wrap; }
+.pm-row label { display: flex; flex-direction: column; align-items: center; gap: 4px; font: 600 11px var(--f-ui); color: var(--ui-muted, #b9a5d6); cursor: pointer; }
+.pm-row input[type=color] { width: 54px; height: 40px; border: 2px solid rgba(255,255,255,.25); border-radius: 10px; padding: 0; background: none; cursor: pointer; }
+.pm-foot { display: flex; align-items: center; gap: 10px; }
+.pm-ok { flex: 1; font: 600 11px var(--f-ui); color: #7fe0a8; } .pm-ok.bad { color: #ffb36b; }
+.pm-use.on { background: var(--ui-accent, #ff8a3d) !important; color: var(--ui-accent-ink, #1a0b24) !important; }
+#top .lang-top { width: 40px; height: 34px; padding: 0; font: 800 12px var(--f-ui); letter-spacing: .5px; border: 1.5px solid var(--ui-border, rgba(176,107,255,.3)); border-radius: 9px; color: var(--ui-ink, #fff); }

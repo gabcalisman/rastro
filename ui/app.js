@@ -675,24 +675,42 @@
     const look2 = document.createElement("span"); look2.className = "hint"; look2.style.marginLeft = "auto"; look2.textContent = "no personagem: " + M.look; tools.appendChild(look2);
   }
   function dragCard(card, pos, setMoved) {
-    let sx = 0, sy = 0, moved = false, dragging = false;
-    card.addEventListener("pointerdown", function (e) { if (e.target.closest(".knob, .pwr, .chev")) return; sx = e.clientX; sy = e.clientY; moved = false; setMoved(false); dragging = true; card.setPointerCapture(e.pointerId); });
+    // Reordering: the dragged card follows the pointer, so it can never be its own drop target
+    // (the old version picked the nearest card centre, which was always the dragged card itself).
+    let sx = 0, sy = 0, moved = false, dragging = false, pid = null;
+    function slot(e) {
+      const others = cards.filter(function (c) { return c.el !== card; }).map(function (c) { return c.el; });
+      let idx = 0;
+      others.forEach(function (el) { const r = el.getBoundingClientRect(); if (e.clientY > r.top + r.height / 2) idx++; });
+      return { others: others, idx: idx };
+    }
+    function clearMarks() { cards.forEach(function (c) { c.el.classList.remove("drop-before", "drop-after"); }); }
+    function finish(e, commit) {
+      if (!dragging) return; dragging = false; card.style.transform = ""; card.classList.remove("dragging"); clearMarks();
+      try { if (pid !== null) card.releasePointerCapture(pid); } catch (err) {}
+      if (!moved) return;
+      setTimeout(function () { setMoved(false); }, 0);
+      if (!commit) return;
+      const s = slot(e); if (!s.others.length) return;
+      let toPos;
+      if (s.idx < s.others.length) { const t = Number(s.others[s.idx].dataset.pos); toPos = t - (t > pos ? 1 : 0); }
+      else { const l = Number(s.others[s.others.length - 1].dataset.pos); toPos = l - (l > pos ? 1 : 0) + 1; }
+      toPos = clamp(toPos, 0, order.length - 1);
+      if (toPos !== pos) { R.call("moveModule", pos, toPos); const m = order.splice(pos, 1)[0]; order.splice(toPos, 0, m); renderRack(); game.award(3, "rack"); game.event("reorder"); toast(v("rackParallel") > .5 ? "Ordem trocada. Em PARALLEL a ordem não muda o som." : "Nova ordem: o som passa pelos módulos nessa sequência."); }
+    }
+    card.addEventListener("pointerdown", function (e) { if (e.button > 0 || e.target.closest(".knob, .pwr, .chev")) return; e.preventDefault(); sx = e.clientX; sy = e.clientY; moved = false; setMoved(false); dragging = true; pid = e.pointerId; try { card.setPointerCapture(e.pointerId); } catch (err) {} });
     card.addEventListener("pointermove", function (e) {
       if (!dragging) return;
       const dx = (e.clientX - sx) / S, dy = (e.clientY - sy) / S;
-      if (Math.abs(dy) + Math.abs(dx) > 6) { moved = true; setMoved(true); card.classList.add("dragging"); }
-      if (moved) card.style.transform = "translate(" + dx + "px," + dy + "px)";
-    });
-    card.addEventListener("pointerup", function (e) {
-      if (!dragging) return; dragging = false; card.style.transform = ""; card.classList.remove("dragging");
+      if (!moved && Math.abs(dy) + Math.abs(dx) > 6) { moved = true; setMoved(true); card.classList.add("dragging"); }
       if (!moved) return;
-      setTimeout(function () { setMoved(false); }, 0);
-      const visible = cards.map(function (c) { return c.el; });
-      let target = visible.length - 1, best = 1e9;
-      visible.forEach(function (el, i) { const r = el.getBoundingClientRect(), d = Math.hypot(e.clientX - (r.left + r.width / 2), e.clientY - (r.top + r.height / 2)); if (d < best) { best = d; target = i; } });
-      const toPos = Number(visible[target].dataset.pos);
-      if (toPos !== pos) { R.call("moveModule", pos, toPos); const m = order.splice(pos, 1)[0]; order.splice(toPos, 0, m); renderRack(); game.award(3, "rack"); game.event("reorder"); toast(v("rackParallel") > .5 ? "Ordem trocada. Em PARALLEL a ordem não muda o som." : "Nova ordem: o som passa pelos módulos nessa sequência."); }
+      card.style.transform = "translate(0px," + dy + "px) scale(1.03)";
+      clearMarks(); const s = slot(e);
+      if (s.idx < s.others.length) s.others[s.idx].classList.add("drop-before"); else if (s.others.length) s.others[s.others.length - 1].classList.add("drop-after");
     });
+    card.addEventListener("pointerup", function (e) { finish(e, true); });
+    card.addEventListener("pointercancel", function (e) { finish(e, false); });
+    card.addEventListener("lostpointercapture", function (e) { if (dragging) finish(e, true); });
   }
   $("#addModule").addEventListener("click", function (e) {
     const m = $("#addMenu"); m.innerHTML = "";

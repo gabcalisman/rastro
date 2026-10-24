@@ -1339,3 +1339,10 @@ body[data-screen="locker"] #lkCurrent { left: 16px !important; width: 1120px !im
 .pm-ok { flex: 1; font: 600 11px var(--f-ui); color: #7fe0a8; } .pm-ok.bad { color: #ffb36b; }
 .pm-use.on { background: var(--ui-accent, #ff8a3d) !important; color: var(--ui-accent-ink, #1a0b24) !important; }
 #top .lang-top { width: 40px; height: 34px; padding: 0; font: 800 12px var(--f-ui); letter-spacing: .5px; border: 1.5px solid var(--ui-border, rgba(176,107,255,.3)); border-radius: 9px; color: var(--ui-ink, #fff); }
+
+/* rack reorder: grab cursor, no browser scroll/drag stealing the gesture, drop indicator */
+.rack.rows .mod { touch-action: none; cursor: grab; user-select: none; -webkit-user-select: none; }
+.rack.rows .mod.dragging { cursor: grabbing; }
+.mod.drop-before::before, .mod.drop-after::after { content: ""; position: absolute; left: 6px; right: 6px; height: 3px; border-radius: 2px; background: var(--mc, #fff); box-shadow: 0 0 8px var(--mc, #fff); pointer-events: none; }
+.mod.drop-before::before { top: -5px; }
+.mod.drop-after::after { bottom: -5px; }

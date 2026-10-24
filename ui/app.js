@@ -1461,7 +1461,7 @@
     document.body.dataset.lkm = lkMode;
     $$("#lkModeSeg button").forEach(function (b) { b.classList.toggle("on", b.dataset.lkm === lkMode); });
     $("#lkSayT").textContent = lkMode === "wardrobe" ? "LOOKS COMPLETOS" : "MIX & MATCH / ITEM SLOTS";
-    $("#lkSayS").textContent = lkMode === "wardrobe" ? "Combinações prontas. Depois troque peça por peça no MIX & MATCH." : (look.art ? "Você está com a Nova Original (desenho do Gab). Escolher uma peça troca para a Nova editável, desenhada em código." : "Cada peça é independente. Só o visual muda, nunca o som.");
+    $("#lkSayS").textContent = lkMode === "wardrobe" ? "Combinações prontas. Depois troque peça por peça no MIX & MATCH." : (look.art ? "Você está com a Nova Original (desenho do Gab). Escolher uma peça troca para a Nova modular, montada por camadas ilustradas." : "Cada peça é independente. Só o visual muda, nunca o som.");
     renderSummary();
     renderLockerBottom();
     if (lkMode === "wardrobe") { renderWardrobe(); return; }

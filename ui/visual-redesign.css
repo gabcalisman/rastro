@@ -130,3 +130,40 @@ body[data-screen="palco"] #keys { display:flex; left:20px; right:20px; top:846px
 body[data-screen="captura"] #top { opacity:.38; }
 body[data-screen="captura"] #captureSheet { background:rgba(8,4,13,.76); }
 body[data-screen="captura"] #captureSheet .sheet-card { border-radius:20px; box-shadow:0 24px 80px rgba(0,0,0,.65),0 0 40px rgba(255,80,105,.10); }
+
+
+/* PR #5 visual direction update: use the earlier playful retro-game identity (preferred concepts 1–2).
+   Preserve the audio wiring and the current screen layout. NOVA remains an optional character. */
+:root {
+  --gold:#ffad47; --gold2:#ffd08a; --orange:#ff7448; --pink:#ed6bb8;
+  --cyan:#54dbe3; --violet:#9870d5;
+  --logo-cream:#fff0d2; --logo-play:#ff8550; --logo-by:#64dbe2;
+  --wave-bg:#170e22; --wave:#ff974e; --wave2:#ffd07a;
+  --line:rgba(238,190,137,.28); --line2:rgba(255,173,71,.62);
+}
+#app {
+  background:
+    radial-gradient(ellipse at 50% 35%,rgba(107,52,141,.19),transparent 48%),
+    radial-gradient(ellipse at 85% 12%,rgba(255,116,72,.10),transparent 34%),
+    linear-gradient(145deg,#100817,#1b1024 58%,#100817);
+}
+.logo img { filter:drop-shadow(0 2px 10px rgba(255,133,80,.22)); }
+.lg-play { background:linear-gradient(90deg,#ffb258,#ff7448); -webkit-background-clip:text; background-clip:text; filter:drop-shadow(0 0 6px rgba(255,133,80,.28)); }
+.lg-by { color:#64dbe2; text-shadow:0 0 7px rgba(84,219,227,.28); }
+.nav-tabs button.on,.main-tabs button.on { border-color:#ffad47; color:#ffd08a; background:rgba(255,173,71,.12); box-shadow:0 0 12px rgba(255,173,71,.13); }
+#stage { border-color:rgba(255,173,71,.38); background:#130a1b; }
+#stage::after { background:linear-gradient(180deg,rgba(12,6,17,.04),transparent 45%,rgba(12,6,17,.12)); }
+#rackPanel .mod { border-radius:10px; box-shadow:inset 0 1px rgba(255,255,255,.06); }
+#rackPanel .mod.on { box-shadow:0 0 13px var(--mcg,rgba(255,255,255,.12)),inset 0 1px rgba(255,255,255,.07); }
+#rackPanel .mod-name { letter-spacing:.65px; }
+#keyboard .key.on { background:linear-gradient(180deg,#ffd178,#ff8550); box-shadow:0 0 13px rgba(255,173,71,.42); }
+
+/* Scene-free main views: keep the animated character and effect signals, hide room decoration. */
+body[data-screen="perform"] #stageArt .room-bg,
+body[data-screen="limpo"] #stageArt .room-bg { display:none !important; }
+body[data-screen="perform"] #stageArt > svg > :not(defs):not(#charLayer):not(#ghosts):not(#notesP):not(#dustP):not(#bloomVeil),
+body[data-screen="limpo"] #stageArt > svg > :not(defs):not(#charLayer):not(#ghosts):not(#notesP):not(#dustP):not(#bloomVeil) { display:none !important; }
+body[data-screen="perform"] #stage,
+body[data-screen="limpo"] #stage {
+  background:radial-gradient(ellipse at 50% 70%,rgba(105,64,131,.26),transparent 56%),linear-gradient(145deg,#170d20,#100817);
+}

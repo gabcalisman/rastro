@@ -1,32 +1,31 @@
-# RASTRO PLAY — referências oficiais do redesign
+# RASTRO PLAY — direção visual escolhida para o PR #5
 
-Estas três imagens foram anexadas pelo Gab e são a fonte visual oficial desta revisão. Elas substituem qualquer referência anterior do alien-sombra ou de personagens de outra fase.
+Atualização solicitada pelo Gab em 24/10/2026. Esta direção substitui a identidade NOVA Original como padrão visual desta revisão. A preferência foi pelas duas primeiras propostas visuais; as duas últimas não devem orientar o redesign.
 
-## Arquivos de referência
+## Identidade
 
-1. [01 — NOVA no estúdio](./referencias/rastro-play/01-nova-master-studio.jpg): referência principal do personagem, keytar e quarto-estúdio.
-2. [02 — prancha das seis telas](./referencias/rastro-play/02-interface-six-screens.jpg): referência global de logo, tipografia, estrutura e telas.
-3. [03 — NOVA no guarda-roupa](./referencias/rastro-play/03-nova-wardrobe.jpg): referência da personalização por categorias, combinações e ambientes.
+- Voltar à linguagem cartunesca de game da fase **Funky Alien Beat Lab**: personagem alienígena turquesa, expressivo, cabelo roxo escuro, roupa retrô-futurista colorida, contorno e poses com energia de desenho animado.
+- O personagem padrão deve ser o alien ilustrado anterior; **NOVA Original fica como opção alternativa**, não como aparência inicial.
+- Evitar aparência anime, mascote infantil simplório, personagem humano ou alien-sombra intimidador.
+- Preservar a marca: **RASTRO** em destaque, **Play** como subtítulo menor e “by Gab Calisman” legível e discreto.
+- Linguagem da interface: clean e chic, com ameixa/roxo escuro, creme, laranja e pequenos acentos ciano. Elementos de jogo/cartoon devem ser bem acabados e consistentes com o personagem.
 
-## Direção que deve ser seguida
+## Tela principal
 
-- Personagem: NOVA, alien turquesa/azul, cabelo grande roxo-escuro, olhos amarelos expressivos, corpo cartunesco e proporções consistentes com as imagens. Manter exatamente dois braços e duas mãos. Não trocar por humano, anime ou alien-sombra preto.
-- Figurino: linguagem retrô-futurista com roxo/índigo, laranja e creme; acessórios devem encaixar no corpo e ser selecionáveis por categoria. Instrumento, roupa e cenário são escolhas independentes quando a arte permitir.
-- Cenário: quarto-estúdio noturno e acolhedor, luzes práticas com cores quentes e neon, sensação de profundidade e piso/plataforma. Manter leitura limpa e sem excesso de decoração.
-- Interface: fundo ameixa/preto, superfícies organizadas, detalhes creme, estados ativos em âmbar/laranja e cores próprias para cada efeito. A marca é **RASTRO** em destaque, **PLAY** menor ao lado e “by Gab Calisman” discreto, mas legível.
-- Manter as telas e funções reais existentes — PLAY/sample, SOUND, FX RACK, PATCH LAB, LOCKER, JAM e CAPTURA — sem substituir controles funcionais por imagens decorativas.
+- Usar a primeira e a segunda proposta visual escolhidas como direção de composição e linguagem. Não reproduzir as duas propostas rejeitadas.
+- Manter foco na waveform, ADSR/filtro/LFO, teclado escuro, macros e rack funcional.
+- Na tela principal, deixar o personagem como destaque visual em uma área limpa, sem quarto ou cenário carregado atrás dele. Modo JAM e Locker podem continuar oferecendo telas de palco/estúdio.
+- O rack deve manter módulos reais, cores de FX e ordem sonora. Knobs são controles reais; a aparência pode usar as famílias customizáveis já existentes.
 
-As referências são conceitos visuais, não sprites prontos para animação nem autorização para fingir que qualquer função está implementada. O personagem articulado precisa ser adaptado para esta identidade antes de chamar um build de visualmente aprovado. Validar o movimento e o enquadramento no plugin após a implementação.
+## Implementação e limites
 
-## Escopo técnico
+- Esta revisão muda a apresentação do personagem padrão para a arte ilustrada já incluída no projeto e ajusta as cores visuais. Mantém o personagem modular NOVA como alternativa.
+- Preservar DSP, parâmetros/IDs, automações, presets e recall de sessão do PR #4.
+- A arte de conceito orienta o estilo; não é sprite pronto nem prova de animação. A dança usa apenas o rig existente e precisa ser testada separadamente.
+- O layout não pode esconder controles funcionais nem transformar a captura em imagem estática. As capturas web são referência, não validação de áudio.
+- Validar JavaScript, build macOS e artefato do PR antes de oferecer o download. Não afirmar teste no Logic, Apple silicon nativo ou hardware sem evidência.
 
-Preservar o motor de áudio, IDs de parâmetros, sessões e automações existentes. A revisão visual deve ser aplicada sobre a interface funcional do PR #4; manter ajustes em etapa separada e validar a execução AU/macOS antes de oferecer um novo download.
+## Referências
 
-## Pacote experimental solicitado para o PR #5
-
-O Gab pediu para baixar o app/plugin no estado atual desta branch. O workflow Mac agora
-aceita a base empilhada do PR #5 e identifica o pacote pelo número do PR. Este pacote
-permite avaliar a implementação parcial; não altera o status de aprovação visual acima.
-A compilação, os testes e os validadores precisam passar antes de haver um download válido.
-A galeria `docs/previews-web/` separa a interface atual em Chromium/Linux com bridge
-simulado das referências de conceito e das capturas históricas do editor JUCE.
+- `06-funky-alien-style.jpg`: conceito anterior usado para identidade e linguagem de ilustração.
+- `07-clean-cartoon-ui-concept.jpg`: conceito limpo sem cenário usado para composição do painel.

@@ -1098,11 +1098,10 @@
     if (charKind === "alien") {
       layer.innerHTML = '<g id="charPos"></g>';
       const pos = layer.querySelector("#charPos");
-      puppet = AL.create(pos, look.figure);
-      puppet.articulated = true;
-      puppet.L = { hip: [0, 0], feet: 0 };
-      puppet.destroy = function () { if (puppet.root) puppet.root.remove(); };
-      rig = { puppet: true, articulated: true, pos: pos, pads: [], style: DEFAULT_STYLE };
+      // Default to the earlier painted, playful game-cartoon alien look. The modular NOVA
+      // remains available as a separate character option; this changes presentation only.
+      puppet = PUP.create(pos, PUP.LOOKS[look.pose] ? look.pose : "disco");
+      rig = { puppet: true, articulated: false, pos: pos, pads: [], style: DEFAULT_STYLE };
     } else {
       const C = ART.characters[charKind]();
       layer.innerHTML = '<g id="charPos" transform="translate(240 412)"><g transform="scale(.86)">' + C.svg + '</g></g>';
@@ -1122,7 +1121,7 @@
     b.innerHTML = ""; f.innerHTML = ""; fx.ghosts = []; fx.shards = []; fx.dust = []; fx.pix = []; fx.hist = [];
     // Cartoon-outline bulbs whose color and brightness mirror each real rack module.
     const novaLights = document.createElementNS(NS, "g"); novaLights.id = "novaFxLights";
-    novaLights.setAttribute("aria-label", "Luzes da NOVA: uma cor para cada efeito do rack");
+    novaLights.setAttribute("aria-label", "Luzes do personagem: uma cor para cada efeito do rack");
     const lightDefs = [
       ["GHOST · Delay", -61, -247, "#b06bff"], ["CRUMBLE · Stutter", 61, -247, "#ffa02e"],
       ["BLOOM · Reverb", -51, -188, "#ff4fd8"], ["WOBBLE · Chorus", 51, -188, "#2fe0ff"],
@@ -1670,7 +1669,7 @@
     // The bulbs never flash randomly; each stays matched to its own module and amount.
     const acts = MOD.map(function (m, i) { return modOn(i) ? clamp((T.act[i] || 0) * 14, 0, 1) : 0; });
     if (fx.novaLights) {
-      const visible = charKind === "nova";
+      const visible = charKind === "nova" || charKind === "alien";
       fx.novaLights.setAttribute("display", visible ? "inline" : "none");
       fx.novaLights.__lamps.forEach(function (lamp, i) {
         const a = visible ? acts[i] : 0;

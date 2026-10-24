@@ -743,3 +743,127 @@ body[data-screen="limpo"] #hud { left: 484px; right: 484px; top: 742px; }
 .sum-row img { width: 40px; height: 40px; flex: none; border-radius: 8px; background: rgba(255, 255, 255, .06); }
 body[data-screen="locker"] #lkSummary { width: 250px; max-height: 700px; overflow-y: auto; }
 .it .thumb img { background: radial-gradient(rgba(255, 179, 64, .12), transparent 70%); }
+
+/* ===== Layout from Gab's interface idea (23/10, 21h53): tabs in the header, SAMPLE left, framed stage centre,
+   EFFECT RACK cards right, PERFORMANCE / MACROS / GLOBAL bottom, keyboard; cream "illustrated" bezels ===== */
+#top .logo img { height: 50px; }
+#top #presetBar { margin-left: auto; width: 262px; }
+#top .hdr-actions { margin-left: 6px; }
+#top #jam, #top .gtransport, #top .hsep, #top #saveBtn span, #top #dice span { display: none; }
+#top #saveBtn, #top #dice { width: 40px; padding: 9px; justify-content: center; }
+body:not([data-screen="captura"]) #editTabs { display: flex; position: absolute; z-index: 6; left: 356px; top: 23px; width: 548px; gap: 6px; }
+body:not([data-screen="captura"]) #editTabs button { flex: 1; height: 46px; padding: 0 6px; font: 700 13px var(--f-ui); letter-spacing: .4px; }
+#editTabs button i { display: none; }
+#editTabs button.on { background: linear-gradient(#ff9a3d, #ff7a2a); color: #2a1206; border-color: #2a1206; box-shadow: 0 3px 0 #2a1206; }
+body[data-screen="palco"] #editTabs { display: none !important; }
+
+/* the stage: a framed window in the middle (the room and Nova live inside it) */
+body[data-screen="limpo"] #stage { left: 450px; top: 88px; width: 616px; height: 530px; border: 3px solid #160c1e; border-radius: 16px; z-index: 2; box-shadow: 0 0 0 7px #ecd9b4, 0 0 0 10px #160c1e, 9px 11px 0 3px rgba(8, 3, 14, .8); }
+body[data-screen="limpo"] #appBg { opacity: 1; }
+body[data-screen="limpo"] #app::before { display: none; }
+body[data-screen="limpo"] #hud { left: 16px; right: 16px; top: auto; bottom: 12px; }
+
+/* cream bezel panels (scoped palette: dark ink on cream, dark wells for waveform/pad) */
+body[data-screen="limpo"] .panel:not(#stage) {
+  --panel: #ecd9b4; --panel-solid: #ecd9b4; --ink: #24122c; --muted: #5d3f4f; --dim: #8a6e72; --line: rgba(36, 18, 44, .35); --line2: rgba(36, 18, 44, .6);
+  --sel: rgba(255, 138, 61, .2); --wave-bg: #1b1028;
+  background: #ecd9b4; color: var(--ink); border: 3px solid #160c1e; border-radius: 16px; box-shadow: 6px 7px 0 rgba(8, 3, 14, .85), inset 0 2px 0 rgba(255, 255, 255, .45);
+}
+body[data-screen="limpo"] .panel:not(#stage) .panel-head h2 { font: 800 16px/1 var(--f-ui); letter-spacing: .6px; color: #24122c; }
+body[data-screen="limpo"] .panel .seg button.on, body[data-screen="limpo"] .panel .chip-btn.on, body[data-screen="limpo"] .panel .toggle.on { background: #24122c; color: #ffb340; }
+body[data-screen="limpo"] .panel .wave-box, body[data-screen="limpo"] .panel .pad, body[data-screen="limpo"] .panel .env-graph, body[data-screen="limpo"] .panel .filter-graph { background: #1b1028; border: 3px solid #160c1e; border-radius: 12px; }
+
+/* columns: left 16–436, stage 450–1066, right 1080–1424; bottom row 632–800; keyboard 812–890 */
+body[data-screen="limpo"] #samplePanel, body[data-screen="limpo"] #playbackPanel, body[data-screen="limpo"] #envPanel, body[data-screen="limpo"] #filterPanel,
+body[data-screen="limpo"] #midiPanel, body[data-screen="limpo"] #fxPanel, body[data-screen="limpo"] #xyPanel, body[data-screen="limpo"] #macroPanel,
+body[data-screen="limpo"] #rackPanel, body[data-screen="limpo"] #globalPanel { display: none; }
+body[data-screen="limpo"] #xyPanel { display: block; left: 16px; top: 634px; width: 520px; height: 166px; }
+body[data-screen="limpo"][data-etab] #macroPanel { display: block; left: 550px; top: 634px; width: 516px; height: 166px; }
+body[data-screen="limpo"] #globalPanel { display: block; left: 1080px; top: 634px; width: 344px; height: 166px; }
+body[data-screen="limpo"] #keys { top: 812px; height: 78px; }
+/* PLAY */
+body[data-screen="limpo"][data-etab="sample"] #samplePanel { display: block; left: 16px; top: 88px; width: 420px; height: 314px; }
+body[data-screen="limpo"][data-etab="sample"] #samplePanel .wave-box { height: 210px; }
+body[data-screen="limpo"][data-etab="sample"] #playbackPanel { display: block; left: 16px; top: 412px; width: 420px; height: 206px; }
+body[data-screen="limpo"][data-etab="sample"] #rackPanel { display: block; left: 1080px; top: 88px; width: 344px; height: 530px; }
+/* SOUND */
+body[data-screen="limpo"][data-etab="instrument"] #envPanel { display: block; left: 16px; top: 88px; width: 420px; height: 530px; }
+body[data-screen="limpo"][data-etab="instrument"] #envPanel .env-graph { height: 250px; }
+body[data-screen="limpo"][data-etab="instrument"] #filterPanel { display: block; left: 1080px; top: 88px; width: 344px; height: 282px; }
+body[data-screen="limpo"][data-etab="instrument"] #midiPanel { display: block; left: 1080px; top: 380px; width: 344px; height: 238px; }
+body[data-screen="limpo"][data-etab="instrument"] #filterPanel .filter-graph { height: 90px; }
+/* RACK */
+body[data-screen="limpo"][data-etab="fx"] #rackPanel { display: block; left: 16px; top: 88px; width: 420px; height: 530px; }
+body[data-screen="limpo"][data-etab="fx"] #fxPanel { display: block; left: 1080px; top: 88px; width: 344px; height: 530px; }
+body[data-screen="limpo"][data-etab="fx"] #fxPanel .knob-row { flex-wrap: wrap; gap: 10px; justify-content: flex-start; }
+
+/* bottom row */
+body[data-screen="limpo"] #xyPanel .xy-body, body[data-screen="limpo"] #xyPanel > div:not(.panel-head) { }
+body[data-screen="limpo"] #xyPanel .pad { height: 92px; }
+body[data-screen="limpo"] #xyPanel #padNote { display: none; }
+body[data-screen="limpo"] #macroPanel .knob-grid { grid-template-columns: repeat(4, 1fr); }
+body[data-screen="limpo"] #macroPanel .dice-row { display: inline-flex; gap: 6px; margin: 6px 6px 0 0; }
+#globalPanel .g-transport { display: flex; gap: 10px; margin: 2px 0 8px; }
+#globalPanel .g-transport button { width: 76px; height: 46px; padding: 12px; border-radius: 10px; background: #24122c; color: #fff; border: 3px solid #160c1e; box-shadow: 0 3px 0 #160c1e; }
+#globalPanel .g-transport button.on, body.paused #gPause { color: #ffb340; }
+#globalPanel .g-transport button:active { transform: translateY(2px); box-shadow: 0 1px 0 #160c1e; }
+#globalPanel .g-row { display: flex; align-items: center; gap: 14px; }
+#globalPanel .g-meter { flex: 1; } #globalPanel .g-meter small { font: 700 10px var(--f-ui); letter-spacing: .6px; color: var(--muted); }
+#globalPanel .meter { background: #1b1028; height: 8px; } #gMeter { height: 100%; width: 0; background: linear-gradient(90deg, #2fe0ff, #ffb340, #ff4f6a); }
+#globalPanel .panel-head .hint { font-size: 10px; }
+
+/* EFFECT RACK cards: solid module colour, dark ink, AMOUNT knob (= the module's MIX) */
+body[data-screen="limpo"] #rackPanel .rack.rows .mod { height: 70px; margin-bottom: 8px; background: var(--mc); border: 3px solid #160c1e; border-radius: 14px; box-shadow: 0 4px 0 #160c1e; color: #160c1e; }
+body[data-screen="limpo"] #rackPanel .rack.rows .mod.off { filter: saturate(.45) brightness(.92); }
+body[data-screen="limpo"] #rackPanel .mod-name { font: 800 17px/1 var(--f-ui); color: #160c1e; }
+body[data-screen="limpo"] #rackPanel .mod-sub { color: rgba(22, 12, 30, .75); font-weight: 600; }
+body[data-screen="limpo"] #rackPanel .mod-viz, body[data-screen="limpo"] #rackPanel .mod-meter { display: none; }
+body[data-screen="limpo"] #rackPanel .mod .pwr { color: #160c1e; filter: none; order: -1; background: rgba(255, 255, 255, .55); border: 2.5px solid #160c1e; border-radius: 16px; width: 40px; height: 26px; padding: 2px; }
+body[data-screen="limpo"] #rackPanel .mod.on .pwr { background: #160c1e; color: var(--mc); }
+body[data-screen="limpo"] #rackPanel .mod .grip { color: #160c1e; margin-left: auto; order: 9; }
+body[data-screen="limpo"] #rackPanel .mod-ic { filter: drop-shadow(0 1px 0 rgba(0, 0, 0, .4)); }
+body[data-screen="limpo"] #rackPanel .mod-text { flex: 1; width: auto; }
+.mod-amt { flex: none; } .mod-amt .knob { width: 52px; cursor: ns-resize; } .mod-amt .k-value { display: none; }
+body[data-screen="limpo"] #rackPanel .mod-amt .k-label { order: 2; color: #160c1e; font-weight: 800; font-size: 9px; margin: 2px 0 0; }
+.rack.rows .mod-amt { order: 8; }
+/* fit fixes for the new layout */
+body[data-screen="limpo"] #samplePanel .panel-head { flex-wrap: wrap; row-gap: 6px; }
+body[data-screen="limpo"] #samplePanel .panel-head h2 { display: block; }
+body[data-screen="limpo"] #samplePanel .panel-head h2::after { content: ""; }
+body[data-screen="limpo"] #samplePanel #sampleFav { display: none; }
+body[data-screen="limpo"] #samplePanel .sample-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+body[data-screen="limpo"] #samplePanel #markSeg { margin-right: auto; }
+body[data-screen="limpo"][data-etab="sample"] #samplePanel .wave-box { height: 180px; }
+body[data-screen="limpo"] .panel .mod-ic { }
+body[data-screen="limpo"] #rackPanel .rack.rows .mod.off { filter: none; }
+body[data-screen="limpo"] #rackPanel .rack.rows .mod.off { background: color-mix(in srgb, var(--mc) 55%, #ecd9b4); }
+body[data-screen="limpo"] #rackPanel .mod .mod-ic { width: 42px; height: 42px; padding: 5px; border-radius: 50%; background: #160c1e; border: 2px solid #160c1e; opacity: 1 !important; filter: none !important; }
+body[data-screen="limpo"] #xyPanel .panel-head { margin-bottom: 4px; }
+body[data-screen="limpo"] #xyPanel .pad { height: 78px; }
+body[data-screen="limpo"] #xyPanel .xy-y { width: 62px; }
+body[data-screen="limpo"] #xyPanel .xy-val { padding: 1px 6px; font-size: 11px; }
+body[data-screen="limpo"] #xyPanel .xy-x { margin: 4px 0 0 70px; }
+body[data-screen="limpo"] #macroPanel .panel-head { margin-bottom: 0; }
+body[data-screen="limpo"] #macroPanel .knob-grid { gap: 0 4px; }
+body[data-screen="limpo"] #macroPanel .dice-row { margin-top: 2px; }
+body[data-screen="limpo"] #macroPanel .dice-row .chip-btn { min-height: 24px; font-size: 10px; padding: 0 8px; }
+#globalPanel { display: none; }
+body[data-screen="limpo"] #globalPanel { display: grid; grid-template-columns: auto 1fr; grid-template-rows: auto auto auto; column-gap: 14px; align-items: center; }
+#globalPanel .panel-head { grid-column: 1 / 3; margin-bottom: 4px; }
+#globalPanel .g-transport { gap: 8px; margin: 0; }
+#globalPanel .g-transport button { width: 58px; height: 44px; }
+#globalPanel .g-row { grid-column: 2; grid-row: 2; }
+#globalPanel .g-row .knob-row { flex: none; }
+#globalPanel .g-meter { grid-column: 1 / 3; }
+body[data-screen="limpo"] #rackPanel .mod .mod-name { color: #160c1e !important; text-shadow: none !important; }
+body[data-screen="limpo"] #rackPanel .panel-head { gap: 6px; }
+body[data-screen="limpo"] #rackPanel .panel-head h2 { font-size: 15px; }
+body[data-screen="limpo"] #rackPanel .switch { margin-left: auto !important; }
+body[data-screen="limpo"] #rackPanel .switch b { font-size: 10px; }
+body[data-screen="limpo"] #rackPanel #addModule { margin-left: 0 !important; width: 26px; height: 26px; }
+body[data-screen="limpo"] #rackPanel #resetFx { min-height: 24px; padding: 0 7px; font-size: 10px; }
+body[data-screen="limpo"] #rackPanel .panel-head > .grip, body[data-screen="limpo"] #rackPanel .panel-head > i:first-child { display: none; }
+body[data-screen="limpo"] #samplePanel .cap-head { background: #24122c; color: #fff; border: 2px solid #160c1e; opacity: 1; }
+body[data-screen="limpo"] #samplePanel .cap-head i { color: #ff4f6a; }
+body[data-screen="limpo"][data-etab] #xyPanel { display: block; left: 16px; top: 634px; width: 520px; height: 166px; }
+body[data-screen="limpo"][data-etab] #xyPanel .pad { height: 78px; }

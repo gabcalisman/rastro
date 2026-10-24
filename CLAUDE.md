@@ -180,3 +180,11 @@ Separe: o que já existia; o que mudou; o que ficou incompleto; testes que passa
 - Limite honesto: a arte é um desenho só. Braços e pernas giram pouco (alguns graus); poses grandes pedem a arte em partes desenhadas separadamente.
 - Locker: card **Original (arte do Gab)** no WARDROBE. Trocar peça passa para a Nova editável desenhada em código (`nova.js`). `look.art` (1 = original) salvo no look; looks antigos abrem com a original.
 - Próximo layout (referência do Gab, 21h53): abas no topo, SAMPLE à esquerda, palco no centro, EFFECT RACK em cartões coloridos à direita, PERFORMANCE / MACROS / GLOBAL embaixo, teclado, painéis creme.
+
+## Layout (23/10/2026, 22h) — ideia de interface do Gab
+
+- Abas no cabeçalho: **PLAY, SOUND, RACK, PATCH LAB, LOCKER, JAM** (JAM abre o modo de performance). Patch à direita; salvar, desfazer, refazer e sortear viraram ícones.
+- Telas PLAY/SOUND/RACK: palco **emoldurado no centro** (450–1066 px), coluna esquerda e direita, faixa de baixo com **XY PERFORMANCE / MACROS / GLOBAL** e o teclado. Painéis creme com moldura escura e sombra dura (skin ilustrada); waveform, pad e gráficos ficam em poços escuros.
+- EFFECT RACK em cartões na cor de cada módulo, com liga/desliga, ícone, nome + subtítulo, **AMOUNT** (= MIX real do módulo) e alça de arrastar.
+- GLOBAL: transporte interno (▶ ❚❚ ■, só prévia) + VOLUME + medidor de saída.
+- Diferenças honestas em relação à imagem: MACROS continuam as reais (PRESENÇA, RASTRO, VARIAÇÃO, MIX); BRILHO/MOVIMENTO/TEXTURA/ESPAÇO não existem no motor. "MIDI AUDITION" não foi criado (não existe função de prévia de nota). PATCH LAB e LOCKER ainda no estilo escuro.

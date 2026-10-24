@@ -49,10 +49,11 @@
   <!-- main tabs: PLAY · SOM · RACK · PATCHES · ESTÚDIO (JAM is a mode, in the header) -->
   <nav id="editTabs" class="edit-tabs main-tabs">
     <button data-main="play" title="Carregar, arrastar ou capturar áudio; waveform; modo de reprodução; teclado"><i data-ic="wave"></i>PLAY</button>
-    <button data-main="som" title="ADSR, filtro, LFO, polifonia, pitch e performance"><i data-ic="sliders"></i>SOM</button>
+    <button data-main="som" title="ADSR, filtro, LFO, polifonia, pitch e performance"><i data-ic="sliders"></i>SOUND</button>
     <button data-main="rack" title="Cadeia de efeitos: a ordem é a ordem do som"><i data-ic="cube"></i>RACK</button>
-    <button data-main="patches" title="Salvar, carregar, comparar e organizar sons"><i data-ic="folder"></i>PATCHES</button>
-    <button data-main="estudio" title="Personagem, guarda-roupa, instrumentos, knobs, cenário e cores"><i data-ic="hanger"></i>ESTÚDIO</button>
+    <button data-main="patches" title="Salvar, carregar, comparar e organizar sons"><i data-ic="folder"></i>PATCH LAB</button>
+    <button data-main="estudio" title="Personagem, guarda-roupa, instrumentos, knobs, cenário e cores"><i data-ic="hanger"></i>LOCKER</button>
+    <button data-main="jam" title="JAM: modo de performance (personagem, patch, teclado e controles essenciais)"><i data-ic="wave"></i>JAM</button>
   </nav>
 
   <!-- ================= browser (PERFORM) ================= -->
@@ -182,6 +183,13 @@
   </section>
 
   <!-- ================= macros ================= -->
+  <section id="globalPanel" class="panel">
+    <div class="panel-head"><h2>GLOBAL</h2><span class="hint">prévia interna · não controla o Logic</span></div>
+    <div class="g-transport"><button id="gPlay" data-ic="play" title="Tocar a prévia do sample ou retomar" aria-label="Tocar"></button><button id="gPause" data-ic="pause" title="Pausar a prévia e congelar a animação" aria-label="Pausar"></button><button id="gStop" data-ic="stop" title="Parar e voltar ao início" aria-label="Parar"></button></div>
+    <div class="g-row"><div class="knob-row" id="globalKnobs"></div></div>
+    <div class="g-meter"><small>SAÍDA</small><div class="meter"><div id="gMeter"></div></div></div>
+  </section>
+
   <section id="macroPanel" class="panel">
     <div class="panel-head"><h2>MACROS</h2></div>
     <div class="knob-grid" id="macroKnobs"></div>

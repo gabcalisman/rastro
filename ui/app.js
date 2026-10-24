@@ -94,8 +94,8 @@
     if (sc === "limpo") return et === "instrument" ? "som" : et === "fx" ? "rack" : "play";
     return "";
   }
-  function syncMainTabs() { const m = currentMain(); $$("#editTabs button").forEach(function (b) { b.classList.toggle("on", b.dataset.main === m); }); }
-  function setMain(m) { const t = MAIN[m]; if (!t) return; if (t[1]) setEtab(t[1]); if (screen() !== t[0]) setScreen(t[0]); syncMainTabs(); }
+  function syncMainTabs() { const m = screen() === "palco" ? "jam" : currentMain(); $$("#editTabs button").forEach(function (b) { b.classList.toggle("on", b.dataset.main === m); }); }
+  function setMain(m) { if (m === "jam") { $("#jam").click(); return; } const t = MAIN[m]; if (!t) return; if (t[1]) setEtab(t[1]); if (screen() !== t[0]) setScreen(t[0]); syncMainTabs(); }
   $$("#editTabs button").forEach(function (b) { b.addEventListener("click", function () { setMain(b.dataset.main); }); });
   // menu
   const menu = $("#menu");
@@ -474,6 +474,9 @@
     ["voiceMode", "playMode", "loop", "regionLoop"].forEach(function (id) { watch(id, updatePill); });
     const m = $("#masterKnobs");
     knob(m, "drywet", "ORIG/RACK", { size: 36, color: "#ff4fd8", title: "Mistura entre o som original e o rack" });
+    // GLOBAL panel (layout of Gab's reference): internal transport + output volume
+    knob($("#globalKnobs"), "level", "VOLUME", { size: 44, format: fmt.db, color: "#ffb340", title: "Volume de saída" });
+    [["gPlay", "tPlay"], ["gPause", "tPause"], ["gStop", "tStop"]].forEach(function (p) { $("#" + p[0]).addEventListener("click", function () { $("#" + p[1]).click(); }); });
   }
 
   /* ================= XY pad & macros ================= */
@@ -551,11 +554,13 @@
         '<div class="mod-text"><div class="mod-name">' + M.name + '</div><div class="mod-sub">' + M.sub + '</div></div>' + ICO.modViz(mi) +
         '<button class="pwr" data-ic="power" title="Ligar / bypass" aria-label="Ligar ' + M.name + '"></button>' + (tiles ? "" : '<button class="chev" data-ic="down" title="Abrir controles"></button>') + '<div class="mod-meter"></div>';
       list.appendChild(card);
+      const amt = document.createElement("div"); amt.className = "mod-amt"; card.insertBefore(amt, $(".pwr", card));
+      knob(amt, M.k + "Mix", "AMOUNT", { size: 34, color: M.color, owned: "rack", title: "AMOUNT = MIX do " + M.name + " (quanto do efeito entra no som)" });
       ICO.hydrate(card);
       const power = $(".pwr", card), onId = M.k + "On";
       const pw = function (x) { card.classList.toggle("on", x > .5); card.classList.toggle("off", x < .5); }; pw.owned = "rack"; watch(onId, pw);
       power.addEventListener("click", function (e) { e.stopPropagation(); gesture(onId, v(onId) > .5 ? 0 : 1); toast(M.name + (v(onId) > .5 ? " ligado. No personagem: " + M.look + "." : " em bypass.")); });
-      card.addEventListener("click", function (e) { if (e.target.closest(".pwr")) return; if (moved) return; selMod = mi; if (screen() === "limpo") setEtab("fx"); else { setScreen("limpo"); setEtab("fx"); } renderRack(); });
+      card.addEventListener("click", function (e) { if (e.target.closest(".pwr, .knob")) return; if (moved) return; selMod = mi; if (screen() === "limpo") setEtab("fx"); else { setScreen("limpo"); setEtab("fx"); } renderRack(); });
       let moved = false;
       dragCard(card, pos, function (m) { moved = m; });
       cards.push({ el: card, mi: mi, meter: $(".mod-meter", card), viz: $(".mod-viz", card) });
@@ -1031,7 +1036,7 @@
     if (!W || !H) return cam || { tx: 0, ty: 0, s: .5 };
     const k = Math.max(W / 480, H / 452), visW = W / k, visH = H / k, vx0 = 240 - visW / 2, vy0 = 226 - visH / 2;
     const scr = screen(), bottomPad = scr === "palco" && look.strip ? 118 / k : 0, topPad = 0;
-    const S = ART.stage, yTop = scr === "limpo" ? 40 : 150, yBot = scr === "limpo" ? 830 : 805;
+    const S = ART.stage, yTop = scr === "limpo" ? 150 : 150, yBot = scr === "limpo" ? 812 : 805;
     let s = (visH - bottomPad - topPad) / (yBot - yTop);
     s = Math.max(s, visW / (S.w - 60), visH / (S.h - 40));
     const life = 1; // the room stays still: the camera only changes with the window size or the tab
@@ -1619,14 +1624,14 @@
     }
     game.tick(now);
     $("#midiDot") && $("#midiDot").classList.toggle("on", midiFlash > .1); midiFlash *= .85;
-    $("#masterMeter").style.width = Math.min(100, T.meter * 100) + "%";
+    $("#masterMeter").style.width = Math.min(100, T.meter * 100) + "%"; $("#gMeter").style.width = Math.min(100, T.meter * 100) + "%";
     let anyHeld = false; for (let w = 0; w < 4; w++) if (T.notes[w]) anyHeld = true;
     heldFor = anyHeld ? heldFor + dt : 0; if (anyHeld && heldFor > 2 && heldFor - dt <= 2) game.check();
     const acts = MOD.map(function (m, i) { return modOn(i) ? clamp((T.act[i] || 0) * 14, 0, 1) : 0; });
     legendEls.forEach(function (el, i) { el.classList.toggle("on", modOn(i)); });
     cards.forEach(function (c) { const a = acts[c.mi]; c.meter.style.width = (a * 80) + "%"; if (c.viz && animMode) c.viz.style.opacity = modOn(c.mi) ? (.55 + a * .45).toFixed(2) : ""; });
     for (const n in keyEls) keyEls[n].classList.toggle("on", noteHeld(Number(n)));
-    $("#tPlay").classList.toggle("on", !!T.preview);
+    $("#tPlay").classList.toggle("on", !!T.preview); $("#gPlay").classList.toggle("on", !!T.preview);
     if (waveDirty || T.playing || T.preview) { drawWave(); waveDirty = false; }
     if (paused) { requestAnimationFrame(frame); return; } // Pause freezes every movement where it is
     if (anyHeld || T.playing || T.preview) motion.lastSound = now;

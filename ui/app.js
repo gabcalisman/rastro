@@ -73,6 +73,7 @@
     if (sc === "captura") openCapture(); else if (prev === "captura") closeCapture(true);
     if (sc === "locker") renderLocker();
     if (sc === "lab") renderLabScreen();
+    else if (prev === "lab") { const t = document.body.dataset.etab, slot = $(t === "instrument" ? "#waveSlotSound" : "#waveSlotPlay"); slot.appendChild($("#waveMove")); document.body.classList.remove("lib-open"); }
     if (sc === "perform") renderLibrary();
     $("#appBg").style.backgroundImage = sc === "locker" ? "url(" + roomFile() + ")" : "";
     renderRack(); placeKey = ""; syncMainTabs();
@@ -109,7 +110,15 @@
   $("#mOpenSound").addEventListener("click", function () { menu.hidden = true; fileAction(false, true); });
   $("#mOpenFull").addEventListener("click", function () { menu.hidden = true; fileAction(false, false); });
   $("#mReact").addEventListener("click", function () { menu.hidden = true; lkCat = "react"; setScreen("locker"); });
+  $("#themeBtn").addEventListener("click", toggleTheme); $("#mTheme").addEventListener("click", toggleTheme);
   $("#mKeys").addEventListener("click", function () { look.kb = look.kb ? 0 : 1; applyKb(); saveLook(); });
+  // Theme (visual only): dark (default, "mais chic") or the cream illustrated panels
+  function applyTheme() {
+    document.body.classList.toggle("ui-dark", !!look.dark);
+    const b = $("#themeBtn"); if (b) { b.innerHTML = ICO.I[look.dark ? "sun" : "moon"]; b.dataset.ic = look.dark ? "sun" : "moon"; b.dataset.icDone = "1"; b.title = look.dark ? "Tema claro (creme)" : "Tema escuro"; }
+    const st = $("#mThemeState"); if (st) st.textContent = look.dark ? "escuro" : "claro (creme)";
+  }
+  function toggleTheme() { look.dark = look.dark ? 0 : 1; applyTheme(); saveLook(); }
   function applyKb() { document.body.classList.toggle("kb-on", !!look.kb); $("#mKeysState").textContent = look.kb ? "ligado" : "desligado"; setTimeout(buildKeys, 0); }
 
   /* ================= knobs ================= */
@@ -398,6 +407,10 @@
     knob(k, "level", "VOLUME", { format: fmt.db, color: "#ffb340", title: "Volume de saída" });
     watch("regionLoop", function (x) { xf.classList.toggle("disabled", x < .5); });
     // PLAY sample panel (big) and SOUND sample strip: same parameters, bigger knobs (Gab's reference sizes)
+    knob($("#labKnobs"), "root", "TUNE", { size: 76, format: fmt.note, color: "#ff8a3d", title: "TUNE (raiz)" });
+    knob($("#labKnobs"), "velocity", "VEL→FILT", { size: 60, color: "#2fe0ff", title: "Quanto a força da nota abre o filtro" });
+    $("#libToggle").addEventListener("click", function () { document.body.classList.toggle("lib-open"); if (document.body.classList.contains("lib-open")) renderLabLib(); });
+    $("#libClose").addEventListener("click", function () { document.body.classList.remove("lib-open"); });
     knob($("#playSampleKnobs"), "root", "TUNE", { size: 96, format: fmt.note, color: "#ff8a3d", title: "TUNE (raiz): nota em que o sample toca na altura original" });
     knob($("#playSampleKnobs"), "velocity", "VEL→FILT", { size: 72, color: "#2fe0ff", title: "Quanto a força da nota abre o filtro" });
     const xf2 = knob($("#xfadeKnob"), "loopCrossfade", "XFADE", { size: 50, format: fmt.xms, color: "#b06bff", title: "Crossfade na emenda do LOOP" });
@@ -422,18 +435,22 @@
   function drawEnv() {
     const a = tPos(v("ampAttack"), 4, seg1), d = tPos(v("ampDecay"), 4, seg2), s = v("ampSustain"), r = tPos(v("ampRelease"), 8, seg4);
     const y0 = EH - 6, top = 8, sy = y0 - (y0 - top) * s, live = envLive();
-    const p1 = [4 + a, top], p2 = [p1[0] + d, sy], p3 = [p2[0] + hold, sy], p4 = [p3[0] + r, y0], col = live ? "#ffb340" : "rgba(255,179,64,.55)";
-    envSvg.innerHTML = '<defs><linearGradient id="envG" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffb340" stop-opacity=".35"/><stop offset="1" stop-color="#ffb340" stop-opacity="0"/></linearGradient></defs>' +
-      '<path d="M4 ' + y0 + ' L' + p1 + ' L' + p2 + ' L' + p3 + ' L' + p4 + ' Z" fill="' + (live ? "url(#envG)" : "rgba(255,255,255,.05)") + '"/>' +
-      '<path d="M4 ' + y0 + ' L' + p1 + ' L' + p2 + ' L' + p3 + ' L' + p4 + '" fill="none" stroke="' + col + '" stroke-width="2.4" stroke-linejoin="round" vector-effect="non-scaling-stroke" style=""/>' +
-      [["A", p1], ["D", p2], ["S", p3], ["R", p4]].map(function (q) { return '<circle data-h="' + q[0] + '" cx="' + q[1][0] + '" cy="' + q[1][1] + '" r="4" fill="' + col + '" stroke="#1a0b24" stroke-width="1.5" vector-effect="non-scaling-stroke"/>'; }).join("");
+    const p1 = [4 + a, top], p2 = [p1[0] + d, sy], p3 = [p2[0] + hold, sy], p4 = [p3[0] + r, y0], col = "#ff8a3d", op = live ? 1 : .5;
+    envSvg.innerHTML = '<defs><linearGradient id="envG" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ff8a3d" stop-opacity=".55"/><stop offset="1" stop-color="#ff4f6a" stop-opacity=".05"/></linearGradient></defs><g opacity="' + op + '">' +
+      '<path d="M4 ' + y0 + ' L' + p1 + ' L' + p2 + ' L' + p3 + ' L' + p4 + ' Z" fill="url(#envG)"/>' +
+      [p1, p2, p3].map(function (q) { return '<line x1="' + q[0] + '" x2="' + q[0] + '" y1="' + q[1] + '" y2="' + y0 + '" stroke="#ff8a3d" stroke-opacity=".35" stroke-width="1" vector-effect="non-scaling-stroke"/>'; }).join("") +
+      '<path d="M4 ' + y0 + ' L' + p1 + ' L' + p2 + ' L' + p3 + ' L' + p4 + '" fill="none" stroke="' + col + '" stroke-width="3" stroke-linejoin="round" vector-effect="non-scaling-stroke"/></g>';
+    $("#envDots").innerHTML = [["A", p1], ["D", p2], ["S", p3], ["R", p4], ["0", [4, y0]]].map(function (q) { return '<i data-h="' + q[0] + '" style="left:' + (q[1][0] / EW * 100) + '%;top:' + (q[1][1] / EH * 100) + '%;opacity:' + op + '"></i>'; }).join("");
     // FILTER ENVELOPE: the filter follows the amp envelope shape, scaled by AMOUNT (negative closes the filter)
     const amt = v("envAmount"), fbase = amt >= 0 ? y0 : top, fy = function (y) { const n = (y0 - y) / (y0 - top); return fbase - (y0 - top) * n * amt; };
     const fl = v("synthEnable") > .5 && Math.abs(amt) > .005, fcol = fl ? "#2fe0ff" : "rgba(47,224,255,.5)";
     const fp = [[4, fy(y0)], [p1[0], fy(top)], [p2[0], fy(sy)], [p3[0], fy(sy)], [p4[0], fy(y0)], [EW - 4, fy(y0)]];
-    $("#fenvSvg").innerHTML = '<path d="M' + fp.map(function (q) { return q[0].toFixed(1) + " " + q[1].toFixed(1); }).join(" L") + '" fill="none" stroke="' + fcol + '" stroke-width="2.4" stroke-linejoin="round" vector-effect="non-scaling-stroke"/>' +
-      fp.slice(1, 5).map(function (q) { return '<circle cx="' + q[0] + '" cy="' + q[1] + '" r="4" fill="' + fcol + '" stroke="#1a0b24" stroke-width="1.5" vector-effect="non-scaling-stroke"/>'; }).join("") +
-      '<line x1="0" x2="' + EW + '" y1="' + fy(y0) + '" y2="' + fy(y0) + '" stroke="rgba(255,255,255,.12)" stroke-dasharray="3 4" vector-effect="non-scaling-stroke"/>';
+    const fpath = fp.map(function (q) { return q[0].toFixed(1) + " " + q[1].toFixed(1); }).join(" L");
+    $("#fenvSvg").innerHTML = '<defs><linearGradient id="fenvG" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2fe0ff" stop-opacity=".45"/><stop offset="1" stop-color="#2fe0ff" stop-opacity=".03"/></linearGradient></defs><g opacity="' + (fl ? 1 : .5) + '">' +
+      '<path d="M' + fpath + ' L' + (EW - 4) + ' ' + fbase + ' L4 ' + fbase + ' Z" fill="url(#fenvG)"/>' +
+      '<path d="M' + fpath + '" fill="none" stroke="#2fe0ff" stroke-width="3" stroke-linejoin="round" vector-effect="non-scaling-stroke"/></g>' +
+      '';
+    $("#fenvDots").innerHTML = fp.slice(0, 5).map(function (q) { return '<i class="c" style="left:' + (q[0] / EW * 100) + '%;top:' + (q[1] / EH * 100) + '%;opacity:' + (fl ? 1 : .5) + '"></i>'; }).join("");
     $("#envNote").textContent = live ? "" : "Para o ADSR moldar o som, clique em LIGAR SYNTH (ou use o disparo GATE em MIDI / VOZ).";
     $$("#envKnobs .knob").forEach(function (kk) { kk.classList.toggle("disabled", !live); });
   }
@@ -447,7 +464,7 @@
     bindToggle($("#synthBtn"), "synthEnable");
     watch("synthEnable", function (x) { $("#synthLbl").textContent = x > .5 ? "SYNTH LIGADO" : "LIGAR SYNTH"; });
     let h = null; const ids = function () { return h === "A" ? ["ampAttack"] : h === "D" || h === "S" ? ["ampDecay", "ampSustain"] : ["ampRelease"]; };
-    envSvg.addEventListener("pointerdown", function (e) { const t = e.target.getAttribute && e.target.getAttribute("data-h"); if (!t) return; h = t; envSvg.setPointerCapture(e.pointerId); ids().forEach(function (id) { R.call("setParam", id, null, 1); }); });
+    $("#envDots").addEventListener("pointerdown", function (e) { const t = e.target.getAttribute && e.target.getAttribute("data-h"); if (!t || t === "0") return; h = t; envSvg.setPointerCapture(e.pointerId); ids().forEach(function (id) { R.call("setParam", id, null, 1); }); });
     envSvg.addEventListener("pointermove", function (e) {
       if (!h) return;
       const r = envSvg.getBoundingClientRect(), x = (e.clientX - r.left) / r.width * EW, y = (e.clientY - r.top) / r.height * EH, a = tPos(v("ampAttack"), 4, seg1);
@@ -459,14 +476,17 @@
     envSvg.addEventListener("pointerup", function () { if (!h) return; ids().forEach(function (id) { R.call("setParam", id, null, 2); tweaked(id); }); h = null; });
   }
   function drawFilter() {
-    const c = Math.log(Math.max(20, v("filterCutoff")) / 20) / Math.log(1000), q = v("filterResonance"), x = 8 + c * 210, live = v("synthEnable") > .5, col = live ? "#b06bff" : "rgba(176,107,255,.6)";
-    $("#filterSvg").innerHTML = '<path d="M0 12 H' + (x - 24) + ' C' + (x - 8) + ' 12 ' + (x - 6) + ' ' + (12 - q * 10) + ' ' + x + ' ' + (12 - q * 9) + ' S' + (x + 20) + ' 44 ' + (x + 36) + ' 46 L240 46 L0 46 Z" fill="' + (live ? "rgba(176,107,255,.18)" : "rgba(255,255,255,.04)") + '"/>' +
-      '<path d="M0 12 H' + (x - 24) + ' C' + (x - 8) + ' 12 ' + (x - 6) + ' ' + (12 - q * 10) + ' ' + x + ' ' + (12 - q * 9) + ' S' + (x + 20) + ' 44 ' + (x + 36) + ' 46" fill="none" stroke="' + col + '" stroke-width="2.6" vector-effect="non-scaling-stroke" style=""/>';
+    const c = Math.log(Math.max(20, v("filterCutoff")) / 20) / Math.log(1000), q = v("filterResonance"), x = 8 + c * 200, live = v("synthEnable") > .5, op = live ? 1 : .5;
+    const curve = 'M0 14 H' + (x - 24) + ' C' + (x - 8) + ' 14 ' + (x - 6) + ' ' + (14 - q * 10) + ' ' + x + ' ' + (14 - q * 9) + ' S' + (x + 20) + ' 44 ' + (x + 36) + ' 46';
+    $("#filterSvg").innerHTML = '<defs><linearGradient id="fltG" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2fe0ff" stop-opacity=".5"/><stop offset="1" stop-color="#2fe0ff" stop-opacity=".03"/></linearGradient></defs><g opacity="' + op + '">' +
+      '<path d="' + curve + ' L240 46 L0 46 Z" fill="url(#fltG)"/><line x1="' + x + '" x2="' + x + '" y1="' + (14 - q * 9) + '" y2="46" stroke="#2fe0ff" stroke-opacity=".4" stroke-width="1" vector-effect="non-scaling-stroke"/>' +
+      '<path d="' + curve + '" fill="none" stroke="#2fe0ff" stroke-width="3" vector-effect="non-scaling-stroke"/></g>';
+    $("#filterDots").innerHTML = '<i class="c" style="left:' + (x / 240 * 100) + '%;top:' + ((14 - q * 9) / 46 * 100) + '%;opacity:' + op + '"></i>';
   }
   function drawLfo() {
     const live = v("synthEnable") > .5 && v("lfoDepth") > 0, cyc = clamp(v("lfoRate") / 2, .5, 6), dep = .2 + v("lfoDepth") * .8, col = live ? "#2fe0ff" : "rgba(47,224,255,.55)";
     let d = "M0 23"; for (let i = 0; i <= 120; i++) { const t = i / 120; d += " L" + (t * 240).toFixed(1) + " " + (23 - Math.sin(t * cyc * Math.PI * 2) * 18 * dep).toFixed(1); }
-    $("#lfoSvg").innerHTML = '<path d="' + d + '" fill="none" stroke="' + col + '" stroke-width="2.6" vector-effect="non-scaling-stroke" style=""/>';
+    $("#lfoSvg").innerHTML = '<line x1="0" x2="240" y1="23" y2="23" stroke="rgba(255,255,255,.15)" stroke-dasharray="4 4" vector-effect="non-scaling-stroke"/><path d="' + d + '" fill="none" stroke="' + col + '" stroke-width="3" vector-effect="non-scaling-stroke" style="filter:drop-shadow(0 0 4px rgba(47,224,255,.6))"/>';
   }
   function setupSynth() {
     const f = $("#filterKnobs");
@@ -501,7 +521,7 @@
     // MACROS header buttons mirror the real ones (same actions, same enabled state)
     $$("[data-proxy]").forEach(function (b) {
       const src = $("#" + b.dataset.proxy); b.addEventListener("click", function () { src.click(); });
-      const sync = function () { b.disabled = src.disabled; }; sync(); new MutationObserver(sync).observe(src, { attributes: true, attributeFilter: ["disabled"] });
+      const sync = function () { b.disabled = src.disabled; b.classList.toggle("on", src.classList.contains("on")); }; sync(); new MutationObserver(sync).observe(src, { attributes: true, attributeFilter: ["disabled", "class"] });
     });
     [["gPlay", "tPlay"], ["gPause", "tPause"], ["gStop", "tStop"]].forEach(function (p) { $("#" + p[0]).addEventListener("click", function () { $("#" + p[1]).click(); }); });
   }
@@ -775,7 +795,7 @@
   const MODES = ["One Shot", "Loop", "Reverse", "Ping-Pong", "Slice"], VOICES = ["Poly", "Mono", "Legato"];
   const ab = { cur: "A", A: null, B: null, nameA: "", nameB: "" };
   function updatePill() {
-    $("#patchName").textContent = patchName + (ab.cur === "B" ? " · B" : "");
+    $("#patchName").textContent = patchName + (ab.cur === "B" ? " · B" : ""); $("#labSrcName").textContent = patchName;
     $("#patchSub").textContent = (sample.loaded ? sample.name : "sem sample") + " · " + MODES[mode()] + " · " + VOICES[Math.round(v("voiceMode"))] + (v("regionLoop") > .5 ? " · LOOP" : "");
     const fv = current && isFav(current.key);
     $("#presetFav").classList.toggle("on", !!fv); $("#presetFav").innerHTML = ICO.I[fv ? "heartFill" : "heart"];
@@ -869,7 +889,8 @@
   $("#labSearch").addEventListener("input", renderLabLib);
   let labAlien = null;
   function renderLabScreen() {
-    renderLabLib();
+    renderLabLib(); $("#labSrcName").textContent = patchName;
+    const wm = $("#waveMove"); if (wm.parentNode !== $("#waveSlotLab")) { $("#waveSlotLab").appendChild(wm); setTimeout(sizeCanvas, 0); }
     $("#labParent").innerHTML = '<small>PARENT PATCH</small><b>' + patchName + '</b><div class="art" style="' + artFor(patchName) + '"></div>' + waveSvg(current && current.id, "#ff6fe0");
     if (!labAlien) { labAlien = PUP.create($("#labAlien"), "pads"); labAlien.root.setAttribute("transform", "translate(-75 -300) scale(.42)"); }
     renderCompare();
@@ -905,16 +926,22 @@
   function renderLab(res) {
     labRes = res;
     const box = $("#labResults"); box.innerHTML = "";
-    const tree = $("#labTree"); tree.innerHTML = "";
+    const tree = $("#labTree"); tree.innerHTML = ""; const fam = $("#labFamList"); fam.innerHTML = "";
+    $("#labEmpty").hidden = !!(res && res.results && res.results.length);
     if (!res || !res.results || !res.results.length) return;
     if (!res.valid) { $("#labStatus").textContent = "O sample mudou desde a busca. Gere de novo."; return; }
     $("#labBubble").textContent = "Escolha uma e compare!";
+    const n = res.results.length;
     res.results.forEach(function (r, i) {
-      const col = LABC[i % 6], x = (i % 3) * 200 + 100;
-      if (i < 3) tree.insertAdjacentHTML("beforeend", '<path d="M300 0 C300 30 ' + x + ' 20 ' + x + ' 56" stroke="' + col + '" style=""/>');
+      const col = LABC[i % 6], x = (i + .5) * 600 / n;
+      tree.insertAdjacentHTML("beforeend", '<path d="M300 0 V22 H' + x.toFixed(1) + ' V60" fill="none" stroke="' + col + '" stroke-width="2" vector-effect="non-scaling-stroke"/>');
       const b = document.createElement("button"); b.className = "lab-card" + (labPicked === i ? " on" : ""); b.style.setProperty("--lc", col);
       b.innerHTML = "<b>" + LABN[i % 6] + "</b><div class='art' style='" + artFor(LABN[i % 6] + i) + "'></div>" + miniPatch(r.values, col) + "<small>distância " + r.distance.toFixed(3) + (r.values[0] > .5 ? " · synth" : "") + "</small>";
+      const f = document.createElement("button"); f.className = "fam-card" + (labPicked === i ? " on" : ""); f.style.setProperty("--lc", col);
+      f.innerHTML = "<div class='art' style='" + artFor(LABN[i % 6] + i) + "'></div><span><b>" + LABN[i % 6] + "</b>" + miniPatch(r.values, col) + "</span><i data-ic='play'></i>"; ICO.hydrate(f);
+      f.addEventListener("click", function () { b.click(); }); fam.appendChild(f);
       b.addEventListener("click", function () {
+        $$(".fam-card").forEach(function (c, j) { c.classList.toggle("on", j === i); });
         if (labPicked < 0) { ab.A = snapshot(); ab.nameA = patchName; }
         labPicked = i; R.call("patchApply", r.values).then(function () { ab.B = null; ab.cur = "B"; $("#abA").classList.remove("on"); $("#abB").classList.add("on"); ab.B = snapshot(); patchName = LABN[i % 6]; ab.nameB = patchName; updatePill(); renderCompare(); audition(); });
         $$(".lab-card").forEach(function (c, j) { c.classList.toggle("on", j === i); });
@@ -992,7 +1019,7 @@
   const DEFAULT_STYLE = { bounce: 1, sway: 1, nod: 1, dip: 1, lean: .3, hop: 0, nodHit: 1, jitter: 0 };
   let charKind = "alien", rig = {}, charSvg = null, sceneKind = "", sc = {}, puppet = null;
   const motion = { squash: 0, squashV: 0, strike: 0, look: 0, energy: 0, shake: 0, shakeT: 9, alive: 0, lastSound: -1e9, nod: 0, nodV: 0, dark: 0, lfoPhase: 0, peak: .05, hit: false, pitch: .5, pad: 0, x: 240, y: 412, rot: 0 };
-  const look = { art: 1, nova: Object.assign({}, window.RastroNova.DEFAULT), pose: "disco", dance: "groove", sync: 1, bpm: 110, strip: 1, knob: "kn_00", glow: "auto", react: 1, kb: 0 };
+  const look = { dark: 1, art: 1, nova: Object.assign({}, window.RastroNova.DEFAULT), pose: "disco", dance: "groove", sync: 1, bpm: 110, strip: 1, knob: "kn_00", glow: "auto", react: 1, kb: 0 };
   let lookTimer = 0;
   function saveLook() { clearTimeout(lookTimer); lookTimer = setTimeout(function () { R.call("lookSet", JSON.stringify(look)); }, 300); }
   function readLook(json) {
@@ -1001,7 +1028,7 @@
       if (o) {
         if (PUP.LOOKS[o.pose]) look.pose = o.pose; else if (PUP.ALIAS[o.pose]) look.pose = PUP.ALIAS[o.pose];
         if (o.nova && typeof o.nova === "object") { look.nova = Object.assign({}, window.RastroNova.DEFAULT); Object.keys(look.nova).forEach(function (k) { if (typeof o.nova[k] === "string" && window.RastroNova.item(k, o.nova[k]).id === o.nova[k]) look.nova[k] = o.nova[k]; }); }
-        look.art = o.art === 0 ? 0 : 1;
+        look.art = o.art === 0 ? 0 : 1; look.dark = o.dark === 0 ? 0 : 1;
         if (AL.DANCES.some(function (d) { return d.id === o.dance; })) look.dance = o.dance;
         look.sync = o.sync === 0 ? 0 : 1; look.bpm = clamp(Math.round(o.bpm || 110), 60, 180); look.strip = o.strip === 0 ? 0 : 1;
         if (typeof o.knob === "number") look.knob = OLD_KNOB[clamp(Math.round(o.knob), 0, 23)];
@@ -1013,7 +1040,7 @@
     } catch (e) { /* keep defaults */ }
   }
   function applyLook() {
-    document.body.classList.toggle("strip-off", !look.strip); applyKnobClass(); applyKb();
+    document.body.classList.toggle("strip-off", !look.strip); applyKnobClass(); applyKb(); applyTheme();
     if (charSvg) buildCharacter();
     if (screen() === "locker") renderLocker();
   }
@@ -1063,20 +1090,21 @@
     if (!W || !H) return cam || { tx: 0, ty: 0, s: .5 };
     const k = Math.max(W / 480, H / 452), visW = W / k, visH = H / k, vx0 = 240 - visW / 2, vy0 = 226 - visH / 2;
     const scr = screen(), bottomPad = scr === "palco" && look.strip ? 118 / k : 0, topPad = 0;
-    const S = ART.stage, yTop = scr === "limpo" ? 150 : 150, yBot = scr === "limpo" ? 812 : 805;
+    const S = ART.stage, yTop = 150, yBot = scr === "limpo" || scr === "locker" ? 812 : 805;
     let s = (visH - bottomPad - topPad) / (yBot - yTop);
     s = Math.max(s, visW / (S.w - 60), visH / (S.h - 40));
     const life = 1; // the room stays still: the camera only changes with the window size or the tab
     s *= 1.03 * life;
     let tx = 240 - S.feet[0] * s;
     let ty = vy0 + topPad - yTop * s;
-    if (scr === "locker") {
+    if (false) {
       // fitting room: the character stands between the side panels, about 450 px tall on screen, feet near y 640
       // ESTÚDIO: the character stands in the left frame (centre x 361 px), about 620 px tall, feet near y 850
       // whole painting must fit inside the frame, to the right of the RASTRO card (x 290..700 on screen)
       s = Math.max(470 / (520 * k), visW / (S.w - 60), visH / (S.h - 40)) * life;
       tx = 240 + (468 - 720) / k - S.feet[0] * s; ty = vy0 + 850 / k - S.feet[1] * s;
     }
+    if (scr === "lab") ty = vy0 + visH * .5 - (S.feet[1] - 400) * s; // banner: frame Nova's head and keytar
     tx = Math.min(vx0, Math.max(vx0 + visW - S.w * s, tx)); ty = Math.min(vy0, Math.max(vy0 + visH - S.h * s, ty));
     cam = { tx: tx, ty: ty, s: s, vx0: vx0, vy0: vy0, visW: visW, visH: visH };
     return cam;
@@ -1332,13 +1360,13 @@
   }
 
   /* ================= LOCKER (Nova: every piece is its own slot) ================= */
-  let animMode = 2, lkCat = "headwear", lockerPup = null, instFilter = "all";
+  let animMode = 2, lkCat = "looks", lockerPup = null, instFilter = "all";
   const NV = window.RastroNova;
   const SLOT_TABS = [["hair", "Hair", "face"], ["headwear", "Headwear", "hat"], ["headphones", "Headphones", "phones"], ["glasses", "Glasses", "glasses"],
     ["top", "Top", "jacket"], ["pants", "Pants", "pants"], ["shoes", "Shoes", "shoe"], ["instrument", "Instrument", "guitar"]];
-  const LK_CATS = SLOT_TABS.map(function (t) { return [t[0], t[1], t[2], "peça avulsa"]; }).concat([
+  const LK_CATS = [["looks", "Looks", "hanger", "completos"]].concat(SLOT_TABS.map(function (t) { return [t[0], t[1] === "Pants" ? "Bottoms" : t[1], t[2], "peça avulsa"]; })).concat([
     ["knobs", "Knobs", "knob", "todos os knobs reais"], ["palettes", "Palette", "palette", "cores da interface"], ["stage", "Stage", "room", "onde ela toca"],
-    ["dance", "Dança", "dance", "estilos e tempo"], ["glow", "Brilho", "glow", "cor da luz"], ["react", "Reatividade", "spark", "intensidade visual"],
+    ["dance", "Pose / Dança", "dance", "estilos e tempo"], ["glow", "Brilho", "glow", "cor da luz"], ["react", "Reatividade", "spark", "intensidade visual"],
     ["saved", "Meus looks", "look", "salvos"], ["challenges", "Desafios", "star", "XP opcional"]]);
   const WARDROBE = [
     { name: "Night Hoodie", s: {} },
@@ -1376,8 +1404,8 @@
   }
   function lockedNote(lvl) { return "🔒 nível " + lvl + " · " + game.xpTo(lvl) + " XP"; }
   function wearSlots(s, art) { const was = look.art; look.art = art ? 1 : 0; look.nova = Object.assign({}, NV.DEFAULT, s); if (was !== look.art && charSvg) buildCharacter(); if (charKind !== "alien") gesture("avatarCharacter", 6); saveLook(); if (puppet && puppet.setSlots) puppet.setSlots(look.nova); renderLocker(); }
-  function renderWardrobe() {
-    const w = $("#lkWardrobe"); w.innerHTML = "";
+  function renderWardrobe(target) {
+    const w = target || $("#lkWardrobe"); if (!target) w.innerHTML = "";
     // Gab's original drawing (animated cut-out). Pieces can't be swapped on it until the art comes in layers.
     const ob = document.createElement("button"); ob.className = "wcard" + (look.art ? " on" : "");
     ob.innerHTML = '<div class="wc-head"><b>Original</b><span class="wc-xp">ARTE DO GAB</span></div><div class="wc-art"><img src="nv_thumb.png" alt=""></div><small>Keytar · desenho oficial</small>' + (look.art ? '<span class="badge" data-ic="check"></span>' : "");
@@ -1407,6 +1435,7 @@
     $("#lkSayT").textContent = lkMode === "wardrobe" ? "LOOKS COMPLETOS" : "MIX & MATCH / ITEM SLOTS";
     $("#lkSayS").textContent = lkMode === "wardrobe" ? "Combinações prontas. Depois troque peça por peça no MIX & MATCH." : (look.art ? "Você está com a Nova Original (desenho do Gab). Escolher uma peça troca para a Nova editável, desenhada em código." : "Cada peça é independente. Só o visual muda, nunca o som.");
     renderSummary();
+    renderLockerBottom();
     if (lkMode === "wardrobe") { renderWardrobe(); return; }
     const cats = $("#lkCats"); cats.innerHTML = "";
     LK_CATS.forEach(function (c) {
@@ -1417,11 +1446,13 @@
     const grid = $("#itemGrid"); grid.innerHTML = ""; grid.className = "item-grid three";
     const title = LK_CATS.filter(function (c) { return c[0] === lkCat; })[0];
     $("#slotTitle").textContent = title ? title[1].toUpperCase() : ""; $("#slotNote").textContent = "";
-    if (NV.ITEMS[lkCat]) {
+    if (lkCat === "looks") {
+      $("#slotNote").textContent = "a Original é o desenho do Gab; as outras são a Nova editável"; grid.className = "item-grid looks"; renderWardrobe(grid);
+    } else if (NV.ITEMS[lkCat]) {
       const slot = lkCat;
       $("#slotNote").textContent = slot === "headwear" ? "um chapéu por vez · troca só o que ela usa na cabeça" : slot === "instrument" ? "muda pose e gestos, nunca o som" : "troca só esta peça";
       NV.ITEMS[slot].forEach(function (it) {
-        const locked = it.level > game.state.level, worn = look.nova[slot] === it.id, preview = Object.assign({}, look.nova); preview[slot] = it.id;
+        const locked = it.level > game.state.level, worn = !look.art && look.nova[slot] === it.id, preview = Object.assign({}, look.nova); preview[slot] = it.id;
         const thumb = it.id === "none" ? '<span data-ic="close" style="width:48px;height:48px;opacity:.6"></span>' : '<img src="' + novaThumb(preview, slot, 150) + '" alt="">';
         grid.appendChild(itemCard({ thumb: thumb, name: it.id === "none" ? "Nenhum" : it.name, note: locked ? lockedNote(it.level) : worn ? "equipado" : "liberado", worn: worn, locked: locked,
           click: function () { if (locked) { toast("Libera no nível " + it.level + " (faltam " + game.xpTo(it.level) + " XP)."); return; } const s = Object.assign({}, look.nova); s[slot] = it.id; wearSlots(s); } }));
@@ -1471,7 +1502,7 @@
       save.addEventListener("click", function () { $("#lookSave").click(); }); grid.appendChild(save);
       game.state.looks.forEach(function (lk, i) {
         const s = Object.assign({}, NV.DEFAULT, lk.nova || {});
-        const b = itemCard({ thumb: '<img src="' + novaThumb(s, "full", 150) + '" alt="">', name: lk.name, note: (lk.dance || "") + " · clique para vestir", worn: false, locked: false, click: function () { if (lk.dance) look.dance = lk.dance; if (lk.glow) look.glow = lk.glow; if (typeof lk.knob === "string") look.knob = lk.knob; wearSlots(s); toast("Look vestido: " + lk.name); } });
+        const b = itemCard({ thumb: '<img src="' + (lk.art === 1 ? "nv_thumb.png" : novaThumb(s, "full", 150)) + '" alt="">', name: lk.name, note: (lk.dance || "") + " · clique para vestir", worn: false, locked: false, click: function () { if (lk.dance) look.dance = lk.dance; if (lk.glow) look.glow = lk.glow; if (typeof lk.knob === "string") look.knob = lk.knob; wearSlots(s, lk.art === 1); toast("Look vestido: " + lk.name); } });
         const del = document.createElement("span"); del.className = "eq"; del.style.cursor = "pointer"; del.textContent = "APAGAR"; del.addEventListener("click", function (e) { e.stopPropagation(); game.state.looks.splice(i, 1); game.save(); renderLocker(); });
         b.appendChild(del); grid.appendChild(b);
       });
@@ -1518,7 +1549,25 @@
       const d = document.createElement("div"); d.className = "ch" + (done ? " done" : ""); d.innerHTML = '<div style="flex:1"><b>' + c.name + (done ? " ✓" : "") + '</b>' + c.text + '</div><span class="xpv">+' + c.xp + ' XP</span>'; list.appendChild(d);
     });
   }
+  // LOCKER bottom row (Gab's reference): stage preview, current look, save / random
+  function renderLockerBottom() {
+    const sl = $("#lkSceneList"); sl.innerHTML = "";
+    ART.rooms.forEach(function (rk, i) {
+      const b = document.createElement("button"); b.className = "scene-b" + (Math.round(v("sceneRoom")) === i ? " on" : "");
+      b.innerHTML = '<span style="background-image:url(room_' + rk + '.jpg)"></span><b>' + ART.roomNames[i] + '</b>'; b.title = "Trocar o cenário do palco (só visual)";
+      b.addEventListener("click", function () { gesture("sceneRoom", i); setTimeout(renderLocker, 60); }); sl.appendChild(b);
+    });
+    const cl = $("#lkCurList"); cl.innerHTML = "";
+    if (look.art) { const o = document.createElement("button"); o.className = "cur-b on"; o.title = "Nova Original (desenho do Gab)"; o.innerHTML = '<img src="nv_thumb.png" alt="">'; o.addEventListener("click", function () { lkCat = "looks"; renderLocker(); }); cl.appendChild(o); }
+    SLOT_TABS.forEach(function (t) {
+      const it = NV.item(t[0], look.nova[t[0]]);
+      const b = document.createElement("button"); b.className = "cur-b" + (lkCat === t[0] ? " on" : "") + (look.art ? " dim" : ""); b.title = (look.art ? "Nova editável · " : "") + t[1] + ": " + it.name;
+      b.innerHTML = it.id === "none" ? '<span data-ic="' + t[2] + '" class="cur-ic"></span>' : '<img src="' + novaThumb(look.nova, t[0], 72) + '" alt="">';
+      ICO.hydrate(b); b.addEventListener("click", function () { lkMode = "mix"; lkCat = t[0]; renderLocker(); }); cl.appendChild(b);
+    });
+  }
   function setupLocker() {
+    lkMode = "mix";
     $("#lookUndo").hidden = true;
     $("#lookRandom").addEventListener("click", function () {
       const s = {};
@@ -1528,7 +1577,7 @@
     });
     $("#lookSave").addEventListener("click", function () {
       if (game.state.looks.length >= 12) { toast("Limite de 12 looks. Apague um para salvar outro."); return; }
-      game.state.looks.push({ name: "Look " + (game.state.looks.length + 1), nova: Object.assign({}, look.nova), dance: look.dance, glow: look.glow, knob: look.knob }); game.save(); toast("Look salvo em Meus looks.");
+      game.state.looks.push({ name: "Look " + (game.state.looks.length + 1), art: look.art, nova: Object.assign({}, look.nova), dance: look.dance, glow: look.glow, knob: look.knob }); game.save(); toast("Look salvo em Meus looks.");
       if (screen() === "locker") renderLocker();
     });
     $$("#lkModeSeg button").forEach(function (b) { b.addEventListener("click", function () { lkMode = b.dataset.lkm; renderLocker(); }); });
@@ -1610,7 +1659,7 @@
   function charPlace() {
     if (sc.world) {
       // ESTÚDIO: stand in the free part of the frame (screen x ≈ 468), whatever the camera clamp did
-      if (screen() === "locker" && cam && cam.visW) {
+      if (false) {
         const st = $("#stage"), k = Math.max(st.clientWidth / 480, st.clientHeight / 452);
         return { x: (cam.vx0 + 468 / k - cam.tx) / cam.s, y: ART.stage.feet[1] + 2, s: 520 / 700, world: true };
       }

@@ -188,3 +188,13 @@ Separe: o que já existia; o que mudou; o que ficou incompleto; testes que passa
 - EFFECT RACK em cartões na cor de cada módulo, com liga/desliga, ícone, nome + subtítulo, **AMOUNT** (= MIX real do módulo) e alça de arrastar.
 - GLOBAL: transporte interno (▶ ❚❚ ■, só prévia) + VOLUME + medidor de saída.
 - Diferenças honestas em relação à imagem: MACROS continuam as reais (PRESENÇA, RASTRO, VARIAÇÃO, MIX); BRILHO/MOVIMENTO/TEXTURA/ESPAÇO não existem no motor. "MIDI AUDITION" não foi criado (não existe função de prévia de nota). PATCH LAB e LOCKER ainda no estilo escuro.
+
+## Interface v2 (23/10/2026, 22h18–22h30) — telas de referência do Gab
+
+- As 4 imagens do Gab (PLAY, SOUND, LOCKER, PATCH LAB) são a direção da interface, com tamanhos de painéis, knobs e botões medidos nelas (imagem 1586 px → app 1440 px, ×0,908). Logo e fonte continuam os aprovados (logo.png + Poppins); a Nova é a arte do Gab.
+- **Tema escuro é o padrão** ("mais chic"); o tema creme continua disponível (ícone sol/lua no topo e no menu). Só visual, salvo no look (`look.dark`).
+- Envelopes e filtro com eixo, grade, preenchimento em degradê e alças com brilho; pad XY com grade de pontos e mira laranja.
+- SOUND: faixa SAMPLE (modos, LOOP de região, GATE, XFADE), AMP ENVELOPE, FILTER (CUTOFF, RESONANCE), FILTER ENVELOPE (o motor usa a forma do AMP ENVELOPE × AMOUNT, destino CUTOFF/PITCH), LFO (RATE, DEPTH, FREE/SYNC, divisão, destino), PITCH (REPITCH/FIXED, TUNE, BEND), VOICE (POLY/MONO/LEGATO, GLIDE, disparo), GLOBAL (VOLUME, ORIG/RACK, VEL→FILT).
+- Não existem no motor e por isso não aparecem: DRIVE, formas de onda e FADE IN do LFO, ADSR próprio do filtro, PAN, FINE, MIDI AUDITION, macros BRILHO/MOVIMENTO/TEXTURA/ESPAÇO, descrição em texto na busca de patches. Candidatos para a etapa de som.
+- LOCKER: Nova grande à esquerda, WARDROBE (categorias + grade; "Looks" inclui a Original), PREVIEW OUTFIT IN (cenários reais), CURRENT LOOK, SAVE/RANDOM LOOK.
+- PATCH LAB: FONTE DO SOM (waveform, biblioteca na pastinha, CAPTURA, TUNE), banner da Nova, PATCHES SUGERIDOS (A/B), BUSCA DE PATCHES (direção, GERAR, VARIAR, progresso, salvar), FAMÍLIA DE PATCHES.

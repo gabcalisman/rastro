@@ -1,6 +1,8 @@
 name: macOS build
 
 on:
+  push:
+    branches: [codex/rastro-fx-foundation]
   pull_request:
     # PR #5 is stacked on PR #4 rather than on main.
     branches: [main, codex/nova-visual-on-codex-audio]

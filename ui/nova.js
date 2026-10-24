@@ -296,7 +296,10 @@
     g.save(); g.globalAlpha = .45; g.fillStyle = "#000"; g.beginPath(); g.ellipse(P.hip.x * .5, 4, 150 - Math.abs(P.hip.x) * .3, 14, 0, 0, Math.PI * 2); g.fill(); g.restore();
     // aura (sound colour, BLOOM)
     const ga = clamp(s.glowAmt || 0, 0, 1), col = s.glow || "#5fe3ff", bloom = clamp(s.bloom || 0, 0, 1);
-    if (ga + bloom > .02) { g.save(); g.translate(0, -320); g.scale(1, 1.25); const gr = g.createRadialGradient(0, 0, 20, 0, 0, 300 * (1 + bloom * .4)); gr.addColorStop(0, col); gr.addColorStop(1, "rgba(0,0,0,0)"); g.globalAlpha = (.12 + ga * .25 + bloom * .45); g.globalCompositeOperation = "lighter"; g.fillStyle = gr; g.beginPath(); g.arc(0, 0, 300 * (1 + bloom * .4), 0, Math.PI * 2); g.fill(); g.restore(); }
+    const aura = function (c, alpha, rad) { g.save(); g.translate(0, -320); g.scale(1, 1.25); const gr = g.createRadialGradient(0, 0, 20, 0, 0, rad); gr.addColorStop(0, c); gr.addColorStop(1, "rgba(0,0,0,0)"); g.globalAlpha = alpha; g.globalCompositeOperation = "lighter"; g.fillStyle = gr; g.beginPath(); g.arc(0, 0, rad, 0, Math.PI * 2); g.fill(); g.restore(); };
+    if (ga > .02) aura(col, .1 + ga * .22, 280);
+    // BLOOM: pink aura that expands with the real BLOOM activity and fades with its tail
+    if (bloom > .02) aura("#ff4fd8", bloom * .55, 300 * (1 + bloom * .45));
     // GHOST: violet afterimages of earlier poses
     if (s.ghost > .02 && R.hist.length) {
       const sp = Math.max(1, s.ghostSpacing || 4);

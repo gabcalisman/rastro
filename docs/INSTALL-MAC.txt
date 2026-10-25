@@ -47,6 +47,8 @@ control or every official-reference wardrobe item has been ported. Check the act
 RASTRO FX (independent audio insert, included on the FX foundation branch):
   Copy the WHOLE AU/RASTRO FX.component to the same Components folder.
   In Logic choose Audio FX > Gab Calisman > RASTRO FX on an audio track/aux.
+  Standalone/RASTRO FX.app processes the selected input device (grant microphone permission;
+  use headphones to avoid feedback).
   Optional validation: auval -v aufx Rfx1 GbCa
   The workflow also validates FX VST3 with pluginval; check this run's BUILD-INFO.
   See RASTRO-FX.md for the 15-module rack, modulation, A/B and .rastrofx presets.

@@ -423,10 +423,10 @@ juce::AudioProcessorParameter *RastroFxProcessor::getBypassParameter() const
 juce::AudioProcessorEditor *RastroFxProcessor::createEditor()
 {
 #if RASTRO_FX_WEB_UI
-    return new RastroFxWebEditor(*this);
-#else
-    return new RastroFxEditor(*this);
+    if (RastroFxWebEditor::available())
+        return new RastroFxWebEditor(*this);
 #endif
+    return new RastroFxEditor(*this);
 }
 void RastroFxProcessor::setValue(const juce::String &id, float v)
 {

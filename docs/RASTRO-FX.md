@@ -9,18 +9,19 @@ inalterados nesta branch. O PR #5 não foi modificado nem mesclado.
 | --- | --- | --- | --- |
 | PLAY (binário RASTRO, preservado) | `com.gabcalisman.rastro` | `Rstr / GbCa` | AU, VST3, Standalone |
 | Capture (preservado) | `com.gabcalisman.rastro.capture` | `Rcpt / GbCa` | AU, VST3 |
-| FX | `com.gabcalisman.rastro.fx` | `Rfx1 / GbCa` | AU, VST3 |
+| FX | `com.gabcalisman.rastro.fx` | `Rfx1 / GbCa` | AU, VST3, Standalone |
 
-AU é exclusivo do macOS. O FX não tem Standalone. Seu estado usa
+AU é exclusivo do macOS. O Standalone do FX processa a entrada de áudio escolhida (use fones para evitar microfonia). Seu estado usa
 `RASTRO_FX_STATE`, separado dos outros produtos. Os três parâmetros da primeira
 etapa (`fxInputGain`, `fxOutputGain`, `fxBypass`) mantêm os IDs e índices; estados
 antigos sem rack são completados com os novos módulos desligados.
 
 ## Interface
 
-No macOS o FX abre uma interface web (`ui-fx/`, embutida no plugin e servida pelo
-`RastroFxWebEditor` no WebView do sistema), como o PLAY. Em Linux/Windows e nos testes
-continua o editor nativo `RastroFxEditor`, cujo cabeçalho agora mostra só
+No macOS e no Windows o FX abre uma interface web (`ui-fx/`, embutida no plugin e servida pelo
+`RastroFxWebEditor`: WKWebView no Mac, Edge WebView2 no Windows com o loader linkado
+estaticamente e dados em uma pasta temporária gravável). Sem o runtime do WebView2, o plugin abre
+o editor nativo. Em Linux, sem WebView2 e nos testes continua o editor nativo `RastroFxEditor`, cujo cabeçalho agora mostra só
 **RASTRO FX by Gab Calisman**.
 
 - **Família PLAY:** logo oficial do RASTRO (`ui-fx/logo-rastro.png`, recortado de `ui/logo.png`),

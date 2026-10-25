@@ -10,6 +10,9 @@ class RastroFxWebEditor : public juce::AudioProcessorEditor, private juce::Timer
 {
   public:
     explicit RastroFxWebEditor(RastroFxProcessor &);
+    // False when the system web engine is missing (e.g. no WebView2 runtime on Windows); the
+    // processor then opens the native editor instead of a blank window.
+    static bool available();
     ~RastroFxWebEditor() override;
     void paint(juce::Graphics &) override;
     void resized() override;

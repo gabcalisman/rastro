@@ -22,6 +22,19 @@ const char *mimeFor(const juce::String &file)
         return "font/woff";
     return "application/octet-stream";
 }
+// Windows: Edge WebView2 (statically linked loader). It needs a writable user-data folder, and a
+// DAW often runs from a protected location, so it lives in the user's temp folder.
+juce::WebBrowserComponent::Options platformOptions(juce::WebBrowserComponent::Options options)
+{
+#if JUCE_WINDOWS
+    options = options.withBackend(juce::WebBrowserComponent::Options::Backend::webview2)
+                  .withWinWebView2Options(
+                      juce::WebBrowserComponent::Options::WinWebView2{}.withUserDataFolder(
+                          juce::File::getSpecialLocation(juce::File::tempDirectory)
+                              .getChildFile("RASTRO FX WebView2")));
+#endif
+    return options;
+}
 juce::File presetFolder()
 {
     return juce::File::getSpecialLocation(juce::File::userApplicationDataDirectory)
@@ -40,7 +53,7 @@ RastroFxWebEditor::RastroFxWebEditor(RastroFxProcessor &processor)
         }
 
     auto options =
-        juce::WebBrowserComponent::Options{}
+        platformOptions(juce::WebBrowserComponent::Options{})
             .withNativeIntegrationEnabled()
             .withKeepPageLoadedWhenBrowserIsHidden()
             .withResourceProvider([this](const juce::String &url) { return resource(url); })
@@ -102,6 +115,12 @@ RastroFxWebEditor::RastroFxWebEditor(RastroFxProcessor &processor)
 }
 
 RastroFxWebEditor::~RastroFxWebEditor() { stopTimer(); }
+
+bool RastroFxWebEditor::available()
+{
+    return juce::WebBrowserComponent::areOptionsSupported(
+        platformOptions(juce::WebBrowserComponent::Options{}.withNativeIntegrationEnabled()));
+}
 
 void RastroFxWebEditor::paint(juce::Graphics &g) { g.fillAll(juce::Colour(0xff12071c)); }
 

@@ -867,16 +867,10 @@ void RastroFxEditor::paint(juce::Graphics &g)
     g.setColour(juce::Colour(0xfff9f5ec));
     g.setFont(juce::FontOptions(31, juce::Font::bold));
     g.drawText("FX", juce::Rectangle<int>{184, 6, 54, 39}, juce::Justification::centredLeft);
-    g.setFont(juce::FontOptions(14, juce::Font::bold));
-    g.drawText("ORBITAL PLAYGROUND", juce::Rectangle<int>{250, 10, 330, 25},
-               juce::Justification::centredLeft);
     g.setColour(juce::Colour(0xffbfc4d8));
     g.setFont(juce::FontOptions(10.5f));
     g.drawText("by Gab Calisman", juce::Rectangle<int>{185, 41, 110, 17},
                juce::Justification::centredLeft);
-    g.setFont(juce::FontOptions(9.5f));
-    g.drawText("15 SONIC CHARACTERS  /  SHAPE YOUR SIGNAL",
-               juce::Rectangle<int>{250, 36, 390, 17}, juce::Justification::centredLeft);
     g.setColour(panel);
     g.fillRoundedRectangle(10, 78, float(getWidth() - 20), 90, 14);
     label(g, "MIX", {22, 80, 60, 18}, 12);

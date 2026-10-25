@@ -42,6 +42,11 @@ class RastroFxProcessor : public juce::AudioProcessor
     std::vector<Target> targets; // built once; callback only reads cached pointers/numeric ranges
     std::atomic<float> inputPeak{0}, outputPeak{0}, lfoMeter{0}, envelopeMeter{0};
     std::array<std::atomic<float>, rastro::fx::count> activity{};
+    // Output scope for the interface visualiser: every 4th output frame (mono) in a ring buffer.
+    // Telemetry only; it never feeds back into the audio.
+    static constexpr int scopeSize = 512;
+    std::array<std::atomic<float>, scopeSize> scope{};
+    std::atomic<int> scopeWrite{0};
     static juce::String moduleId(int module, const juce::String &suffix);
     void setValue(const juce::String &, float);
     float value(const juce::String &) const;
@@ -94,7 +99,7 @@ class RastroFxProcessor : public juce::AudioProcessor
     }
     std::array<std::array<float, latency + 1>, 2> inputHistory{};
     std::array<double, latency + 1> inputGainHistory{};
-    int historyPosition = 0, activeHold = 0;
+    int historyPosition = 0, activeHold = 0, scopeDecimation = 0;
     double rate = 48000, lfoPhase = 0;
     float envelope = 0, lfoSmooth = 0, topology = 1, inputHeld = 0, outputHeld = 0;
     bool parallel = false;

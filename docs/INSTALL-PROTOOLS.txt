@@ -1,0 +1,37 @@
+RASTRO PLAY - Pro Tools (AAX) test build
+=========================================
+
+PORTUGUÊS
+---------
+IMPORTANTE: este AAX NÃO tem a assinatura da PACE/iLok. O Pro Tools comum recusa plugins AAX sem
+assinatura (ele nem aparece, ou aparece como inválido). Até a assinatura existir, ele só abre no
+"Pro Tools Developer", a versão gratuita da Avid para desenvolvedores.
+
+Para conseguir o Pro Tools Developer:
+1. Crie conta em developer.avid.com (programa AAX), my.avid.com e ilok.com.
+2. Peça o código do "Pro Tools Developer Bundle" por e-mail para devauth@avid.com.
+3. Baixe o Pro Tools Developer em my.avid.com e ative com o código.
+
+Instalar:
+1. Feche o Pro Tools.
+2. Copie RASTRO.aaxplugin (e, se quiser, RASTRO Capture.aaxplugin) para:
+   /Library/Application Support/Avid/Audio/Plug-Ins/
+   (o Mac pede a senha de administrador.)
+   No Windows: C:\Program Files\Common Files\Avid\Audio\Plug-Ins\
+3. Abra o Pro Tools Developer, crie uma faixa de Instrumento e insira RASTRO
+   (categoria Instrument / Software Generator).
+4. RASTRO Capture é opcional: insert de ÁUDIO numa faixa de áudio, só para gravar e mandar para o RASTRO.
+
+Para o Pro Tools comum (assinatura):
+- Peça as ferramentas de assinatura por e-mail para audiosdk@avid.com com o assunto exato
+  "PACE Eden Signing Tools Request" (nome, e-mail, telefone, site, descrição do plugin).
+- A PACE envia o acesso; com um iLok e a ferramenta "wraptool", o plugin é assinado DEPOIS do build.
+- Esse passo é da conta do Gab: não dá para fazer pelo build automático sem a conta e o iLok dele.
+
+ENGLISH
+-------
+This AAX build is UNSIGNED. Retail Pro Tools rejects unsigned AAX plugins; until it is signed with
+PACE wraptool it loads only in Pro Tools Developer (request the bundle code at devauth@avid.com).
+Install: copy the .aaxplugin bundles to /Library/Application Support/Avid/Audio/Plug-Ins/ and
+insert RASTRO on an Instrument track. Signing tools: email audiosdk@avid.com with the subject
+"PACE Eden Signing Tools Request". CI did not run Pro Tools; playback in Pro Tools is NOT tested.

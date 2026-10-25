@@ -32,6 +32,10 @@ jobs:
           rastro_tests rastro_character_tests rastro_playback_tests rastro_mp3_tests
           rastro_synth_tests rastro_capture_tests rastro_timing_tests rastro_patch_tests
           --parallel 3
+      - name: Build AAX plugins for Pro Tools (unsigned)
+        id: aax
+        continue-on-error: true
+        run: cmake --build "$env:BUILD_DIR" --config Release --target Rastro_AAX RastroCapture_AAX --parallel 3
       - name: Run native portable tests
         run: ctest --test-dir "$env:BUILD_DIR" -C Release --output-on-failure
       - name: Verify x64 binaries and package
@@ -57,6 +61,12 @@ jobs:
               Write-Host "Verified AMD64: $binary"
             } finally { $reader.Dispose() }
           }
+          if ("${{ steps.aax.outcome }}" -eq "success") {
+            New-Item -ItemType Directory -Force "$package/AAX" | Out-Null
+            Copy-Item -Recurse "$env:BUILD_DIR/Rastro_artefacts/Release/AAX/RASTRO.aaxplugin" "$package/AAX/"
+            Copy-Item -Recurse "$env:BUILD_DIR/RastroCapture_artefacts/Release/AAX/RASTRO Capture.aaxplugin" "$package/AAX/"
+            Copy-Item docs/INSTALL-PROTOOLS.txt "$package/AAX/INSTALL-PROTOOLS.txt"
+          }
           Copy-Item -Recurse docs/previews "$package/Previews"
           Copy-Item README.md "$package/README.md"
           Copy-Item docs/INSTALL-WINDOWS.txt "$package/INSTALL-WINDOWS.txt"
@@ -66,6 +76,7 @@ jobs:
           Tested checkout: $(git rev-parse HEAD)
           Runner and binary architecture: Windows x64 (PE AMD64 verified).
           AU is macOS only. VST3 + Standalone + Capture VST3 built.
+          AAX (Pro Tools): ${{ steps.aax.outcome }}. Unsigned: loads only in Pro Tools Developer until PACE-signed.
           Interface: the same web UI as macOS, through Microsoft Edge WebView2 (runtime ships with Windows 10/11).
           Without the WebView2 runtime the plugin opens the older native editor instead of a blank window.
           Eight portable suites passed natively on the runner; no DAW, hardware or GUI test.

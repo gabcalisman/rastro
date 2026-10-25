@@ -115,6 +115,56 @@ jobs:
           retention-days: 14
           compression-level: 0
 
+      # ---------- PHASE 1b: AAX for Pro Tools (unsigned; does not block the AU) ----------
+      - name: Build AAX plugins
+        id: aax
+        continue-on-error: true
+        run: >-
+          cmake --build "$BUILD_DIR" --config Release
+          --target Rastro_AAX RastroCapture_AAX
+          --parallel 3
+
+      - name: Verify, ad-hoc sign and package AAX (Pro Tools)
+        id: aaxpkg
+        if: steps.aax.outcome == 'success'
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -euo pipefail
+          package="staging-aax/RASTRO-macOS-AAX"
+          mkdir -p "$package" dist-aax
+          for bundle in "$BUILD_DIR/Rastro_artefacts/Release/AAX/RASTRO.aaxplugin" "$BUILD_DIR/RastroCapture_artefacts/Release/AAX/RASTRO Capture.aaxplugin"; do
+            executable="$bundle/Contents/MacOS/$(basename "$bundle" .aaxplugin)"
+            test -f "$executable"
+            lipo "$executable" -verify_arch arm64 x86_64
+            echo "$executable: $(lipo -archs "$executable")"
+            # Must export the AAX entry points, otherwise Pro Tools reports "not a valid AAX plug-in".
+            nm -gU "$executable" | grep -q "ACFRegisterPlugin"
+            codesign --force --sign - --timestamp=none "$bundle"
+            codesign --verify --deep --strict --verbose=2 "$bundle"
+            ditto "$bundle" "$package/$(basename "$bundle")"
+          done
+          cp docs/INSTALL-PROTOOLS.txt "$package/INSTALL-PROTOOLS.txt"
+          {
+            echo "RASTRO PLAY + RASTRO Capture, AAX (Pro Tools)"
+            echo "Source commit: $SOURCE_COMMIT"
+            echo "Universal arm64 + x86_64, AAX entry points exported. AAX SDK bundled with JUCE 8.0.6."
+            echo "UNSIGNED for PACE/iLok: loads only in Pro Tools Developer until wrapped with PACE wraptool."
+            echo "Pro Tools playback NOT tested by CI."
+          } > "$package/BUILD-INFO.txt"
+          ditto -c -k --sequesterRsrc --keepParent "$package" "dist-aax/RASTRO-macOS-AAX.zip"
+          echo "### AAX ready: download **RASTRO-macOS-AAX** (unsigned: Pro Tools Developer only)" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload AAX ZIP
+        if: steps.aaxpkg.outcome == 'success'
+        uses: actions/upload-artifact@v4
+        with:
+          name: RASTRO-macOS-AAX
+          path: dist-aax/RASTRO-macOS-AAX.zip
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 0
+
       # ---------- PHASE 2: VST3 and Standalone (does not block the AU) ----------
       - name: Build VST3s and Standalone
         id: vst3

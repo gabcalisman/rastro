@@ -9,9 +9,9 @@ inalterados nesta branch. O PR #5 não foi modificado nem mesclado.
 | --- | --- | --- | --- |
 | PLAY (binário RASTRO, preservado) | `com.gabcalisman.rastro` | `Rstr / GbCa` | AU, VST3, Standalone |
 | Capture (preservado) | `com.gabcalisman.rastro.capture` | `Rcpt / GbCa` | AU, VST3 |
-| FX | `com.gabcalisman.rastro.fx` | `Rfx1 / GbCa` | AU, VST3, Standalone |
+| FX | `com.gabcalisman.rastro.fx` | `Rfx1 / GbCa` | AU, VST3, AAX (Mac), Standalone |
 
-AU é exclusivo do macOS. O Standalone do FX processa a entrada de áudio escolhida (use fones para evitar microfonia). Seu estado usa
+AU é exclusivo do macOS. O AAX (Pro Tools, categoria Effect) é gerado no Mac com o SDK que vem no JUCE 8; sem assinatura PACE/iLok ele só abre no Pro Tools Developer. O Standalone do FX processa a entrada de áudio escolhida (use fones para evitar microfonia). Seu estado usa
 `RASTRO_FX_STATE`, separado dos outros produtos. Os três parâmetros da primeira
 etapa (`fxInputGain`, `fxOutputGain`, `fxBypass`) mantêm os IDs e índices; estados
 antigos sem rack são completados com os novos módulos desligados.

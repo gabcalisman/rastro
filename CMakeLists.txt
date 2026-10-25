@@ -112,7 +112,9 @@ endif()
 # Separate audio insert. Existing PLAY/Capture identifiers and targets stay intact.
 set(fx_formats VST3 Standalone)
 if(APPLE)
- list(APPEND fx_formats AU)
+ # AAX for Pro Tools (JUCE 8 bundles the AAX SDK). Pro Tools retail only loads AAX signed with
+ # PACE/iLok; unsigned builds load in Pro Tools Developer.
+ list(APPEND fx_formats AU AAX)
 endif()
 # FX web interface: macOS follows RASTRO_WEB_UI; Windows uses Edge WebView2 (needs the
 # Microsoft.Web.WebView2 NuGet package at build time, see JUCE_WEBVIEW2_PACKAGE_LOCATION).
@@ -127,7 +129,7 @@ set(rastro_fx_webview2 FALSE)
 if(WIN32 AND RASTRO_FX_WEB_UI)
     set(rastro_fx_webview2 TRUE)
 endif()
-juce_add_plugin(RastroFx COMPANY_NAME "Gab Calisman" BUNDLE_ID com.gabcalisman.rastro.fx PLUGIN_MANUFACTURER_CODE GbCa PLUGIN_CODE Rfx1 FORMATS ${fx_formats} PRODUCT_NAME "RASTRO FX" IS_SYNTH FALSE NEEDS_MIDI_INPUT FALSE NEEDS_MIDI_OUTPUT FALSE VST3_CATEGORIES Fx NEEDS_WEB_BROWSER ${RASTRO_FX_WEB_UI} NEEDS_WEBVIEW2 ${rastro_fx_webview2} COPY_PLUGIN_AFTER_BUILD FALSE MICROPHONE_PERMISSION_ENABLED TRUE MICROPHONE_PERMISSION_TEXT "RASTRO FX processa o audio que entra pela sua interface ou microfone.")
+juce_add_plugin(RastroFx COMPANY_NAME "Gab Calisman" BUNDLE_ID com.gabcalisman.rastro.fx PLUGIN_MANUFACTURER_CODE GbCa PLUGIN_CODE Rfx1 FORMATS ${fx_formats} PRODUCT_NAME "RASTRO FX" IS_SYNTH FALSE NEEDS_MIDI_INPUT FALSE NEEDS_MIDI_OUTPUT FALSE VST3_CATEGORIES Fx AAX_CATEGORY Effect NEEDS_WEB_BROWSER ${RASTRO_FX_WEB_UI} NEEDS_WEBVIEW2 ${rastro_fx_webview2} COPY_PLUGIN_AFTER_BUILD FALSE MICROPHONE_PERMISSION_ENABLED TRUE MICROPHONE_PERMISSION_TEXT "RASTRO FX processa o audio que entra pela sua interface ou microfone.")
 juce_add_binary_data(RastroFxAssets HEADER_NAME RastroFxAssets.h NAMESPACE RastroFxAssets SOURCES ui/logo.png ui/al_o_starpilot.png)
 target_sources(RastroFx PRIVATE Source/FxProcessor.cpp Source/FxEditor.cpp Source/FxWebEditor.cpp Source/FxPlugin.cpp)
 target_compile_definitions(RastroFx PUBLIC JUCE_USE_CURL=0 JUCE_USE_FLAC=0 JUCE_USE_OGGVORBIS=0 JUCE_VST3_CAN_REPLACE_VST2=0)

@@ -21,8 +21,10 @@ jobs:
       SOURCE_COMMIT: ${{ github.event.pull_request.head.sha || github.sha }}
     steps:
       - uses: actions/checkout@v4
+      - name: Fetch WebView2 SDK (web interface, linked statically)
+        run: nuget install Microsoft.Web.WebView2 -Version 1.0.1901.177 -OutputDirectory "$env:RUNNER_TEMP/webview2" -NonInteractive
       - name: Configure Release x64 with static runtime
-        run: cmake -S . -B "$env:BUILD_DIR" -G "Visual Studio 17 2022" -A x64 -DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded
+        run: cmake -S . -B "$env:BUILD_DIR" -G "Visual Studio 17 2022" -A x64 -DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded -DRASTRO_WEB_UI=ON "-DJUCE_WEBVIEW2_PACKAGE_LOCATION=$env:RUNNER_TEMP/webview2"
       - name: Build all Windows formats and portable tests
         run: >-
           cmake --build "$env:BUILD_DIR" --config Release
@@ -64,6 +66,8 @@ jobs:
           Tested checkout: $(git rev-parse HEAD)
           Runner and binary architecture: Windows x64 (PE AMD64 verified).
           AU is macOS only. VST3 + Standalone + Capture VST3 built.
+          Interface: the same web UI as macOS, through Microsoft Edge WebView2 (runtime ships with Windows 10/11).
+          Without the WebView2 runtime the plugin opens the older native editor instead of a blank window.
           Eight portable suites passed natively on the runner; no DAW, hardware or GUI test.
           Static MSVC runtime. Unsigned test build; not a release.
           M4A decoding is not implemented on Windows. WAV/AIFF/MP3 are available offline.

@@ -7,7 +7,9 @@ RASTRO PLAY - Windows x64 test build
 4. Open your DAW and rescan VST3. RASTRO is a MIDI instrument; insert it on an instrument track.
    RASTRO Capture is an optional AUDIO insert, used only to record and hand off audio locally.
 5. Or run Standalone/RASTRO.exe from an extracted writable folder. Select audio/MIDI devices in Settings.
-   Keep the executable outside the ZIP; no external runtime installer is needed.
+   Keep the executable outside the ZIP.
+   The interface uses Microsoft Edge WebView2, which already comes with Windows 10/11. If the plugin
+   opens with the older plain interface, install the "Evergreen" WebView2 Runtime from Microsoft.
 6. Import WAV/AIFF/MP3. M4A is NOT decoded on Windows in this build; use rendered WAV/AIFF instead.
 7. Capture monitoring defaults OFF. Use headphones, select the input, check the meter, REC, STOP.
    The resulting sample is embedded when the instrument session/patch is saved after loading finishes.
@@ -15,3 +17,11 @@ RASTRO PLAY - Windows x64 test build
 Unsigned prototype, no installer or release. If security software blocks it, review the origin and
 BUILD-INFO; do not disable system protection. macOS AU cannot be used on Windows.
 CI builds/tests do not prove playback, MIDI hardware, a real sound device or DAW compatibility.
+
+PORTUGUÊS (resumo)
+- Copie as pastas de VST3/ para C:\Program Files\Common Files\VST3\ e peça para a DAW reescanear.
+- Ou abra Standalone/RASTRO.exe (fora do ZIP). Escolha áudio e MIDI em Settings/Opções.
+- A interface é a mesma do Mac, via WebView2 (já vem no Windows 10/11). Se abrir a interface antiga
+  e simples, instale o "WebView2 Runtime" (Evergreen) da Microsoft.
+- M4A não abre no Windows nesta versão: use WAV, AIFF ou MP3.
+- Build de teste sem assinatura: o Windows pode avisar "aplicativo não reconhecido".

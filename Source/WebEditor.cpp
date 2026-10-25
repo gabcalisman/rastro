@@ -43,6 +43,36 @@ juce::File progressFile()
 }
 } // namespace
 
+juce::WebBrowserComponent::Options RastroWebEditor::browserBase()
+{
+    juce::WebBrowserComponent::Options options;
+#if JUCE_WINDOWS
+    // WebView2 (Edge). Its cache must live in a folder the user can write to; the default would sit
+    // beside the DAW's .exe, which is often read-only.
+    options = options.withBackend(juce::WebBrowserComponent::Options::Backend::webview2)
+                  .withWinWebView2Options(
+                      juce::WebBrowserComponent::Options::WinWebView2{}
+                          .withUserDataFolder(
+                              juce::File::getSpecialLocation(
+                                  juce::File::userApplicationDataDirectory)
+                                  .getChildFile("RASTRO")
+                                  .getChildFile("WebView2"))
+                          .withStatusBarDisabled()
+                          .withBackgroundColour(juce::Colour(0xff17121f)));
+#endif
+    return options;
+}
+
+bool RastroWebEditor::canRun()
+{
+#if JUCE_WINDOWS
+    static const bool ok = juce::WebBrowserComponent::areOptionsSupported(browserBase());
+    return ok;
+#else
+    return true;
+#endif
+}
+
 RastroWebEditor::RastroWebEditor(RastroProcessor &processor)
     : juce::AudioProcessorEditor(&processor), p(processor)
 {
@@ -54,7 +84,7 @@ RastroWebEditor::RastroWebEditor(RastroProcessor &processor)
         }
 
     auto options =
-        juce::WebBrowserComponent::Options{}
+        browserBase()
             .withNativeIntegrationEnabled()
             .withKeepPageLoadedWhenBrowserIsHidden()
             .withResourceProvider([this](const juce::String &url) { return resource(url); })

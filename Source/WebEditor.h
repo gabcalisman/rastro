@@ -10,6 +10,11 @@ class RastroWebEditor : public juce::AudioProcessorEditor, private juce::Timer
   public:
     explicit RastroWebEditor(RastroProcessor &);
     ~RastroWebEditor() override;
+    // Base browser options for this platform (WebView2 on Windows, WebKit on macOS).
+    static juce::WebBrowserComponent::Options browserBase();
+    // False on a Windows machine without the WebView2 runtime: the host then gets the native editor
+    // instead of a blank window (JUCE would silently fall back to Internet Explorer).
+    static bool canRun();
     void paint(juce::Graphics &) override;
     void resized() override;
 

@@ -859,7 +859,9 @@ bool RastroProcessor::restoreState(const void *data, int n)
 juce::AudioProcessorEditor *RastroProcessor::createEditor()
 {
 #if RASTRO_WEB_UI
-    return new RastroWebEditor(*this);
+    if (RastroWebEditor::canRun())
+        return new RastroWebEditor(*this);
+    return new RastroEditor(*this);
 #else
     return new RastroEditor(*this);
 #endif
